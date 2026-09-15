@@ -1,32 +1,46 @@
-# Auditoria parcial — Phase 02
+# Auditoria final de implementação — Phase 02
 
-Esta auditoria registra o estado do checkpoint `4a973b9`; não representa o gate final de revisão visual.
+A Home operacional foi revisada na branch `feature/portal-dashboard-home`. A fase **não está pronta para aprovação final** enquanto faltar a prova autenticada contra Supabase e `gr-service`. Nenhum resultado da vitrine de desenvolvimento substitui esse smoke.
 
 ## CRITICAL
 
-Nenhum defeito crítico identificado nos contratos e testes executados.
+Nenhum defeito crítico identificado nos contratos, testes e revisão visual realizados.
 
 ## HIGH
 
-- Integração autenticada do dashboard ainda não provada nesta sessão: `GR_SMOKE_*` não está definido e não há `.env.smoke.local` no `gr-web`. O script `npm run smoke:local` foi ampliado, porém precisa de configuração local para rodar contra Supabase Auth e `gr-service`.
-- Revisão visual nos viewports específicos de 1440, 1280 e 1024 px ainda não capturada. O navegador conectado exibiu a vitrine em largura maior; a ferramenta disponível não expôs override de viewport. A responsividade foi inspecionada estaticamente no CSS e depende de validação visual.
+- Smoke autenticado real pendente por configuração externa: `.env.smoke.local` não existe e nenhuma variável `GR_SMOKE_*` está definida nesta sessão. Não foram criadas credenciais fictícias nem executado um smoke com mocks. O gate deve comprovar login, sessão, JWT, organização, fazenda, headers de contexto, overview, attention, activity e cleanup.
+- A proporção da barra lateral com a Home na rota autenticada também depende de uma sessão real. A vitrine `/dev/dashboard` isola a Home; sua revisão em 1280 px não deve ser confundida com uma captura da shell autenticada. O layout usa quebra pela largura da área de conteúdo para evitar esmagamento quando a barra lateral reduz a Home.
 
 ## MEDIUM
 
-Nenhum defeito médio identificado nos cenários cobertos. A ausência das duas provas acima impede declarar a fase concluída, independentemente dos testes verdes.
+Nenhum defeito médio identificado no escopo efetivamente verificado.
 
 ## LOW
 
-- A build emite aviso de orçamento do CSS do componente Home: 9,99 kB contra 8 kB. A build conclui e o bundle da Home permanece lazy; vale separar estilos por componentes quando a composição for refinada após a revisão manual.
-- O período não está na URL; a escolha persiste apenas enquanto o serviço estiver ativo.
-- A rota de agenda completa ainda é placeholder da Phase 01; o link aponta para a rota real já cadastrada.
+- A escolha do período não persiste na URL; dura apenas enquanto o serviço da Home permanece ativo.
+- A agenda completa ainda é placeholder da Phase 01; os links apontam para a rota cadastrada.
 
-## Evidências
+## Revisão visual
 
-- Contratos checados em `gr-service`: `ReadHerdDashboard`, `HerdDashboardRepository`, `HerdAgendaController`, `ReadHerdAgenda` e `PaddockController`.
-- `npm run check`: 17 arquivos de teste e 78 testes verdes; build de produção verde com aviso LOW acima.
-- `npx tsc -p tsconfig.app.json --noEmit`: verde.
+- **1440 px, preenchido:** território e fila lado a lado, rebanho em trilho sem cartões de KPI, matriz legível, gráfico SVG com traços próprios e resumo lateral. Agenda e insights seguem a hierarquia operacional, sem cartões de recomendação genérica.
+- **1280 px, preenchido, vazio e erro parcial:** matriz em duas colunas quando o território está ao lado da fila; rótulos, datas, mensagens vazias e retry local permanecem legíveis. A falha de Activity não derruba Overview, Attention ou Paddocks.
+- **1024 px landscape, preenchido e período personalizado:** território e fila de atenção empilham; matriz volta a três colunas; gráfico, resumo e chips de séries permanecem utilizáveis, com quebra dos chips quando necessário. O formulário CUSTOM fica íntegro. `documentElement.scrollWidth` foi inferior a `innerWidth` em 1024, 1280 e 1440 px na vitrine.
+
+A matriz informa explicitamente que é uma representação operacional, não cartográfica. Exibe nome, código quando disponível, ocupação e estado inativo quando suportado. Não há geometria geográfica inventada. A revisão não encontrou excesso material de ícones decorativos ou blocos numéricos isolados.
+
+## CSS e implementação
+
+- Antes: CSS da Home em aproximadamente **9,99 kB**, acima do budget de **8 kB**.
+- Depois: CSS local da Home em **7.513 bytes**; estilos do território foram isolados no componente `TerritoryOverviewComponent` (**3.429 bytes**). A build de produção passou **sem aviso de budget**. O limite em `angular.json` não foi aumentado e seu diff preexistente permaneceu intocado.
+- A Home mantém Overview/Activity separados de Attention/Agenda/Paddocks na troca de período. Cancelamento e geração por seção impedem que resposta tardia da fazenda ou do período anterior substitua a atual. Testes cobrem as duas corridas, falha parcial e retry.
+- Controles de período e fila usam estado acessível; o gráfico tem descrição e tabela textual. A interação e a transição usam tokens de movimento existentes, inclusive `prefers-reduced-motion`.
+
+## Evidências finais
+
+- `npm run check`: 17 arquivos, 78 testes verdes e build de produção sem aviso de CSS.
+- `npx tsc -p tsconfig.app.json --noEmit`: sem erros.
 - `npm audit --audit-level=moderate`: 0 vulnerabilidades.
-- `git diff --check` e `git diff --cached --check`: verdes.
-- Vitrine `/dev/dashboard` revisada em estados preenchido, vazio, erro parcial e período personalizado. `/dev/dashboard` não ficou acessível ao servir a configuração de produção; redirecionou a `/entrar`.
-- Corridas de fazenda e período, falhas parciais, retry, validação de datas, navegação por teclado e tabela textual do gráfico cobertos por testes.
+- `git diff --check`: limpo.
+- `/dev/dashboard` é somente desenvolvimento; `/visao-geral` usa o serviço real, sem fixtures.
+
+Após configurar `.env.smoke.local` ou `GR_SMOKE_*`, executar `npm run smoke:local` e revisar a Home autenticada com a shell em 1280 px. Não iniciar Phase 03 nem fazer merge em `main` antes da aprovação visual do usuário.

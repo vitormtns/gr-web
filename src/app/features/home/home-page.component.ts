@@ -1,16 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ContextStore } from '../../core/context/context.store';
-import { MetricComponent } from '../../design-system/data-display/data-display';
 import { EmptyStateComponent, ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
 import { ActivityChartComponent } from './activity-chart.component';
 import { DashboardStore } from './dashboard.store';
-import { DashboardPeriod, QueueItem, mapQueueItem, mapTerritory } from './dashboard.models';
+import { DashboardPeriod, QueueItem, mapQueueItem } from './dashboard.models';
+import { TerritoryOverviewComponent } from './territory-overview.component';
 
 @Component({
   selector: 'app-home-page',
   providers: [DashboardStore],
-  imports: [RouterLink, MetricComponent, EmptyStateComponent, ErrorStateComponent, SkeletonComponent, ActivityChartComponent],
+  imports: [RouterLink, EmptyStateComponent, ErrorStateComponent, SkeletonComponent, ActivityChartComponent, TerritoryOverviewComponent],
   template: `<div class="dashboard page-enter">
     <header class="dashboard-header"><div><span class="eyebrow">{{context.selectedOrganization()?.organizationName}} / {{context.selectedFarm()?.farmName}}</span><h1>Visão geral<span class="header-name">{{firstName() ? ' · ' + firstName() : ''}}</span></h1><p>O rebanho, as pendências e a atividade da fazenda em uma só leitura.</p></div>
       <div class="period-area"><span class="control-label">Período de leitura</span><div class="period-pills" role="group" aria-label="Período do dashboard">@for(option of periods; track option.value){<button type="button" [class.active]="store.period().period===option.value" [attr.aria-pressed]="store.period().period===option.value" (click)="choosePeriod(option.value)">{{option.label}}</button>}</div></div></header>
@@ -19,17 +19,7 @@ import { DashboardPeriod, QueueItem, mapQueueItem, mapTerritory } from './dashbo
     @else if(context.status()==='empty'){<gr-empty-state title="Nenhuma fazenda disponível" description="Peça ao administrador para revisar seu acesso às fazendas." />}
     @else {
       <div class="top-grid">
-        <section class="territory-section section-frame" aria-labelledby="territory-title"><div class="section-heading"><div><span class="section-kicker">POSIÇÃO ATUAL</span><h2 id="territory-title">Território e rebanho</h2></div><span class="section-note">Representação operacional · não cartográfica</span></div>
-          @if(store.overview().status==='ready' && store.overview().value; as overview){
-            <div class="herd-rail"><div class="herd-primary"><span>Animais ativos</span><strong>{{formatNumber(overview.herdSnapshot.activeAnimals)}}</strong></div><gr-metric label="Piquetes ocupados" [value]="formatNumber(occupied(overview.herdSnapshot.byPaddock))" /><gr-metric label="Sem localização" [value]="formatNumber(overview.herdSnapshot.unlocatedAnimals)" /></div>
-            @if(store.paddocks().status==='ready' && store.paddocks().value; as paddocks){
-              @if(paddocks.length){<div class="territory-field" role="list" aria-label="Piquetes e ocupação">@for(paddock of territory(overview.herdSnapshot, paddocks); track paddock.id){<div class="paddock" [class.unoccupied]="!paddock.animals" [class.inactive]="paddock.status==='INACTIVE'" role="listitem"><span class="paddock-marker" aria-hidden="true"></span><div><strong>{{paddock.name}}</strong>@if(paddock.status==='INACTIVE'){<small>Inativo</small>}@else if(paddock.code){<small>{{paddock.code}}</small>}</div><span class="paddock-count">{{formatNumber(paddock.animals)}} <small>{{paddock.animals===1?'animal':'animais'}}</small></span></div>}</div>}
-              @else{<div class="territory-empty"><strong>Esta fazenda ainda não possui piquetes cadastrados.</strong><p>O rebanho permanece visível acima; a leitura territorial aparecerá quando houver piquetes.</p></div>}
-            }@else if(store.paddocks().status==='error'){<gr-error-state title="Não foi possível carregar os piquetes" [description]="errorText(store.paddocks().error?.message)" [reference]="reference(store.paddocks().error?.requestId)" (retry)="store.retry('paddocks')" />}
-            @else{<div class="territory-skeleton"><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>}
-          }@else if(store.overview().status==='error'){<gr-error-state title="Não foi possível carregar o rebanho" [description]="errorText(store.overview().error?.message)" [reference]="reference(store.overview().error?.requestId)" (retry)="store.retry('overview')" />}
-          @else{<div class="territory-loading" aria-label="Carregando rebanho"><gr-skeleton /><div><gr-skeleton /><gr-skeleton /><gr-skeleton /></div></div>}
-        </section>
+        <app-territory-overview />
         <section class="attention-section section-frame" aria-labelledby="attention-title"><div class="section-heading"><div><span class="section-kicker">FILA OPERACIONAL</span><h2 id="attention-title">O que precisa de atenção</h2></div></div>
           @if(store.attention().status==='ready' && store.attention().value; as attention){@if(attention.preview.length){<div class="queue" role="list">@for(item of attention.preview; track item.stableId){@let entry = queue(item);<div class="queue-entry" role="listitem"><button type="button" class="queue-button" [attr.aria-expanded]="openItem()===entry.id" (click)="toggleItem(entry.id)"><span class="queue-dot" aria-hidden="true"></span><span class="queue-copy"><strong>{{entry.title}}</strong><small>{{entry.context || kindLabel(entry.kind)}} · {{sourceLabel(entry.source)}}</small></span><span class="queue-date">{{formatDate(entry.date)}}</span></button>@if(openItem()===entry.id){<div class="queue-detail"><span>{{kindLabel(entry.kind)}}</span><span>Data operacional: {{formatDate(entry.date)}}</span>@if(entry.status){<span>Situação: {{statusLabel(entry.status)}}</span>}</div>}</div>}</div>}
           @else{<div class="compact-empty"><strong>Nenhuma pendência agora.</strong><p>A fila de atenção está vazia para esta fazenda.</p></div>}}
@@ -92,8 +82,7 @@ export class HomePageComponent {
   }
   toggleItem(id: string): void { this.openItem.set(this.openItem() === id ? null : id); }
   retryContext(): void { void this.context.retry().catch(() => {}); }
-  territory = mapTerritory; queue = mapQueueItem;
-  occupied(items: { total: number }[]): number { return items.filter(item => item.total > 0).length; }
+  queue = mapQueueItem;
   formatNumber(value: number): string { return new Intl.NumberFormat('pt-BR').format(value); }
   formatDate(value?: string): string { if (!value) return '—'; const [year, month, day] = value.split('-'); return `${day}/${month}/${year}`; }
   day(value: string): string { return value.slice(8, 10); }
