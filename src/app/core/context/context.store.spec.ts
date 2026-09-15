@@ -1,0 +1,18 @@
+import { of, throwError } from 'rxjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiClient } from '../api/api-client.service';
+import { ContextStore } from './context.store';
+
+const organizations={items:[{organizationId:'org-a',organizationName:'Grupo Horizonte',membershipId:'mem-a',role:'OWNER',farmScopeMode:'ALL'}]};
+const farms={items:[{farmId:'farm-a',farmName:'Fazenda Horizonte'},{farmId:'farm-b',farmName:'Fazenda Boa Vista'}]};
+const user={userId:'user-a',email:'gestor@fazenda.com.br',displayName:'Gestor',status:'ACTIVE',createdAt:'',updatedAt:'',version:0,authentication:{sessionId:null,authenticationLevel:null,issuedAt:null,expiresAt:null}};
+
+describe('ContextStore',()=>{
+  let get:ReturnType<typeof vi.fn>;let store:ContextStore;
+  beforeEach(()=>{localStorage.clear();get=vi.fn((path:string)=>{if(path.endsWith('/me'))return of(user);if(path.endsWith('/organizations'))return of(organizations);if(path.includes('/farms'))return of(farms);return of({userId:'user-a'});});store=new ContextStore({get} as unknown as ApiClient);});
+  it('carrega organizações, fazendas e confirma o contexto',async()=>{await store.initialize();expect(store.selectedOrganization()?.organizationId).toBe('org-a');expect(store.selectedFarm()?.farmId).toBe('farm-a');expect(get).toHaveBeenCalledWith('/api/v1/context',true);expect(store.status()).toBe('ready');});
+  it('rejeita IDs persistidos que não estão mais autorizados',async()=>{localStorage.setItem('gr.context.organization','org-invalida');localStorage.setItem('gr.context.farm','farm-invalida');await store.initialize();expect(store.selectedOrganization()?.organizationId).toBe('org-a');expect(store.selectedFarm()?.farmId).toBe('farm-a');});
+  it('troca a fazenda e invalida dados dependentes',async()=>{await store.initialize();const version=store.contextVersion();await store.selectFarm('farm-b');expect(store.selectedFarm()?.farmId).toBe('farm-b');expect(store.contextVersion()).toBe(version+1);expect(localStorage.getItem('gr.context.farm')).toBe('farm-b');});
+  it('ignora uma fazenda fora da lista autorizada',async()=>{await store.initialize();await store.selectFarm('farm-x');expect(store.selectedFarm()?.farmId).toBe('farm-a');});
+  it('restaura a fazenda anterior quando a confirmação falha',async()=>{await store.initialize();get.mockImplementation((path:string)=>path.endsWith('/context')?throwError(()=>new Error('indisponível')):of({}));await expect(store.selectFarm('farm-b')).rejects.toThrow();expect(store.selectedFarm()?.farmId).toBe('farm-a');});
+});
