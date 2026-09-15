@@ -24,6 +24,6 @@ O layout usa território/atenção lado a lado em notebook amplo; empilha em lar
 
 ## Revisão e limitações
 
-`/dev/dashboard` é uma vitrine visual somente em desenvolvimento: `?estado=vazio` e `?estado=falha` exercitam cenários isolados. A rota real `/visao-geral` nunca usa fixtures. A agenda completa ainda é placeholder da Phase 01; o link aponta para a rota existente, não para um endpoint inventado. Não há busca global, clima, notificações ou mapas externos.
+`/dev/dashboard` é uma vitrine visual somente em desenvolvimento: `?estado=vazio` e `?estado=falha` exercitam cenários isolados. Servida na configuração de produção, a rota redirecionou para `/entrar`. A rota real `/visao-geral` nunca usa fixtures. A agenda completa ainda é placeholder da Phase 01; o link aponta para a rota existente, não para um endpoint inventado. Não há busca global, clima, notificações ou mapas externos.
 
-O smoke real foi ampliado para os quatro períodos e as cinco leituras, mas requer `GR_SMOKE_*` no ambiente local. Sem essas credenciais, sua execução não pode ser declarada como provada. A revisão visual em 1440/1280/1024 e com sessão autenticada ainda deve ser concluída antes de declarar a fase pronta para revisão.
+O smoke real foi ampliado para os quatro períodos e as cinco leituras, mas requer `GR_SMOKE_*` no ambiente local. É possível defini-las no processo ou em `.env.smoke.local`, arquivo opcional ignorado pelo Git e carregado por `npm run smoke:local`. Sem essas credenciais, sua execução não pode ser declarada como provada. A revisão visual em 1440/1280/1024 e com sessão autenticada ainda deve ser concluída antes de declarar a fase pronta para revisão.

@@ -12,8 +12,9 @@ describe('contratos do dashboard', () => {
   });
   it('preserva ocupação e piquetes vazios sem inventar geometria', () => {
     const items = mapTerritory({ activeAnimals: 2, bySex: {}, byCategory: {}, byPaddock: [{ id: 'a', name: 'Norte', total: 2 }], unlocatedAnimals: 0 },
-      [{ id: 'a', name: 'Norte', code: null, status: 'ACTIVE', version: 1, occupancy: 2 }, { id: 'b', name: 'Sul', code: null, status: 'ACTIVE', version: 1, occupancy: 0 }]);
+      [{ id: 'a', name: 'Norte', code: null, status: 'ACTIVE', version: 1, occupancy: 2 }, { id: 'b', name: 'Sul', code: null, status: 'INACTIVE', version: 1, occupancy: 4 }]);
     expect(items.map(item => item.animals)).toEqual([2, 0]);
+    expect(items[1].status).toBe('INACTIVE');
     expect(mapTerritory({ activeAnimals: 0, bySex: {}, byCategory: {}, byPaddock: [], unlocatedAnimals: 0 }, [])).toEqual([]);
   });
   it('preserva MANUAL e DERIVED e a ordem recebida', () => {

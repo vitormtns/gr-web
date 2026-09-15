@@ -35,6 +35,7 @@ yarn-error.log
 /connect.lock
 /coverage
 /src/environments/environment.local.ts
+/.env.smoke.local
 /libpeerconnection.log
 testem.log
 /typings
