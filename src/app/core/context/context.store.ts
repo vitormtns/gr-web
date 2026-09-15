@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../api/api-client.service';
-import { CurrentUser, FarmOption, ItemsResponse, OrganizationOption, TenantContextResponse } from '../api/api.models';
+import { AppError, CurrentUser, FarmOption, ItemsResponse, OrganizationOption, TenantContextResponse } from '../api/api.models';
 
 export type ContextStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
@@ -12,6 +12,7 @@ export class ContextStore {
   private initialization?: Promise<void>;
 
   readonly status = signal<ContextStatus>('idle');
+  readonly error = signal<AppError | null>(null);
   readonly user = signal<CurrentUser | null>(null);
   readonly organizations = signal<OrganizationOption[]>([]);
   readonly farms = signal<FarmOption[]>([]);
@@ -27,6 +28,7 @@ export class ContextStore {
   initialize(): Promise<void> {
     if (this.initialization) return this.initialization;
     this.initialization = this.loadInitialContext().catch((error) => {
+      this.error.set(error instanceof AppError ? error : null);
       this.status.set('error');
       this.initialization = undefined;
       throw error;
@@ -34,7 +36,12 @@ export class ContextStore {
     return this.initialization;
   }
 
+  retry(): Promise<void> {
+    return this.initialize();
+  }
+
   async selectOrganization(organizationId: string): Promise<void> {
+    if (this.transitionPending()) return;
     const selected = this.organizations().find((item) => item.organizationId === organizationId);
     if (!selected || selected.organizationId === this.selectedOrganization()?.organizationId) return;
     const previousOrganization = this.selectedOrganization();
@@ -62,6 +69,7 @@ export class ContextStore {
   }
 
   async selectFarm(farmId: string): Promise<void> {
+    if (this.transitionPending()) return;
     const selected = this.farms().find((item) => item.farmId === farmId);
     if (!selected || selected.farmId === this.selectedFarm()?.farmId) return;
     const previousFarm = this.selectedFarm();
@@ -84,6 +92,7 @@ export class ContextStore {
   clear(): void {
     this.initialization = undefined;
     this.status.set('idle');
+    this.error.set(null);
     this.user.set(null);
     this.organizations.set([]);
     this.farms.set([]);
@@ -99,6 +108,7 @@ export class ContextStore {
 
   private async loadInitialContext(): Promise<void> {
     this.status.set('loading');
+    this.error.set(null);
     const [user, response] = await Promise.all([
       firstValueFrom(this.api.get<CurrentUser>('/api/v1/me')),
       firstValueFrom(this.api.get<ItemsResponse<OrganizationOption>>('/api/v1/me/organizations')),
@@ -134,7 +144,10 @@ export class ContextStore {
     const organization = this.selectedOrganization();
     const farm = this.selectedFarm();
     if (!organization || !farm) return;
-    await firstValueFrom(this.api.get<TenantContextResponse>('/api/v1/context', true));
+    const confirmed = await firstValueFrom(this.api.get<TenantContextResponse>('/api/v1/context', true));
+    if (confirmed.organization?.id !== organization.organizationId || confirmed.farm?.id !== farm.farmId) {
+      throw new Error('Não foi possível confirmar o contexto selecionado.');
+    }
     this.persist(this.organizationKey, organization.organizationId);
     this.persist(this.farmKey, farm.farmId);
   }

@@ -2,7 +2,7 @@
 
 ## Conceito
 
-“Território Vivo” traduz o campo por divisas, coordenadas, trajetórias, ocupação e pontos de contexto. A linguagem evita ilustração rural literal e concentra sua assinatura no login, nos estados vazios e na superfície de preparação do dashboard.
+“Território Vivo” traduz o campo por divisas, coordenadas, trajetórias, ocupação e pontos de contexto. A linguagem evita ilustração rural literal e concentra sua assinatura no login, nos estados vazios e na superfície de preparação do painel operacional.
 
 ## Fundações
 
@@ -22,7 +22,7 @@
 - Navigation: Sidebar, Topbar, Breadcrumb, Tabs e ContextSelector.
 - Data display: Metric, StatusIndicator, Avatar, Table, Pagination e FilterBar.
 
-Campos implementam `ControlValueAccessor`, associam labels e mensagens de erro, e só recebem erro quando a feature decide mostrá-lo após interação. Dialog e Drawer usam `<dialog>` nativo, com foco modal e Escape. A tabela oferece contêiner focável e rolagem horizontal em largura reduzida.
+Campos implementam `ControlValueAccessor`, associam rótulos e mensagens de erro, e só recebem erro quando a área decide mostrá-lo após interação. Dialog e Drawer usam `<dialog>` nativo, com foco modal e Escape. Popovers usam `summary` sem botões aninhados, fecham com Escape e oferecem ações como botões nativos. Abas aceitam setas, Home e End. A tabela oferece contêiner focável e rolagem horizontal em largura reduzida.
 
 ## Escrita de interface
 

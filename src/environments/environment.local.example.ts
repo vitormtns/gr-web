@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:8080',
+  apiBaseUrl: 'http://127.0.0.1:8080',
   supabaseUrl: 'http://127.0.0.1:54321',
-  supabaseAnonKey: 'configure-a-chave-publica-local',
+  supabaseAnonKey: 'substitua-pela-chave-publica-local',
 } as const;

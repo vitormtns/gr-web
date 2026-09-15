@@ -85,7 +85,7 @@ export class InputComponent extends ValueAccessor<string> {
 
 @Component({
   selector: 'gr-textarea',
-  template: `<label [attr.for]="id">{{label}} @if(required){<span aria-hidden="true">*</span>}</label><textarea [id]="id" [value]="value" [placeholder]="placeholder" [disabled]="disabled" [attr.aria-invalid]="!!error" (input)="update($event)" (blur)="onTouched()"></textarea>@if(error){<p class="error" role="alert">{{error}}</p>}`,
+  template: `<label [attr.for]="id">{{label}} @if(required){<span aria-hidden="true">*</span>}</label><textarea [id]="id" [value]="value" [placeholder]="placeholder" [required]="required" [disabled]="disabled" [attr.aria-invalid]="!!error" [attr.aria-describedby]="error?id+'-error':null" (input)="update($event)" (blur)="onTouched()"></textarea>@if(error){<p class="error" [id]="id+'-error'" role="alert">{{error}}</p>}`,
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => TextareaComponent), multi: true }],
   styles: [fieldStyles],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -103,7 +103,7 @@ export interface SelectOption { value: string; label: string }
 @Component({
   selector: 'gr-select',
   imports: [CommonModule],
-  template: `<label [attr.for]="id">{{label}}</label><select [id]="id" [value]="value" [disabled]="disabled" (change)="update($event)" (blur)="onTouched()"><option value="" disabled>{{placeholder}}</option>@for(option of options;track option.value){<option [value]="option.value">{{option.label}}</option>}</select>@if(error){<p class="error" role="alert">{{error}}</p>}`,
+  template: `<label [attr.for]="id">{{label}}</label><select [id]="id" [value]="value" [disabled]="disabled" [attr.aria-invalid]="!!error" [attr.aria-describedby]="error?id+'-error':null" (change)="update($event)" (blur)="onTouched()"><option value="" disabled>{{placeholder}}</option>@for(option of options;track option.value){<option [value]="option.value">{{option.label}}</option>}</select>@if(error){<p class="error" [id]="id+'-error'" role="alert">{{error}}</p>}`,
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => SelectComponent), multi: true }],
   styles: [fieldStyles],
   changeDetection: ChangeDetectionStrategy.OnPush,

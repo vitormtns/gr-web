@@ -14,12 +14,12 @@ import { ButtonComponent, InputComponent } from '../../design-system/primitives/
       <div class="brand"><span class="brand-mark"><i></i></span><strong>Gerenciador Rural</strong></div>
       <div class="coordinates">19°55′S · 43°56′W</div>
       <div class="contours contour-a"></div><div class="contours contour-b"></div><div class="route-line"></div><span class="point point-a"></span><span class="point point-b"></span>
-      <div class="territory-copy"><span>Território vivo</span><h1>Clareza para cada decisão no campo.</h1><p>Organizações, fazendas e operações conectadas em um só lugar.</p></div>
+      <div class="territory-copy"><span>Território vivo</span><h2>Clareza para cada decisão no campo.</h2><p>Organizações, fazendas e operações conectadas em um só lugar.</p></div>
     </section>
     <section class="access">
       <div class="form-wrap">
         <div class="mobile-brand"><span class="brand-mark"><i></i></span><strong>Gerenciador Rural</strong></div>
-        <div class="heading"><span>Acesso seguro</span><h2>Entre no portal</h2><p>Use as credenciais vinculadas à sua organização.</p></div>
+        <div class="heading"><span>Acesso seguro</span><h1>Entre no portal</h1><p>Use as credenciais vinculadas à sua organização.</p></div>
         @if(notice()){<gr-alert tone="warning" title="Atenção"><p>{{notice()}}</p></gr-alert>}
         @if(error()){<gr-alert tone="error" title="Não foi possível entrar"><p>{{error()}}</p></gr-alert>}
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
@@ -42,9 +42,9 @@ import { ButtonComponent, InputComponent } from '../../design-system/primitives/
     .contours{position:absolute;z-index:1;border:1px solid rgb(178 209 187 / 18%);border-radius:48% 52% 38% 62% / 58% 42% 58% 42%}.contour-a{width:32rem;height:24rem;right:-5rem;top:17%}.contour-b{width:25rem;height:19rem;right:-1rem;top:22%;transform:rotate(7deg);box-shadow:0 0 0 3rem rgb(178 209 187 / 3%),0 0 0 6rem rgb(178 209 187 / 2%)}
     .route-line{position:absolute;z-index:2;width:44rem;height:16rem;left:-11rem;top:35%;border-top:1px dashed rgb(196 223 203 / 38%);border-radius:50%;transform:rotate(-12deg)}
     .point{position:absolute;z-index:3;width:.625rem;height:.625rem;border:2px solid #173e2d;border-radius:50%;background:#b9d2bf;box-shadow:0 0 0 1px #b9d2bf}.point-a{left:22%;top:42%}.point-b{right:22%;top:33%}
-    .territory-copy{position:absolute;z-index:3;left:var(--space-8);right:var(--space-8);bottom:var(--space-12);max-width:34rem}.territory-copy>span,.heading>span{display:block;margin-bottom:var(--space-3);font-size:.6875rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#9fc0a8}.territory-copy h1{max-width:30rem;margin-bottom:var(--space-4);font-size:clamp(2.2rem,4.2vw,4rem);line-height:1.02;letter-spacing:-.055em}.territory-copy p{max-width:28rem;margin:0;color:#b9ccbf;font-size:1rem}
+    .territory-copy{position:absolute;z-index:3;left:var(--space-8);right:var(--space-8);bottom:var(--space-12);max-width:34rem}.territory-copy>span,.heading>span{display:block;margin-bottom:var(--space-3);font-size:.6875rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#9fc0a8}.territory-copy h2{max-width:30rem;margin-bottom:var(--space-4);font-size:clamp(2.2rem,4.2vw,4rem);line-height:1.02;letter-spacing:-.055em}.territory-copy p{max-width:28rem;margin:0;color:#b9ccbf;font-size:1rem}
     .access{display:grid;grid-template-rows:1fr auto;padding:var(--space-8);background:var(--color-surface)}.form-wrap{width:min(100%,24rem);margin:auto}.mobile-brand{display:none;color:var(--color-primary)}.mobile-brand .brand-mark{border-color:var(--color-border);background:var(--color-primary-subtle)}
-    .heading{margin-bottom:var(--space-8)}.heading>span{color:var(--color-primary)}.heading h2{margin-bottom:var(--space-2);font-size:1.75rem;letter-spacing:-.04em}.heading p{margin:0}
+    .heading{margin-bottom:var(--space-8)}.heading>span{color:var(--color-primary)}.heading h1{margin-bottom:var(--space-2);font-size:1.75rem;letter-spacing:-.04em}.heading p{margin:0}
     form{display:grid;gap:var(--space-5);margin-top:var(--space-5)}form gr-button{width:100%}form gr-button::ng-deep button{width:100%}
     .support{margin:var(--space-6) 0 0;text-align:center;font-size:.75rem;color:var(--color-text-muted)}footer{text-align:center;font-size:.6875rem;color:var(--color-text-muted)}
     @media(max-width:52rem){main{grid-template-columns:1fr}.territory{display:none}.access{min-height:100dvh;padding:var(--space-6)}.mobile-brand{display:flex;margin-bottom:var(--space-16)}footer{margin-top:var(--space-8)}}
@@ -61,8 +61,8 @@ export class LoginPageComponent {
   async submit():Promise<void>{
     if(this.form.invalid){this.form.markAllAsTouched();return;}
     this.loading.set(true);this.error.set('');
-    try{await this.auth.signIn(this.form.controls.email.value,this.form.controls.password.value);this.context.clear();await this.context.initialize();const returnUrl=this.route.snapshot.queryParamMap.get('retorno');await this.router.navigateByUrl(returnUrl?.startsWith('/')?returnUrl:'/');}
-    catch(error){this.error.set(error instanceof Error?error.message:'Não foi possível entrar agora. Tente novamente.');}
+    try{await this.auth.signIn(this.form.controls.email.value,this.form.controls.password.value);this.context.clear();await this.context.initialize();const returnUrl=this.route.snapshot.queryParamMap.get('retorno');await this.router.navigateByUrl(returnUrl?.startsWith('/')&&!returnUrl.startsWith('//')?returnUrl:'/');}
+    catch(error){if(this.auth.isAuthenticated()){await this.router.navigate(['/']);}else{this.error.set(error instanceof Error?error.message:'Não foi possível entrar agora. Tente novamente.');}}
     finally{this.loading.set(false);}
   }
 }

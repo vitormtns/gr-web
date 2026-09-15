@@ -4,6 +4,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:local": "ng serve --configuration local",
+    "smoke:local": "node scripts/smoke-real-integration.mjs",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false --runner-config=vitest.config.ts",
@@ -29,12 +31,21 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.24",
+    "@angular/build": "21.2.13",
     "@angular/cli": "^21.2.24",
     "@angular/compiler-cli": "^21.2.0",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
+  },
+  "overrides": {
+    "@angular/build": {
+      "@babel/core": "7.29.7",
+      "esbuild": "0.28.1",
+      "piscina": "5.2.0",
+      "undici": "7.29.0",
+      "vite": "7.3.6"
+    }
   }
 }

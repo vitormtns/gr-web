@@ -6,10 +6,18 @@ export class CardComponent {}
 @Component({ selector:'gr-panel', template:'<header><div><ng-content select="[panel-title]" /></div><ng-content select="[panel-actions]" /></header><div class="content"><ng-content /></div>', styles:[`:host{display:block;border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface)}header{min-height:3.5rem;display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);padding:0 var(--space-5);border-bottom:1px solid var(--color-border);font-weight:650}.content{padding:var(--space-5)}`], changeDetection:ChangeDetectionStrategy.OnPush })
 export class PanelComponent {}
 
-@Component({ selector:'gr-popover', template:`<details><summary><ng-content select="[popover-trigger]" /></summary><div class="popover"><ng-content /></div></details>`, styles:[`:host{position:relative;display:inline-flex}details{position:relative}summary{list-style:none;cursor:pointer}summary::-webkit-details-marker{display:none}.popover{position:absolute;z-index:30;top:calc(100% + var(--space-2));right:0;min-width:14rem;padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface-elevated);box-shadow:var(--shadow-floating);animation:surface-in var(--duration-fast) var(--ease-standard)}@keyframes surface-in{from{opacity:0;transform:translateY(-3px)}}`], changeDetection:ChangeDetectionStrategy.OnPush })
-export class PopoverComponent {}
+@Component({ selector:'gr-popover', template:`<details #details><summary [attr.aria-label]="label"><ng-content select="[popover-trigger]" /></summary><div class="popover" (click)="close()"><ng-content /></div></details>`, styles:[`:host{position:relative;display:inline-flex}details{position:relative}summary{list-style:none;cursor:pointer}summary::-webkit-details-marker{display:none}.popover{position:absolute;z-index:30;top:calc(100% + var(--space-2));right:0;min-width:14rem;padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface-elevated);box-shadow:var(--shadow-floating);animation:surface-in var(--duration-fast) var(--ease-standard)}@keyframes surface-in{from{opacity:0;transform:translateY(-3px)}}`], changeDetection:ChangeDetectionStrategy.OnPush })
+export class PopoverComponent {
+  @Input() label='Mais ações';@ViewChild('details') details?:ElementRef<HTMLDetailsElement>;
+  constructor(private readonly host:ElementRef<HTMLElement>){}
+  close():void{if(this.details?.nativeElement.open)this.details.nativeElement.open=false;}
+  @HostListener('document:keydown.escape') onEscape():void{this.close();}
+  @HostListener('document:click',['$event']) onOutsideClick(event:MouseEvent):void{
+    if(!this.host.nativeElement.contains(event.target as Node))this.close();
+  }
+}
 
-@Component({ selector:'gr-menu', template:`<div role="menu"><ng-content /></div>`, styles:[`:host{display:block;min-width:12rem}div{display:grid;gap:2px}:host ::ng-deep [role="menuitem"]{width:100%;display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);border:0;border-radius:var(--radius-sm);color:var(--color-text-secondary);background:transparent;text-align:left;cursor:pointer}:host ::ng-deep [role="menuitem"]:hover{color:var(--color-text);background:var(--color-surface-soft)}`], changeDetection:ChangeDetectionStrategy.OnPush })
+@Component({ selector:'gr-menu', template:`<div><ng-content /></div>`, styles:[`:host{display:block;min-width:12rem}div{display:grid;gap:2px}:host ::ng-deep button{width:100%;display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);border:0;border-radius:var(--radius-sm);color:var(--color-text-secondary);background:transparent;text-align:left;cursor:pointer}:host ::ng-deep button:hover{color:var(--color-text);background:var(--color-surface-soft)}`], changeDetection:ChangeDetectionStrategy.OnPush })
 export class MenuComponent {}
 
 @Component({

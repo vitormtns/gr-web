@@ -17,12 +17,14 @@ export const apiBaseUrlInterceptor: HttpInterceptorFn = (request, next) => {
 export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
   const token = inject(AuthStore).getAccessToken();
   const apiUrl = environment.apiBaseUrl.replace(/\/$/, '');
-  if (!token || !request.url.startsWith(apiUrl)) return next(request);
+  if (!token || !request.url.startsWith(`${apiUrl}/api/`)) return next(request);
   return next(request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));
 };
 
 export const tenantContextInterceptor: HttpInterceptorFn = (request, next) => {
   if (!request.context.get(REQUIRES_TENANT_CONTEXT)) return next(request);
+  const apiUrl = environment.apiBaseUrl.replace(/\/$/, '');
+  if (!request.url.startsWith(`${apiUrl}/api/`)) return next(request);
   const context = inject(ContextStore);
   const organization = context.selectedOrganization();
   const farm = context.selectedFarm();
@@ -41,7 +43,7 @@ export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
     if (!(error instanceof HttpErrorResponse)) return throwError(() => error);
     const normalized = normalizeApiError(error);
     if (normalized.status === 401 && auth.isAuthenticated()) {
-      void auth.signOut();
+      void auth.signOut().catch(() => auth.clearSession());
       context.clear();
       void router.navigate(['/entrar'], { queryParams: { motivo: 'sessao-expirada' } });
     }

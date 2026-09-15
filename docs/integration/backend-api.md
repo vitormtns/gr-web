@@ -28,7 +28,9 @@ Bootstrap não recebe headers tenant. O cliente não gera correlation ID por pad
 
 ## Erros
 
-`AppError` normaliza validation, unauthorized, forbidden, not-found, conflict, unavailable e unexpected. Código, mensagem segura, erros de campo e referência são preservados. Um 401 durante sessão ativa limpa autenticação e contexto e navega para `/entrar`.
+`AppError` normaliza validation, unauthorized, forbidden, not-found, conflict, unavailable e unexpected. O status HTTP é a autoridade; código, erros de campo e referência são preservados, enquanto a mensagem mostrada ao usuário é curta e segura. Um 401 durante sessão ativa limpa autenticação e contexto e navega para `/entrar`. Erros de rede sem resposta HTTP são classificados como indisponibilidade.
+
+O smoke local opcional (`npm run smoke:local`) usa apenas Supabase Auth e endpoints reais do `gr-service`, sem acesso direto às tabelas. Ele confirmou os headers documentados na leitura de `/api/v1/context` e `/api/v1/farms/current`, inclusive após trocas de organização/fazenda. Para o cenário 403 de um `VIEWER`, usa `GET /api/v1/organizations/{organizationId}/invitations`: o código do backend exige `OWNER`/`ADMIN` nessa rota. O inventário de endpoints rotula a leitura de membros como administrativa, mas o código atual permite qualquer membership ativa; essa divergência documental não é usada como regra pelo portal.
 
 ## Regra de freeze
 

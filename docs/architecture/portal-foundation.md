@@ -12,7 +12,7 @@ Estado simples usa Signals em stores focados:
 - `ContextStore`: identidade interna, organizações, fazendas e versão do contexto;
 - `PermissionService`: capacidades calculadas a partir do papel atual.
 
-`contextVersion` muda sempre que organização ou fazenda muda. Features futuras devem observar esse valor ou encapsular cache em serviços que o invalidem, evitando mostrar dados de outro contexto.
+`contextVersion` muda sempre que organização ou fazenda muda. Durante a transição, o shell oculta o conteúdo anterior e anuncia a validação do novo contexto. Features futuras devem observar a versão ou encapsular cache em serviços que o invalidem, evitando mostrar dados de outro contexto.
 
 ## Roteamento e guards
 
@@ -30,4 +30,4 @@ Estado simples usa Signals em stores focados:
 
 ## Renderização e desempenho
 
-Componentes usam `OnPush`, rotas de tela são lazy e a iconografia Lucide é registrada de forma explícita. Não há biblioteca de estado global nem pacote de animação. Inter Variable é empacotada localmente para rendering consistente e independência de CDN.
+Componentes usam `OnPush`, rotas de tela são lazy e a iconografia Lucide é registrada de forma explícita. Não há biblioteca de estado global nem pacote de animação. Inter Variable é empacotada localmente para renderização consistente e independência de CDN.

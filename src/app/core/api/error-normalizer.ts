@@ -10,7 +10,7 @@ interface BackendErrorBody {
 }
 
 const kindByStatus: Record<number, ApiErrorKind> = {
-  400: 'validation', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found',
+  0: 'unavailable', 400: 'validation', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found',
   409: 'conflict', 503: 'unavailable',
 };
 
@@ -26,13 +26,14 @@ const safeMessages: Record<ApiErrorKind, string> = {
 
 export function normalizeApiError(error: HttpErrorResponse): AppError {
   const body = isObject(error.error) ? error.error as BackendErrorBody : {};
-  const status = typeof body.status === 'number' ? body.status : error.status;
+  const status = error.status;
   const kind = kindByStatus[status] ?? 'unexpected';
-  const message = typeof body.message === 'string' && body.message.trim() ? body.message : safeMessages[kind];
+  const message = safeMessages[kind];
   const code = typeof body.code === 'string' ? body.code : `http_${status || 'unknown'}`;
-  const requestId = typeof body.requestId === 'string'
+  const candidateId = typeof body.requestId === 'string'
     ? body.requestId
     : error.headers?.get('X-Correlation-ID') ?? error.headers?.get('X-Request-ID') ?? undefined;
+  const requestId = candidateId && /^[A-Za-z0-9._-]{1,128}$/.test(candidateId) ? candidateId : undefined;
   const validationErrors = Array.isArray(body.validationErrors)
     ? body.validationErrors.filter(isValidationError)
     : [];

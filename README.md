@@ -9,29 +9,46 @@ Portal Angular do Gerenciador Rural. Esta entrega estabelece a Phase 01: arquite
 - `gr-service` executando localmente para fluxos autenticados
 - Supabase local ou projeto Supabase configurado somente para autenticação
 
-O projeto usa Angular 21.2.24. Angular 22.1 era a versão mais recente no início do repositório, mas exigia Node 24.15 ou superior; Angular 21 foi escolhido por ser a versão estável compatível com o ambiente disponível.
+O projeto usa Angular 21.2.x. Angular 22.1 era a versão mais recente no início do repositório, mas exigia Node 24.15 ou superior; Angular 21 foi escolhido por ser a versão estável compatível com o ambiente disponível. O builder está fixado em `@angular/build@21.2.13` porque versões posteriores observadas nesta stack imprimiam sucesso e mantinham o processo aberto. Dependências transitivas vulneráveis desse builder foram substituídas por versões seguras via `overrides`; testes, build e `npm audit` foram revalidados.
 
 ## Configuração
 
-Os valores de desenvolvimento ficam em `src/environments/environment.ts`; produção usa `src/environments/environment.production.ts` por substituição de build.
+Os arquivos versionados `src/environments/environment.ts` e `src/environments/environment.production.ts` contêm apenas valores sentinela seguros. A configuração real de desenvolvimento fica em `src/environments/environment.local.ts`, ignorado pelo Git e usado somente por `npm run start:local`.
 
-Configure antes de executar:
+Para integrar o portal à stack local, copie `src/environments/environment.local.example.ts` para `src/environments/environment.local.ts` e configure:
 
 - `apiBaseUrl`: URL do `gr-service`, sem `/api/v1` no final;
 - `supabaseUrl`: URL pública do projeto Supabase;
 - `supabaseAnonKey`: chave pública `anon`/publishable.
 
-Nunca use a `service_role` no frontend. Nenhum segredo real deve ser versionado.
+Use apenas a chave pública `anon`/publishable. Nunca use `service_role`, senha de banco ou segredo de assinatura JWT no frontend. O arquivo local não deve ser versionado.
 
 ## Comandos
 
 ```bash
 npm install
 npm start
+npm run start:local
 npm test
 npm run build
 npm run check
 ```
+
+`npm start` serve a interface com placeholders seguros; `npm run start:local` usa a configuração local real. O build de produção nunca lê `environment.local.ts`.
+
+## Smoke de integração local
+
+Com Supabase e `gr-service` em execução, crie duas organizações acessíveis e ao menos duas fazendas em uma delas para testar as trocas. Defina as variáveis abaixo no ambiente antes de executar `npm run smoke:local`:
+
+| Variável | Conteúdo |
+| --- | --- |
+| `GR_SMOKE_SUPABASE_URL` | URL do Supabase Auth local |
+| `GR_SMOKE_SUPABASE_PUBLIC_KEY` | Chave pública local |
+| `GR_SMOKE_API_URL` | URL base do `gr-service` |
+| `GR_SMOKE_EMAIL`, `GR_SMOKE_PASSWORD` | Conta local de desenvolvimento |
+| `GR_SMOKE_VIEWER_EMAIL`, `GR_SMOKE_VIEWER_PASSWORD` | Conta opcional com papel `VIEWER` para provar HTTP 403 |
+
+O smoke não imprime tokens nem senhas. Ele verifica login, restauração, refresh, logout, leitura real, troca de contexto e cenários 400, 401, 404, 409 e backend indisponível; com a conta opcional, também verifica 403. Falhas 500/503 são cobertas pelo modelo de erro sem derrubar o banco local.
 
 O catálogo interno do Design System fica em `/dev/design-system` e só é incluído no roteamento de desenvolvimento.
 
