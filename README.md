@@ -38,7 +38,7 @@ npm run check
 
 ## Smoke de integração local
 
-Com Supabase e `gr-service` em execução, crie duas organizações acessíveis e ao menos duas fazendas em uma delas para testar as trocas. Defina as variáveis abaixo no ambiente antes de executar `npm run smoke:local`:
+Com Supabase e `gr-service` locais em execução, use uma conta de desenvolvimento com duas organizações acessíveis e ao menos duas fazendas em uma delas. Se ainda não houver `.env.smoke.local`, `node scripts/provision-local-smoke.mjs` cria uma conta e contextos descartáveis somente na stack local, sem resetar dados existentes. Confirme que o arquivo é ignorado pelo Git; não versione nem compartilhe a senha. Também é possível definir as variáveis abaixo no processo antes de executar `npm run smoke:local`:
 
 | Variável | Conteúdo |
 | --- | --- |

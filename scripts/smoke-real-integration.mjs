@@ -117,6 +117,35 @@ async function main() {
     assert.equal(farmRead.data.id, farm.farmId);
   }
 
+  const dashboardContext = { token, organizationId: firstOrganization.organizationId, farmId: firstFarm.farmId };
+  const today = new Date().toISOString().slice(0, 10);
+  for (const period of ['TODAY', 'LAST_7_DAYS', 'LAST_30_DAYS']) {
+    const [overview, activity] = await Promise.all([
+      api(`/api/v1/herd/dashboard/overview?period=${period}`, dashboardContext),
+      api(`/api/v1/herd/dashboard/activity?period=${period}`, dashboardContext),
+    ]);
+    expectStatus(overview, 200, `Visão geral ${period}`);
+    expectStatus(activity, 200, `Atividade ${period}`);
+    assert.equal(overview.data.period.period, period);
+    assert.equal(activity.data.period.period, period);
+    assert.ok(Array.isArray(overview.data.herdSnapshot.byPaddock));
+    assert.ok(Array.isArray(activity.data.series));
+  }
+  const custom = await api(`/api/v1/herd/dashboard/overview?period=CUSTOM&from=${today}&to=${today}`, dashboardContext);
+  expectStatus(custom, 200, 'Período personalizado');
+  assert.equal(custom.data.period.period, 'CUSTOM');
+  const [attention, agenda, paddocks] = await Promise.all([
+    api('/api/v1/herd/dashboard/attention?previewSize=5', dashboardContext),
+    api(`/api/v1/herd/agenda?from=${today}&page=0&size=5`, dashboardContext),
+    api('/api/v1/herd/paddocks?page=0&size=100', dashboardContext),
+  ]);
+  expectStatus(attention, 200, 'Fila de atenção');
+  expectStatus(agenda, 200, 'Agenda');
+  expectStatus(paddocks, 200, 'Piquetes');
+  assert.ok(Array.isArray(attention.data.preview));
+  assert.ok(Array.isArray(agenda.data.items));
+  assert.ok(Array.isArray(paddocks.data.items));
+
   const unauthorized = await api('/api/v1/me');
   expectStatus(unauthorized, 401, 'JWT ausente');
   assert.ok(unauthorized.data.requestId, 'Erro 401 não retornou referência de suporte.');
@@ -162,7 +191,7 @@ async function main() {
   assert.ifError(afterLogout.error);
   assert.equal(afterLogout.data.session, null, 'Logout não removeu a sessão persistida.');
 
-  console.log('Smoke local concluído: login, restauração, refresh, logout, contextos e API real.');
+  console.log('Smoke local concluído: login, restauração, refresh, logout, contextos, dashboard e API real.');
   console.log('Cenários negativos concluídos: 400, 401, 404, 409 e backend indisponível.');
   if (process.env.GR_SMOKE_VIEWER_EMAIL) console.log('Cenário 403 concluído com perfil de visualizador.');
 }
