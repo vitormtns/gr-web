@@ -1,7 +1,7 @@
 import { ApplicationConfig, ErrorHandler, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { provideLucideIcons, LucideBell, LucideBeef, LucideBoxes, LucideBuilding2, LucideCalendarDays, LucideChartNoAxesCombined, LucideChevronDown, LucideCircleHelp, LucideCircleUserRound, LucideClipboardList, LucideCommand, LucideCreditCard, LucideHeartPulse, LucideHouse, LucideLandPlot, LucideLogOut, LucideMenu, LucideSearch, LucideSettings, LucideShieldCheck, LucideSlidersHorizontal, LucideSprout, LucideUsers, LucideX } from '@lucide/angular';
+import { provideLucideIcons, LucideBell, LucideBeef, LucideBoxes, LucideBuilding2, LucideCalendarDays, LucideChartNoAxesCombined, LucideChevronDown, LucideCircleAlert, LucideCircleCheck, LucideCircleHelp, LucideCircleUserRound, LucideClipboardList, LucideCommand, LucideCreditCard, LucideHeartPulse, LucideHouse, LucideInfo, LucideLandPlot, LucideLogOut, LucideMenu, LucideSearch, LucideSettings, LucideShieldCheck, LucideSlidersHorizontal, LucideSprout, LucideTriangleAlert, LucideUsers, LucideX } from '@lucide/angular';
 
 import { routes } from './app.routes';
 import { apiBaseUrlInterceptor, apiErrorInterceptor, authTokenInterceptor, tenantContextInterceptor } from './core/api/api.interceptors';
@@ -20,10 +20,10 @@ export const appConfig: ApplicationConfig = {
     ])),
     provideLucideIcons(
       LucideBell, LucideBeef, LucideBoxes, LucideBuilding2, LucideCalendarDays,
-      LucideChartNoAxesCombined, LucideChevronDown, LucideCircleHelp, LucideCircleUserRound,
+      LucideChartNoAxesCombined, LucideChevronDown, LucideCircleAlert, LucideCircleCheck, LucideCircleHelp, LucideCircleUserRound,
       LucideClipboardList, LucideCommand, LucideCreditCard, LucideHeartPulse, LucideHouse,
-      LucideLandPlot, LucideLogOut, LucideMenu, LucideSearch, LucideSettings, LucideShieldCheck,
-      LucideSlidersHorizontal, LucideSprout, LucideUsers, LucideX,
+      LucideInfo, LucideLandPlot, LucideLogOut, LucideMenu, LucideSearch, LucideSettings, LucideShieldCheck,
+      LucideSlidersHorizontal, LucideSprout, LucideTriangleAlert, LucideUsers, LucideX,
     ),
   ],
 };

@@ -1,12 +1,16 @@
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthStore } from '../core/auth/auth.store';
 import { ContextStore } from '../core/context/context.store';
 import { PermissionService } from '../core/permissions/permission.service';
 import { ToastService } from '../design-system/feedback/feedback';
 import { AppShellComponent } from './app-shell.component';
+import { appConfig } from '../app.config';
+
+@Component({ template: '' })
+class EmptyRouteComponent {}
 
 function shellHarness() {
   const status = signal<'authenticated' | 'anonymous'>('authenticated');
@@ -45,5 +49,39 @@ describe('AppShellComponent', () => {
     expect(harness.router.navigate).toHaveBeenCalledWith(['/entrar'], {
       queryParams: { motivo: 'sessao-expirada' },
     });
+  });
+
+  it('marca a navegação ativa e oculta o conteúdo anterior durante a troca de contexto', async () => {
+    const pending = signal(false);
+    const context = {
+      transitionPending: pending,
+      organizations: signal([]), farms: signal([]), selectedOrganization: signal(null), selectedFarm: signal(null),
+      user: signal({ displayName: 'Vítor Martins', email: 'vitor@fazenda.com.br' }), role: signal('OWNER'), clear: vi.fn(),
+    };
+    TestBed.configureTestingModule({
+      imports: [AppShellComponent],
+      providers: [
+        ...appConfig.providers.filter(provider => provider && typeof provider === 'object' && !('ɵproviders' in provider)),
+        provideRouter([{ path: 'visao-geral', component: EmptyRouteComponent }]),
+        { provide: ContextStore, useValue: context },
+        { provide: AuthStore, useValue: { status: signal('authenticated'), userEmail: signal('vitor@fazenda.com.br') } },
+        { provide: PermissionService, useValue: { can: () => true } },
+        { provide: ToastService, useValue: { show: vi.fn(), toasts: signal([]) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(AppShellComponent);
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/visao-geral');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const active = fixture.nativeElement.querySelector('a[href="/visao-geral"]') as HTMLAnchorElement;
+    expect(active.getAttribute('aria-current')).toBe('page');
+    expect(fixture.nativeElement.querySelector('.account-trigger strong')?.textContent).toBe('Vítor Martins');
+    pending.set(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('main')?.getAttribute('aria-busy')).toBe('true');
+    expect(fixture.nativeElement.querySelector('.route-content.context-hidden')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Atualizando contexto');
   });
 });

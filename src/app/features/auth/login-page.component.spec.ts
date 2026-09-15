@@ -33,10 +33,30 @@ describe('LoginPageComponent', () => {
     const fixture = TestBed.createComponent(LoginPageComponent);
     fixture.detectChanges();
     const content = fixture.nativeElement.textContent as string;
-    expect(content).toContain('Entre no portal');
+    expect(content).toContain('Acesse sua operação');
     expect(content).toContain('Organizações, fazendas e operações');
     expect(content).toContain('Senha');
-    expect(fixture.nativeElement.querySelector('.access h1')?.textContent).toBe('Entre no portal');
+    expect(fixture.nativeElement.querySelector('.access h1')?.textContent).toBe('Acesse sua operação');
+    expect(content).not.toContain('Supabase Auth');
+  });
+
+  it('permite mostrar e ocultar a senha sem alterar o valor do formulário', () => {
+    const fixture = TestBed.createComponent(LoginPageComponent);
+    fixture.detectChanges();
+    const password = fixture.nativeElement.querySelector('input[type="password"]') as HTMLInputElement;
+    password.value = 'senha-segura';
+    password.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+    const reveal = fixture.nativeElement.querySelector('button[aria-label="Mostrar senha"]') as HTMLButtonElement;
+    reveal.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input[type="text"]')?.value).toBe('senha-segura');
+    expect(reveal.getAttribute('aria-pressed')).toBe('true');
+    expect(fixture.componentInstance.form.controls.password.value).toBe('senha-segura');
+    reveal.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input[type="password"]')).not.toBeNull();
+    expect(reveal.getAttribute('aria-label')).toBe('Mostrar senha');
   });
 
   it('não confunde falha de contexto com credenciais inválidas após autenticar', async () => {
