@@ -9,6 +9,7 @@ const placeholder = () => import('./features/placeholder/feature-placeholder.com
 export const routes: Routes = [
   { path: 'entrar', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login-page.component').then((m) => m.LoginPageComponent) },
   ...(environment.production ? [] : [{ path: 'dev/design-system', loadComponent: () => import('./features/design-system/design-system-page.component').then((m) => m.DesignSystemPageComponent) } satisfies Routes[number]]),
+  ...(environment.production ? [] : [{ path: 'dev/dashboard', loadChildren: () => import('./features/home/dashboard-showcase.routes').then((m) => m.dashboardShowcaseRoutes) } satisfies Routes[number]]),
   {
     path: '',
     loadComponent: () => import('./layout/app-shell.component').then((m) => m.AppShellComponent),
