@@ -10,7 +10,7 @@ import { ContextNavigatorComponent } from '../design-system/navigation/navigatio
 import { IconButtonComponent, TooltipDirective } from '../design-system/primitives/primitives';
 import { MenuComponent, PopoverComponent } from '../design-system/surfaces/surfaces';
 
-interface NavItem { label:string; icon:string; route:string; permission?:'manageUsers' }
+interface NavItem { label:string; icon:string; route:string; permission?:'viewAdministration' }
 interface NavSection { label?:string; items:NavItem[] }
 
 @Component({
@@ -56,7 +56,7 @@ export class AppShellComponent {
     {items:[{label:'Visão geral',icon:'house',route:'/visao-geral'}]},
     {label:'REBANHO',items:[{label:'Animais',icon:'beef',route:'/rebanho/animais'},{label:'Movimentações',icon:'land-plot',route:'/rebanho/movimentacoes'},{label:'Saúde',icon:'heart-pulse',route:'/rebanho/saude'},{label:'Reprodução',icon:'sprout',route:'/rebanho/reproducao'},{label:'Agenda',icon:'calendar-days',route:'/rebanho/agenda'}]},
     {label:'ANÁLISES',items:[{label:'Relatórios',icon:'chart-no-axes-combined',route:'/relatorios'}]},
-    {label:'GESTÃO',items:[{label:'Fazendas',icon:'building-2',route:'/gestao/fazendas'},{label:'Usuários',icon:'users',route:'/gestao/usuarios',permission:'manageUsers'},{label:'Configurações',icon:'settings',route:'/gestao/configuracoes'}]},
+    {label:'GESTÃO',items:[{label:'Administração',icon:'building-2',route:'/administracao',permission:'viewAdministration'}]},
   ];
   constructor(readonly context:ContextStore,readonly permissions:PermissionService,private readonly auth:AuthStore,private readonly router:Router,private readonly toast:ToastService){effect(()=>{if(this.auth.status()==='anonymous'&&!this.manualLogout()){this.context.clear();void this.router.navigate(['/entrar'],{queryParams:{motivo:'sessao-expirada'}});}});}
   get displayName():string{return this.context.user()?.displayName?.trim()||this.accountEmail||'Usuário';}

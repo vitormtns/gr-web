@@ -25,4 +25,10 @@ export class ApiClient {
       context: new HttpContext().set(REQUIRES_TENANT_CONTEXT, requiresContext),
     });
   }
+
+  delete<T>(path: string, requiresContext = false): Observable<T> {
+    return this.http.delete<T>(path, {
+      context: new HttpContext().set(REQUIRES_TENANT_CONTEXT, requiresContext),
+    });
+  }
 }
