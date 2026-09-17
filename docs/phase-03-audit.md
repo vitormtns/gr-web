@@ -7,6 +7,12 @@
 - MEDIUM: nenhum.
 - LOW: revisão visual manual com dados reais ainda recomendada antes do merge.
 
+## Verificações de ambiente pendentes
+
+- O smoke real não iniciou porque o Supabase local não estava acessível antes da autenticação.
+- A sessão de automação não expôs navegador instalado nem navegador interno para captura visual.
+- A implementação permanece em `ACTIVE` até essas duas verificações serem executadas; isso não representa defeito classificado no código.
+
 ## Itens auditados
 
 - Hierarquia centrada em identidade, estado, localização, histórico e ação.
