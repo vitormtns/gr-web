@@ -49,6 +49,7 @@ A lista mantém identidade, território e estado como informações dominantes e
 - Ampliado o smoke real para cobrir cadastro, replay, correção, conflito, movimentos, lote, transferência e custódia.
 - Adicionado estado informativo para timeline sem eventos, evitando um painel vazio no perfil terminal.
 - A data da timeline agora usa `recordedAt` quando `occurredOn` não está disponível.
+- As telas de rebanho agora aguardam a conclusão da troca de contexto antes de consultar a API, evitando requisições sem fazenda e respostas `400` transitórias.
 
 ## Itens auditados
 

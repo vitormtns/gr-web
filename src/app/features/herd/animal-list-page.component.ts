@@ -34,7 +34,7 @@ export class AnimalListPageComponent {
   readonly context=inject(ContextStore); readonly permissions=inject(PermissionService); readonly searchInput=new Subject<string>();
   readonly state=signal<'loading'|'ready'|'error'>('loading'); readonly page=signal<Page<Animal>|null>(null); readonly error=signal<AppError|null>(null); readonly selected=signal(new Map<string,Animal>()); readonly paddocks=signal<PaddockRef[]>([]); readonly batchOpen=signal(false); readonly batchPending=signal(false); readonly batchError=signal('');
   readonly filters=signal<AnimalFilters>(parseFilters(this.route.snapshot.queryParamMap)); batchPaddock=''; batchDate=today(); private generation=0; private batchOperationId='';
-  constructor(){this.searchInput.pipe(debounceTime(320),distinctUntilChanged(),takeUntilDestroyed()).subscribe(value=>this.setFilter('search',value.trim()));effect(()=>{this.context.contextVersion();this.selected.set(new Map());this.load();});}
+  constructor(){this.searchInput.pipe(debounceTime(320),distinctUntilChanged(),takeUntilDestroyed()).subscribe(value=>this.setFilter('search',value.trim()));effect(()=>{this.context.contextVersion();const pending=this.context.transitionPending();const farm=this.context.selectedFarm();this.selected.set(new Map());if(pending||!farm){this.page.set(null);this.state.set('loading');return;}this.load();});}
   get reference(){return errorReference(this.error()?.requestId);} sex=sexLabel;
   hasFilters(){const f=this.filters();return !!(f.search||f.sex||f.status);}
   setFilter<K extends 'search'|'sex'|'status'>(key:K,value:AnimalFilters[K]){this.filters.update(f=>({...f,[key]:value,page:0}));this.syncUrl();this.load();}
