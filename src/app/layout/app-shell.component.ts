@@ -19,7 +19,7 @@ interface NavSection { label?:string; items:NavItem[] }
   template:`<div class="shell" [class.collapsed]="collapsed()">
     @if(mobileOpen()){<button class="mobile-backdrop" type="button" aria-label="Fechar menu" (click)="mobileOpen.set(false)"></button>}
     <aside class="sidebar" [class.mobile-open]="mobileOpen()" aria-label="Navegação principal">
-      <div class="brand"><span class="brand-mark"><i></i></span><strong>Gerenciador<br/>Rural</strong><button type="button" class="close-mobile" aria-label="Fechar menu" (click)="mobileOpen.set(false)"><svg lucideIcon="x"></svg></button></div>
+      <div class="brand"><span class="brand-mark"><i></i></span><strong>BovNex</strong><button type="button" class="close-mobile" aria-label="Fechar menu" (click)="mobileOpen.set(false)"><svg lucideIcon="x"></svg></button></div>
       <div class="mobile-contexts"><gr-context-navigator [organizations]="context.organizations()" [farms]="context.farms()" [organization]="context.selectedOrganization()" [farm]="context.selectedFarm()" [disabled]="context.transitionPending()" (organizationChanged)="changeOrganization($event)" (farmChanged)="changeFarm($event)" /></div>
       <nav>
         @for(section of navigation;track section.label){<section>@if(section.label){<h2>{{section.label}}</h2>}<ul>@for(item of section.items;track item.route){@if(!item.permission||permissions.can(item.permission)){<li><a [routerLink]="item.route" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="mobileOpen.set(false)" [grTooltip]="collapsed()?item.label:''"><svg [lucideIcon]="item.icon"></svg><span>{{item.label}}</span></a></li>}}</ul></section>}
@@ -55,7 +55,7 @@ export class AppShellComponent {
   readonly navigation:NavSection[]=[
     {items:[{label:'Visão geral',icon:'house',route:'/visao-geral'}]},
     {label:'REBANHO',items:[{label:'Animais',icon:'beef',route:'/rebanho/animais'},{label:'Movimentações',icon:'land-plot',route:'/rebanho/movimentacoes'},{label:'Saúde',icon:'heart-pulse',route:'/rebanho/saude'},{label:'Reprodução',icon:'sprout',route:'/rebanho/reproducao'},{label:'Agenda',icon:'calendar-days',route:'/rebanho/agenda'}]},
-    {label:'OPERAÇÃO',items:[{label:'Estoque',icon:'boxes',route:'/operacao/estoque'},{label:'Financeiro',icon:'credit-card',route:'/operacao/financeiro'}]},
+    {label:'ANÁLISES',items:[{label:'Relatórios',icon:'chart-no-axes-combined',route:'/relatorios'}]},
     {label:'GESTÃO',items:[{label:'Fazendas',icon:'building-2',route:'/gestao/fazendas'},{label:'Usuários',icon:'users',route:'/gestao/usuarios',permission:'manageUsers'},{label:'Configurações',icon:'settings',route:'/gestao/configuracoes'}]},
   ];
   constructor(readonly context:ContextStore,readonly permissions:PermissionService,private readonly auth:AuthStore,private readonly router:Router,private readonly toast:ToastService){effect(()=>{if(this.auth.status()==='anonymous'&&!this.manualLogout()){this.context.clear();void this.router.navigate(['/entrar'],{queryParams:{motivo:'sessao-expirada'}});}});}
