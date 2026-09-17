@@ -1,6 +1,6 @@
-# Gerenciador Rural — Portal Web
+# BovNex — Portal Web
 
-Portal Angular do Gerenciador Rural. Esta entrega estabelece a Phase 01: arquitetura, identidade “Território Vivo”, Design System v1, autenticação Supabase e contexto de organização/fazenda integrado ao `gr-service`.
+Portal Angular do BovNex para gestão pecuária. A aplicação reúne a identidade “Território Vivo”, o Design System, autenticação Supabase e contexto de organização/fazenda integrado ao `gr-service`.
 
 ## Requisitos
 

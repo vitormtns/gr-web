@@ -1,0 +1,83 @@
+<div class="reports-page page-enter">
+  <header class="reports-header">
+    <div><span class="eyebrow">ANÁLISES · {{context.selectedFarm()?.farmName}}</span><h1>Relatórios do rebanho</h1><p>Leituras factuais da composição, do histórico e da execução pecuária.</p></div>
+    <div class="report-context"><span>Leitura atual</span><strong>{{current.label}}</strong><small>{{current.description}}</small></div>
+  </header>
+
+  <nav class="report-trail" aria-label="Relatórios disponíveis">
+    @for(definition of definitions;track definition.id){<button type="button" [class.active]="definition.id===filters().report" [attr.aria-current]="definition.id===filters().report?'page':null" (click)="switchReport(definition.id)"><span>{{definition.group}}</span><strong>{{definition.label}}</strong></button>}
+  </nav>
+
+  <section class="filter-panel" aria-label="Filtros do relatório">
+    @if(current.period){
+      <div class="period-presets" aria-label="Períodos rápidos"><span>Período</span><button type="button" (click)="setPeriod(7)">7 dias</button><button type="button" (click)="setPeriod(30)">30 dias</button><button type="button" (click)="setPeriod(365)">12 meses</button></div>
+      <label><span>De</span><input type="date" [ngModel]="filters().from" (ngModelChange)="update('from',$event)" /></label>
+      <label><span>Até</span><input type="date" [ngModel]="filters().to" (ngModelChange)="update('to',$event)" /></label>
+    }@else{<div class="snapshot-note"><span aria-hidden="true"></span><div><strong>Fotografia atual</strong><small>Este relatório não usa período.</small></div></div>}
+    @if(filters().report==='herd-position'){
+      <label><span>Sexo</span><select [ngModel]="filters().sex" (ngModelChange)="update('sex',$event)"><option value="">Todos</option><option value="FEMALE">Fêmea</option><option value="MALE">Macho</option></select></label>
+      <label><span>ID do piquete</span><input [ngModel]="filters().paddockId" [ngModelOptions]="{updateOn:'blur'}" (ngModelChange)="update('paddockId',$event.trim())" placeholder="UUID opcional" /></label>
+    }
+    @if(filters().report==='lifecycle'){<label><span>Evento</span><select [ngModel]="filters().event" (ngModelChange)="update('event',$event)"><option value="">Todos</option><option value="CREATED">Entrada por cadastro</option><option value="BORN">Nascimento</option><option value="SOLD">Venda</option><option value="DECEASED">Baixa por morte</option></select></label>}
+    @if(filters().report==='movements'){
+      <label><span>Piquete de origem</span><input [ngModel]="filters().sourcePaddockId" [ngModelOptions]="{updateOn:'blur'}" (ngModelChange)="update('sourcePaddockId',$event.trim())" placeholder="UUID opcional" /></label><label><span>Piquete de destino</span><input [ngModel]="filters().destinationPaddockId" [ngModelOptions]="{updateOn:'blur'}" (ngModelChange)="update('destinationPaddockId',$event.trim())" placeholder="UUID opcional" /></label>
+    }
+    @if(filters().report==='transfers'){<label><span>Direção</span><select [ngModel]="filters().direction" (ngModelChange)="update('direction',$event)"><option value="ALL">Todas</option><option value="IN">Entradas</option><option value="OUT">Saídas</option></select></label>}
+    @if(filters().report==='health'){<label><span>Tratamento</span><select [ngModel]="filters().treatmentType" (ngModelChange)="update('treatmentType',$event)"><option value="">Todos</option><option value="VACCINATION">Vacinação</option><option value="DEWORMING">Vermifugação</option></select></label>}
+    @if(filters().report==='reproduction'){
+      <label><span>Serviço</span><select [ngModel]="filters().serviceType" (ngModelChange)="update('serviceType',$event)"><option value="">Todos</option><option value="INSEMINATION">Inseminação</option><option value="NATURAL_SERVICE">Monta natural</option></select></label><label><span>Gestação</span><select [ngModel]="filters().pregnancyStatus" (ngModelChange)="update('pregnancyStatus',$event)"><option value="">Todas</option><option value="POSSIBLE">Possível</option><option value="CONFIRMED">Confirmada</option><option value="CALVED">Com parto</option><option value="TERMINATED">Encerrada</option></select></label>
+    }
+    @if(filters().report==='planner'){
+      <label><span>Situação</span><select [ngModel]="filters().plannerStatus" (ngModelChange)="update('plannerStatus',$event)"><option value="">Todas</option><option value="OPEN">Em aberto</option><option value="COMPLETED">Concluída</option><option value="CANCELLED">Cancelada</option></select></label><label><span>Tipo</span><select [ngModel]="filters().plannerType" (ngModelChange)="update('plannerType',$event)"><option value="">Todos</option>@for(item of plannerLabels|keyvalue;track item.key){<option [value]="item.key">{{item.value}}</option>}</select></label>
+    }
+    @if(['lifecycle','movements','transfers','weights','health','planner','reproduction'].includes(filters().report)){<label class="animal-filter"><span>{{filters().report==='reproduction'?'ID da matriz':'ID do animal'}}</span><input [ngModel]="filters().animalId" [ngModelOptions]="{updateOn:'blur'}" (ngModelChange)="update('animalId',$event.trim())" placeholder="UUID opcional" /></label>}
+    @if(hasFilters){<button class="clear" type="button" (click)="clearFilters()">Limpar filtros</button>}
+  </section>
+  @if(periodError()){<p class="period-error" role="alert">{{periodError()}}</p>}
+
+  @if(state()==='loading'){
+    <section class="report-skeleton" aria-label="Carregando relatório" aria-busy="true"><div><gr-skeleton/><gr-skeleton/></div><gr-skeleton/><gr-skeleton/><gr-skeleton/></section>
+  }@else if(state()==='error'){
+    <gr-error-state level="page" title="Não foi possível carregar o relatório" description="Verifique os filtros ou tente novamente em instantes." [reference]="reference" (retry)="load()" />
+  }@else if(result()?.totalElements===0){
+    <section class="report-surface"><gr-empty-state [title]="emptyTitle" [description]="hasFilters?'Ajuste ou limpe os filtros para ampliar a busca.':'Os registros realizados aparecerão aqui quando estiverem disponíveis.'">@if(hasFilters){<button class="secondary" type="button" (click)="clearFilters()">Limpar filtros</button>}</gr-empty-state></section>
+  }@else{
+    <section class="report-surface" [attr.aria-labelledby]="'report-title-'+filters().report">
+      <div class="surface-title"><div><span>LEITURA PRINCIPAL</span><h2 [id]="'report-title-'+filters().report">{{current.label}}</h2></div><small>{{number(result()!.totalElements)}} {{result()!.totalElements===1?'registro':'registros'}} no detalhe</small></div>
+
+      @if(position();as data){
+        <div class="position-layout"><div class="hero-total"><span>Total ativo</span><strong>{{number(data.summary.totalActiveAnimals)}}</strong><small>animais na composição atual</small></div><div class="composition" role="img" [attr.aria-label]="data.summary.totalsBySex.FEMALE+' fêmeas, '+data.summary.totalsBySex.MALE+' machos e '+data.summary.unlocatedCount+' animais sem piquete'"><h3>Composição por sexo</h3>@for(item of [{label:'Fêmeas',value:data.summary.totalsBySex.FEMALE||0},{label:'Machos',value:data.summary.totalsBySex.MALE||0}];track item.label){<div class="bar-row"><span>{{item.label}}</span><div><i [style.width.%]="bar(item.value,data.summary.totalActiveAnimals)"></i></div><strong>{{number(item.value)}}</strong></div>}<p>{{number(data.summary.unlocatedCount)}} {{data.summary.unlocatedCount===1?'animal sem piquete definido':'animais sem piquete definido'}}.</p></div><div class="territory-list"><h3>Distribuição por piquete</h3>@for(item of data.summary.totalsByPaddock;track item.paddock.id){<div><span>{{item.paddock.name}}</span><strong>{{number(item.total)}}</strong></div>}</div></div>
+        <div class="table-scroll"><table><thead><tr><th>Animal</th><th>Sexo</th><th>Nascimento</th><th>Território atual</th></tr></thead><tbody>@for(item of data.items;track item.animal.id){<tr><td><app-animal-identity [animal]="animal(item.animal)" /></td><td>{{item.sex==='FEMALE'?'Fêmea':'Macho'}}</td><td>{{item.birthDate?date(item.birthDate):'Não informado'}}</td><td>{{item.paddock?.name||'Sem piquete definido'}}</td></tr>}</tbody></table></div>
+      }
+      @if(lifecycle();as data){
+        <div class="summary-line" role="img" [attr.aria-label]="number(data.summary.totalAffectedAnimals)+' animais afetados no período'"><div><span>Animais afetados</span><strong>{{number(data.summary.totalAffectedAnimals)}}</strong></div>@for(item of lifecycleLabels|keyvalue;track item.key){<div><span>{{item.value}}</span><strong>{{number(eventCount(data.summary.countsByEventType,item.key))}}</strong></div>}</div>
+        <div class="table-scroll"><table><thead><tr><th>Data</th><th>Animal</th><th>Evento</th><th>Observações</th></tr></thead><tbody>@for(item of data.items;track item.id){<tr><td>{{date(item.occurredOn)}}</td><td><app-animal-identity [animal]="animal(item.animal)" /></td><td>{{lifecycleLabels[item.event]}}</td><td>{{item.notes||'Sem observações'}}</td></tr>}</tbody></table></div>
+      }
+      @if(movements();as data){
+        <div class="summary-sentence"><strong>{{number(data.summary.movementCount)}}</strong> movimentações envolvendo <strong>{{number(data.summary.distinctAnimalsMoved)}}</strong> animais no período.</div>
+        <div class="flow-list">@for(item of data.items;track item.id){<article><time>{{date(item.occurredOn)}}</time><app-animal-identity [animal]="animal(item.animal)"/><div class="route"><span>{{item.sourcePaddock?.name||'Origem não informada'}}</span><i aria-hidden="true">→</i><strong>{{item.destinationPaddock.name}}</strong></div></article>}</div>
+      }
+      @if(transfers();as data){
+        <div class="summary-line"><div><span>Transferências</span><strong>{{number(data.summary.transferCount)}}</strong></div><div><span>Entradas</span><strong>{{number(data.summary.inboundCount)}}</strong></div><div><span>Saídas</span><strong>{{number(data.summary.outboundCount)}}</strong></div><div><span>Animais distintos</span><strong>{{number(data.summary.distinctAnimalsTransferred)}}</strong></div></div>
+        <p class="privacy-note">Os locais exibidos são somente os disponibilizados pelo relatório de custódia.</p><div class="table-scroll"><table><thead><tr><th>Data</th><th>Animal</th><th>Direção</th><th>Origem</th><th>Destino</th></tr></thead><tbody>@for(item of data.items;track item.id){<tr><td>{{date(item.occurredOn)}}</td><td><app-animal-identity [animal]="animal(item.animal)" /></td><td>{{item.direction==='IN'?'Entrada':'Saída'}}</td><td>{{item.sourceFarm?.name||'Não disponibilizada'}}</td><td>{{item.destinationFarm?.name||'Não disponibilizado'}}</td></tr>}</tbody></table></div>
+      }
+      @if(weights();as data){
+        <div class="weight-range"><div><span>Medições</span><strong>{{number(data.summary.measurementCount)}}</strong><small>{{number(data.summary.animalsMeasured)}} animais medidos</small></div><div class="range-track" role="img" [attr.aria-label]="'Peso mínimo '+weight(data.summary.minimumWeight)+', peso médio '+weight(data.summary.averageWeight)+', peso máximo '+weight(data.summary.maximumWeight)"><span>Mínimo <strong>{{weight(data.summary.minimumWeight)}}</strong></span><i></i><span>Média <strong>{{weight(data.summary.averageWeight)}}</strong></span><i></i><span>Máximo <strong>{{weight(data.summary.maximumWeight)}}</strong></span></div></div>
+        <div class="table-scroll"><table><thead><tr><th>Data</th><th>Animal</th><th>Peso</th></tr></thead><tbody>@for(item of data.items;track item.id){<tr><td>{{date(item.occurredOn)}}</td><td><app-animal-identity [animal]="animal(item.animal)" /></td><td class="numeric">{{weight(item.weight)}}</td></tr>}</tbody></table></div>
+      }
+      @if(health();as data){
+        <div class="summary-line"><div><span>Tratamentos realizados</span><strong>{{number(data.summary.treatmentsCount)}}</strong></div><div><span>Animais tratados</span><strong>{{number(data.summary.animalsTreated)}}</strong></div><div><span>Vacinações</span><strong>{{number(data.summary.countsByTreatmentType.VACCINATION||0)}}</strong></div><div><span>Vermifugações</span><strong>{{number(data.summary.countsByTreatmentType.DEWORMING||0)}}</strong></div></div>
+        <div class="table-scroll"><table><thead><tr><th>Data</th><th>Animal</th><th>Tratamento realizado</th><th>Produto</th><th>Próxima aplicação</th></tr></thead><tbody>@for(item of data.items;track item.id){<tr><td>{{date(item.occurredOn)}}</td><td><app-animal-identity [animal]="animal(item.animal)" /></td><td>{{healthLabels[item.treatmentType]}}</td><td>{{item.product||'Não informado'}}</td><td>{{item.nextDueOn?date(item.nextDueOn):'Não definida'}}</td></tr>}</tbody></table></div>
+      }
+      @if(reproduction();as data){
+        <div class="process" role="img" [attr.aria-label]="data.summary.servicesRecorded+' serviços, '+data.summary.pregnanciesConfirmed+' gestações confirmadas, '+data.summary.calvings+' partos e '+data.summary.calvesBorn+' crias nascidas'"><div><span>Serviços</span><strong>{{number(data.summary.servicesRecorded)}}</strong></div><i>→</i><div><span>Confirmações</span><strong>{{number(data.summary.pregnanciesConfirmed)}}</strong></div><i>→</i><div><span>Partos</span><strong>{{number(data.summary.calvings)}}</strong></div><i>→</i><div><span>Crias nascidas</span><strong>{{number(data.summary.calvesBorn)}}</strong></div></div>
+        <p class="process-note">Em acompanhamento: {{number(data.summary.openPossiblePregnancies)}} possíveis e {{number(data.summary.openConfirmedPregnancies)}} confirmadas. Os números são contagens de fatos, não taxas de conversão.</p><div class="table-scroll"><table><thead><tr><th>Data</th><th>Matriz</th><th>Fato reprodutivo</th><th>Serviço</th><th>Parto esperado</th></tr></thead><tbody>@for(item of data.items;track item.id){<tr><td>{{date(item.occurredOn)}}</td><td><app-animal-identity [animal]="animal(item.mother)" /></td><td>{{reproductionLabels[item.action]}}</td><td>{{item.serviceType?serviceLabels[item.serviceType]:'Não aplicável'}}</td><td>{{item.expectedCalvingOn?date(item.expectedCalvingOn):'Não informado'}}</td></tr>}</tbody></table></div>
+      }
+      @if(planner();as data){
+        <div class="summary-line"><div><span>Em aberto</span><strong>{{number(data.summary.open)}}</strong></div><div><span>Concluídas</span><strong>{{number(data.summary.completed)}}</strong></div><div><span>Canceladas</span><strong>{{number(data.summary.cancelled)}}</strong></div><div><span>Abertas em atraso</span><strong>{{number(data.summary.overdueOpen)}}</strong></div></div><p class="process-note">Uma atividade concluída registra a execução do planejamento; não comprova, por si só, um fato sanitário ou reprodutivo.</p>
+        <div class="table-scroll"><table><thead><tr><th>Data planejada</th><th>Atividade</th><th>Tipo</th><th>Situação</th><th>Animal</th></tr></thead><tbody>@for(item of data.items;track item.id){<tr><td>{{date(item.scheduledFor)}}</td><td><strong>{{item.title}}</strong></td><td>{{plannerLabels[item.type]}}</td><td>{{plannerStatusLabels[item.status]}}</td><td>@if(item.animal){<app-animal-identity [animal]="animal(item.animal)" />}@else{Não vinculado}</td></tr>}</tbody></table></div>
+      }
+      <footer class="report-footer"><span>Resumo calculado pelo relatório completo, não apenas por esta página.</span><gr-pagination [page]="result()!.page" [totalPages]="result()!.totalPages" (pageChange)="changePage($event)" /></footer>
+    </section>
+  }
+</div>
