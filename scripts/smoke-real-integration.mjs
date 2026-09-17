@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 const required = (name) => {
@@ -13,6 +13,8 @@ const publicKey = required('GR_SMOKE_SUPABASE_PUBLIC_KEY');
 const apiBaseUrl = required('GR_SMOKE_API_URL').replace(/\/$/, '');
 const email = required('GR_SMOKE_EMAIL');
 const password = required('GR_SMOKE_PASSWORD');
+assert.equal(new URL(supabaseUrl).hostname, '127.0.0.1', 'O smoke administrativo aceita somente o Supabase local.');
+assert.equal(new URL(apiBaseUrl).hostname, '127.0.0.1', 'O smoke administrativo aceita somente a API local.');
 
 const values = new Map();
 const storage = {
@@ -82,6 +84,75 @@ async function main() {
   const me = await api('/api/v1/me', { token });
   expectStatus(me, 200, 'Identidade');
   assert.equal(me.data.email, email);
+
+  // Phase 06: organização descartável e segundo usuário existem somente no ambiente local.
+  const adminOrganizationId = randomUUID();
+  const adminFarmAId = randomUUID();
+  const adminFarmBId = randomUUID();
+  const adminOrganization = await api('/api/v1/organizations', { token, method: 'POST', body: { id: adminOrganizationId, name: 'Organização Smoke Administração' } });
+  expectStatus(adminOrganization, 201, 'Criação da organização administrativa');
+  assert.equal(adminOrganization.data.version, 0);
+  const correctedOrganization = await api(`/api/v1/organizations/${adminOrganizationId}`, { token, method: 'PATCH', body: { name: 'Organização Smoke Revisada', expectedVersion: adminOrganization.data.version } });
+  expectStatus(correctedOrganization, 200, 'Correção da organização');
+  expectStatus(await api(`/api/v1/organizations/${adminOrganizationId}`, { token, method: 'PATCH', body: { name: 'Conflito obsoleto', expectedVersion: adminOrganization.data.version } }), 409, 'Conflito otimista da organização');
+
+  const adminFarmA = await api(`/api/v1/organizations/${adminOrganizationId}/farms`, { token, method: 'POST', body: { id: adminFarmAId, name: 'Fazenda Administração A' } });
+  const adminFarmB = await api(`/api/v1/organizations/${adminOrganizationId}/farms`, { token, method: 'POST', body: { id: adminFarmBId, name: 'Fazenda Administração B' } });
+  expectStatus(adminFarmA, 201, 'Criação da primeira fazenda administrativa');
+  expectStatus(adminFarmB, 201, 'Criação da segunda fazenda administrativa');
+  const correctedFarm = await api(`/api/v1/organizations/${adminOrganizationId}/farms/${adminFarmAId}`, { token, method: 'PATCH', body: { name: 'Fazenda Administração Norte', expectedVersion: adminFarmA.data.version } });
+  expectStatus(correctedFarm, 200, 'Correção da fazenda administrativa');
+  expectStatus(await api(`/api/v1/organizations/${adminOrganizationId}/farms/${adminFarmAId}`, { token, method: 'PATCH', body: { name: 'Conflito obsoleto', expectedVersion: adminFarmA.data.version } }), 409, 'Conflito otimista da fazenda');
+
+  const inviteeEmail = `phase06-${randomUUID()}@example.test`;
+  const inviteePassword = `${randomBytes(20).toString('base64url')}Aa1#`;
+  const inviteeClient = authClient({ getItem: () => null, setItem: () => {}, removeItem: () => {} });
+  const inviteeSignup = await inviteeClient.auth.signUp({ email: inviteeEmail, password: inviteePassword });
+  assert.ifError(inviteeSignup.error);
+  assert.ok(inviteeSignup.data.user?.id, 'A conta convidada local não foi criada.');
+  const allFarmsInvitation = await api(`/api/v1/organizations/${adminOrganizationId}/invitations`, { token, method: 'POST', body: { email: inviteeEmail, role: 'VIEWER', farmScopeMode: 'ALL_FARMS', farmIds: [] } });
+  expectStatus(allFarmsInvitation, 201, 'Convite ALL_FARMS');
+  assert.ok(allFarmsInvitation.data.token, 'O token de uso único não foi retornado.');
+  const pendingInvitations = await api(`/api/v1/organizations/${adminOrganizationId}/invitations?status=PENDING&page=0&size=50`, { token });
+  expectStatus(pendingInvitations, 200, 'Listagem de convites pendentes');
+  assert.ok(pendingInvitations.data.some((item) => item.id === allFarmsInvitation.data.invitation.id));
+
+  const inviteeLogin = await inviteeClient.auth.signInWithPassword({ email: inviteeEmail, password: inviteePassword });
+  assert.ifError(inviteeLogin.error);
+  const inviteeToken = inviteeLogin.data.session.access_token;
+  expectStatus(await api(`/api/v1/invitations/${encodeURIComponent(allFarmsInvitation.data.token)}/accept`, { token: inviteeToken, method: 'POST' }), 204, 'Aceite do convite');
+  const inviteeOrganizations = await api('/api/v1/me/organizations', { token: inviteeToken });
+  expectStatus(inviteeOrganizations, 200, 'Bootstrap da pessoa convidada');
+  assert.ok(inviteeOrganizations.data.items.some((item) => item.organizationId === adminOrganizationId && item.farmScopeMode === 'ALL_FARMS'));
+  let inviteeFarms = await api(`/api/v1/me/organizations/${adminOrganizationId}/farms`, { token: inviteeToken });
+  expectStatus(inviteeFarms, 200, 'Escopo ALL_FARMS real');
+  assert.deepEqual(new Set(inviteeFarms.data.items.map((item) => item.farmId)), new Set([adminFarmAId, adminFarmBId]));
+  expectStatus(await api(`/api/v1/organizations/${adminOrganizationId}/invitations`, { token: inviteeToken }), 403, 'VIEWER sem administração de convites');
+
+  const adminMembers = await api(`/api/v1/organizations/${adminOrganizationId}/members?page=0&size=50`, { token });
+  expectStatus(adminMembers, 200, 'Listagem real de memberships');
+  const inviteeMember = adminMembers.data.find((item) => item.userId === inviteeSignup.data.user.id);
+  const ownerMember = adminMembers.data.find((item) => item.userId === me.data.userId);
+  assert.ok(inviteeMember && ownerMember, 'As duas memberships administrativas devem existir.');
+  const selectedScope = await api(`/api/v1/organizations/${adminOrganizationId}/members/${inviteeMember.membershipId}`, { token, method: 'PATCH', body: { role: 'OPERATOR', farmScopeMode: 'SELECTED_FARMS', farmIds: [adminFarmAId], expectedVersion: inviteeMember.version } });
+  expectStatus(selectedScope, 200, 'Alteração para SELECTED_FARMS');
+  assert.equal(selectedScope.data.role, 'OPERATOR');
+  assert.deepEqual(selectedScope.data.farmIds, [adminFarmAId]);
+  inviteeFarms = await api(`/api/v1/me/organizations/${adminOrganizationId}/farms`, { token: inviteeToken });
+  assert.deepEqual(inviteeFarms.data.items.map((item) => item.farmId), [adminFarmAId]);
+  expectStatus(await api('/api/v1/context', { token: inviteeToken, organizationId: adminOrganizationId, farmId: adminFarmBId }), 404, 'Fazenda fora do escopo selecionado');
+  expectStatus(await api(`/api/v1/organizations/${adminOrganizationId}/members/${inviteeMember.membershipId}`, { token, method: 'PATCH', body: { role: 'VIEWER', farmScopeMode: 'ALL_FARMS', farmIds: [], expectedVersion: inviteeMember.version } }), 409, 'Conflito otimista da membership');
+  expectStatus(await api(`/api/v1/organizations/${adminOrganizationId}/members/${ownerMember.membershipId}?expectedVersion=${ownerMember.version}`, { token, method: 'DELETE' }), 409, 'Proteção do último proprietário');
+
+  const cancellableInvitation = await api(`/api/v1/organizations/${adminOrganizationId}/invitations`, { token, method: 'POST', body: { email: `cancel-${randomUUID()}@example.test`, role: 'VIEWER', farmScopeMode: 'SELECTED_FARMS', farmIds: [adminFarmAId] } });
+  expectStatus(cancellableInvitation, 201, 'Convite SELECTED_FARMS');
+  expectStatus(await api(`/api/v1/organizations/${adminOrganizationId}/invitations/${cancellableInvitation.data.invitation.id}/revocation`, { token, method: 'POST' }), 204, 'Cancelamento de convite');
+  expectStatus(await api(`/api/v1/organizations/${adminOrganizationId}/members/${inviteeMember.membershipId}?expectedVersion=${selectedScope.data.version}`, { token, method: 'DELETE' }), 204, 'Revogação da membership');
+  const afterRevocation = await api('/api/v1/me/organizations', { token: inviteeToken });
+  assert.ok(!afterRevocation.data.items.some((item) => item.organizationId === adminOrganizationId), 'A organização revogada não pode permanecer no bootstrap.');
+  expectStatus(await api(`/api/v1/organizations/${adminOrganizationId}`, { token: inviteeToken }), 404, 'Não enumeração após revogação');
+  await inviteeClient.auth.signOut({ scope: 'local' });
+
   const organizations = await api('/api/v1/me/organizations', { token });
   expectStatus(organizations, 200, 'Organizações');
   assert.ok(Array.isArray(organizations.data.items) && organizations.data.items.length >= 2,
@@ -92,10 +163,10 @@ async function main() {
     expectStatus(farms, 200, 'Fazendas acessíveis');
     return { organization, farms: farms.data.items };
   }));
-  const first = organizationFarms.find((item) => item.farms.length >= 2);
+  const first = organizationFarms.find((item) => !item.organization.organizationName.startsWith('Organização Smoke') && item.farms.length >= 2);
   assert.ok(first, 'O smoke de troca exige duas fazendas em uma organização local.');
   const second = organizationFarms.find((item) =>
-    item.organization.organizationId !== first.organization.organizationId && item.farms.length >= 1);
+    !item.organization.organizationName.startsWith('Organização Smoke') && item.organization.organizationId !== first.organization.organizationId && item.farms.length >= 1);
   assert.ok(second, 'O smoke de troca exige outra organização com fazenda acessível.');
   const firstOrganization = first.organization;
   const secondOrganization = second.organization;
@@ -413,6 +484,7 @@ async function main() {
   console.log('Herd Core concluído: lista, perfil, criação/replay, correção/409, movimento/replay, lote/replay, transferência e custódia.');
   console.log('Herd Intelligence concluído: peso/replay, saúde individual/lote, reprodução, encerramento, parto com/sem gestação, relação materna, pendências, planner/replay/409 e agenda.');
   console.log('Relatórios concluídos: posição, ciclo, movimentações, transferências, pesagens, saúde, reprodução e execução do planejamento.');
+  console.log('Administração concluída: organização, fazendas, convites, ALL_FARMS, SELECTED_FARMS, papéis, locking, último proprietário, revogação e não enumeração.');
   console.log('Cenários negativos concluídos: 400, 401, 404, 409 e backend indisponível.');
   if (process.env.GR_SMOKE_VIEWER_EMAIL) console.log('Cenário 403 concluído com perfil de visualizador.');
 }

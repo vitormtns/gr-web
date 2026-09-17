@@ -12,4 +12,6 @@ describe('PermissionService', () => {
   it.each(['OWNER','ADMIN','MANAGER'] as MembershipRole[])('permite transferência de custódia para %s', role => expect(create(role).can('transferHerd')).toBe(true));
   it('mantém transferência indisponível para operador', () => expect(create('OPERATOR').can('transferHerd')).toBe(false));
   it('mantém VIEWER somente leitura', () => expect(create('VIEWER').can('mutateFinance')).toBe(false));
+  it.each(['OWNER','ADMIN','MANAGER','OPERATOR','VIEWER'] as MembershipRole[])('permite leitura da administração para %s',role=>expect(create(role).can('viewAdministration')).toBe(true));
+  it('limita a correção da organização ao proprietário',()=>{expect(create('OWNER').can('manageOrganization')).toBe(true);expect(create('ADMIN').can('manageOrganization')).toBe(false);});
 });
