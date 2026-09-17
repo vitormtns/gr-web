@@ -332,6 +332,37 @@ async function main() {
   const movementReport = await api('/api/v1/herd/reports/movements?page=0&size=20', herdSource.context);
   expectStatus(movementReport, 200, 'Histórico real de movimentações');
   assert.ok(movementReport.data.summary.movementCount >= 2);
+  const reportPaths = [
+    ['herd-position', 'Posição do rebanho'],
+    ['lifecycle', 'Ciclo do rebanho'],
+    ['movements', 'Movimentações'],
+    ['transfers', 'Transferências'],
+    ['weights', 'Pesagens'],
+    ['health', 'Saúde'],
+    ['reproduction', 'Reprodução'],
+    ['planner', 'Execução do planejamento'],
+  ];
+  for (const [path, label] of reportPaths) {
+    const period = path === 'herd-position' ? '' : `&from=${today}&to=${today}`;
+    const report = await api(`/api/v1/herd/reports/${path}?page=0&size=5${period}`, herdSource.context);
+    expectStatus(report, 200, `Relatório real: ${label}`);
+    assert.ok(report.data.summary && Array.isArray(report.data.items), `${label} deve retornar resumo e itens.`);
+    assert.equal(report.data.page, 0);
+    assert.equal(report.data.size, 5);
+  }
+  const filteredWeightReport = await api(`/api/v1/herd/reports/weights?from=${today}&to=${today}&animalId=${secondAnimalId}&page=0&size=1`, herdSource.context);
+  expectStatus(filteredWeightReport, 200, 'Pesagens com período, animal e paginação');
+  assert.ok(filteredWeightReport.data.summary.measurementCount >= 1, 'A pesagem registrada deve aparecer no relatório analítico.');
+  assert.equal(filteredWeightReport.data.items[0].animal.id, secondAnimalId);
+  const filteredHealthReport = await api(`/api/v1/herd/reports/health?from=${today}&to=${today}&animalId=${secondAnimalId}&treatmentType=VACCINATION&page=0&size=5`, herdSource.context);
+  expectStatus(filteredHealthReport, 200, 'Saúde com filtros reais');
+  assert.ok(filteredHealthReport.data.items.every((item) => item.treatmentType === 'VACCINATION'));
+  const filteredReproductionReport = await api(`/api/v1/herd/reports/reproduction?from=${today}&to=${today}&motherId=${secondAnimalId}&page=0&size=5`, herdSource.context);
+  expectStatus(filteredReproductionReport, 200, 'Reprodução com matriz e período');
+  assert.ok(filteredReproductionReport.data.summary.servicesRecorded >= 1);
+  const emptyReport = await api(`/api/v1/herd/reports/weights?animalId=${randomUUID()}&page=0&size=5`, herdSource.context);
+  expectStatus(emptyReport, 200, 'Relatório vazio');
+  assert.equal(emptyReport.data.totalElements, 0);
 
   const unauthorized = await api('/api/v1/me');
   expectStatus(unauthorized, 401, 'JWT ausente');
@@ -381,6 +412,7 @@ async function main() {
   console.log('Smoke local concluído: login, sessão, contextos, dashboard, Herd Core e operações reais.');
   console.log('Herd Core concluído: lista, perfil, criação/replay, correção/409, movimento/replay, lote/replay, transferência e custódia.');
   console.log('Herd Intelligence concluído: peso/replay, saúde individual/lote, reprodução, encerramento, parto com/sem gestação, relação materna, pendências, planner/replay/409 e agenda.');
+  console.log('Relatórios concluídos: posição, ciclo, movimentações, transferências, pesagens, saúde, reprodução e execução do planejamento.');
   console.log('Cenários negativos concluídos: 400, 401, 404, 409 e backend indisponível.');
   if (process.env.GR_SMOKE_VIEWER_EMAIL) console.log('Cenário 403 concluído com perfil de visualizador.');
 }
