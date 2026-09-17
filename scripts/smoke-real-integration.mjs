@@ -146,6 +146,84 @@ async function main() {
   assert.ok(Array.isArray(agenda.data.items));
   assert.ok(Array.isArray(paddocks.data.items));
 
+  const farmCandidates = first.farms;
+  let herdSource;
+  for (const farm of farmCandidates) {
+    const candidateContext = { token, organizationId: firstOrganization.organizationId, farmId: farm.farmId };
+    const candidatePaddocks = await api('/api/v1/herd/paddocks?status=ACTIVE&page=0&size=100', candidateContext);
+    expectStatus(candidatePaddocks, 200, 'Piquetes candidatos ao smoke de rebanho');
+    if (candidatePaddocks.data.items.length >= 2) {
+      herdSource = { farm, context: candidateContext, paddocks: candidatePaddocks.data.items };
+      break;
+    }
+  }
+  assert.ok(herdSource, 'O smoke de rebanho exige uma fazenda local com dois piquetes ativos.');
+  const transferFarm = farmCandidates.find((farm) => farm.farmId !== herdSource.farm.farmId);
+  assert.ok(transferFarm, 'O smoke de transferência exige outra fazenda acessível na mesma organização.');
+  const destinationContext = { token, organizationId: firstOrganization.organizationId, farmId: transferFarm.farmId };
+
+  const initialHerd = await api('/api/v1/herd/animals?page=0&size=20', herdSource.context);
+  expectStatus(initialHerd, 200, 'Lista real de animais');
+  assert.ok(Array.isArray(initialHerd.data.items));
+  const animalId = randomUUID();
+  const secondAnimalId = randomUUID();
+  const createCommand = { id: animalId, identification: `SMOKE-${animalId.slice(0, 8)}`, name: 'Aurora Smoke', sex: 'FEMALE', birthDate: '2024-03-15' };
+  const created = await api('/api/v1/herd/animals', { ...herdSource.context, method: 'POST', body: createCommand });
+  expectStatus(created, 201, 'Criação real de animal');
+  assert.equal(created.data.version, 0);
+  const createReplay = await api('/api/v1/herd/animals', { ...herdSource.context, method: 'POST', body: createCommand });
+  expectStatus(createReplay, 200, 'Replay idempotente da criação');
+  assert.equal(createReplay.data.id, created.data.id);
+  const secondCreated = await api('/api/v1/herd/animals', { ...herdSource.context, method: 'POST', body: { id: secondAnimalId, identification: `SMOKE-${secondAnimalId.slice(0, 8)}`, name: 'Brisa Smoke', sex: 'FEMALE', birthDate: null } });
+  expectStatus(secondCreated, 201, 'Criação do segundo animal do lote');
+
+  const profile = await api(`/api/v1/herd/animals/${animalId}`, herdSource.context);
+  expectStatus(profile, 200, 'Perfil real do animal');
+  assert.equal(profile.data.identification, createCommand.identification);
+  assert.equal(profile.data.paddock, null);
+  const corrected = await api(`/api/v1/herd/animals/${animalId}`, { ...herdSource.context, method: 'PATCH', body: { expectedVersion: profile.data.version, name: 'Aurora do Smoke' } });
+  expectStatus(corrected, 200, 'Correção real do animal');
+  assert.equal(corrected.data.version, 1);
+  const staleCorrection = await api(`/api/v1/herd/animals/${animalId}`, { ...herdSource.context, method: 'PATCH', body: { expectedVersion: profile.data.version, name: 'Correção obsoleta' } });
+  expectStatus(staleCorrection, 409, 'Conflito real de versão do animal');
+  assert.equal(staleCorrection.data.code, 'HERD_VERSION_CONFLICT');
+
+  const movementOperationId = randomUUID();
+  const movementCommand = { operationId: movementOperationId, expectedVersion: corrected.data.version, destinationPaddockId: herdSource.paddocks[0].id, occurredOn: today, notes: 'Movimento seguro do smoke local' };
+  const moved = await api(`/api/v1/herd/animals/${animalId}/movements`, { ...herdSource.context, method: 'POST', body: movementCommand });
+  expectStatus(moved, 200, 'Movimentação individual real');
+  assert.equal(moved.data.paddock.id, herdSource.paddocks[0].id);
+  const movementReplay = await api(`/api/v1/herd/animals/${animalId}/movements`, { ...herdSource.context, method: 'POST', body: movementCommand });
+  expectStatus(movementReplay, 200, 'Replay idempotente da movimentação');
+  assert.equal(movementReplay.data.version, moved.data.version);
+
+  const batchOperationId = randomUUID();
+  const batchCommand = { operationId: batchOperationId, destinationPaddockId: herdSource.paddocks[1].id, occurredOn: today, notes: 'Lote seguro do smoke local', animals: [{ animalId, expectedVersion: moved.data.version }, { animalId: secondAnimalId, expectedVersion: secondCreated.data.version }] };
+  const batch = await api('/api/v1/herd/movements/batch', { ...herdSource.context, method: 'POST', body: batchCommand });
+  expectStatus(batch, 200, 'Movimentação em lote real');
+  assert.equal(batch.data.movedCount, 2);
+  const batchReplay = await api('/api/v1/herd/movements/batch', { ...herdSource.context, method: 'POST', body: batchCommand });
+  expectStatus(batchReplay, 200, 'Replay idempotente da movimentação em lote');
+  assert.equal(batchReplay.data.movedCount, 2);
+  const transferredAnimal = batch.data.animals.find((animal) => animal.id === animalId);
+  assert.ok(transferredAnimal);
+
+  const transfer = await api(`/api/v1/herd/animals/${animalId}/transfers`, { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), expectedVersion: transferredAnimal.version, destinationFarmId: transferFarm.farmId, destinationPaddockId: null, occurredOn: today, notes: 'Transferência segura do smoke local' } });
+  expectStatus(transfer, 200, 'Transferência real entre fazendas');
+  assert.equal(transfer.data.destinationFarm.id, transferFarm.farmId);
+  assert.equal(transfer.data.transferredCount, 1);
+  const sourceAfterTransfer = await api(`/api/v1/herd/animals/${animalId}`, herdSource.context);
+  expectStatus(sourceAfterTransfer, 404, 'Perfil indisponível na origem após transferência');
+  const destinationProfile = await api(`/api/v1/herd/animals/${animalId}`, destinationContext);
+  expectStatus(destinationProfile, 200, 'Perfil disponível na nova custódia');
+  assert.equal(destinationProfile.data.paddock, null);
+  const destinationHistory = await api(`/api/v1/herd/animals/${animalId}/history?page=0&size=50`, destinationContext);
+  expectStatus(destinationHistory, 200, 'Timeline sanitizada da nova custódia');
+  assert.ok(destinationHistory.data.items.some((event) => event.type === 'TRANSFERRED_IN'));
+  const movementReport = await api('/api/v1/herd/reports/movements?page=0&size=20', herdSource.context);
+  expectStatus(movementReport, 200, 'Histórico real de movimentações');
+  assert.ok(movementReport.data.summary.movementCount >= 2);
+
   const unauthorized = await api('/api/v1/me');
   expectStatus(unauthorized, 401, 'JWT ausente');
   assert.ok(unauthorized.data.requestId, 'Erro 401 não retornou referência de suporte.');
@@ -191,7 +269,8 @@ async function main() {
   assert.ifError(afterLogout.error);
   assert.equal(afterLogout.data.session, null, 'Logout não removeu a sessão persistida.');
 
-  console.log('Smoke local concluído: login, restauração, refresh, logout, contextos, dashboard e API real.');
+  console.log('Smoke local concluído: login, sessão, contextos, dashboard e Herd Core real.');
+  console.log('Herd Core concluído: lista, perfil, criação/replay, correção/409, movimento/replay, lote/replay, transferência e custódia.');
   console.log('Cenários negativos concluídos: 400, 401, 404, 409 e backend indisponível.');
   if (process.env.GR_SMOKE_VIEWER_EMAIL) console.log('Cenário 403 concluído com perfil de visualizador.');
 }
