@@ -50,6 +50,8 @@ A lista mantém identidade, território e estado como informações dominantes e
 - Adicionado estado informativo para timeline sem eventos, evitando um painel vazio no perfil terminal.
 - A data da timeline agora usa `recordedAt` quando `occurredOn` não está disponível.
 - As telas de rebanho agora aguardam a conclusão da troca de contexto antes de consultar a API, evitando requisições sem fazenda e respostas `400` transitórias.
+- Corrigidos os nomes do fixture local que haviam sido gravados com perda de Unicode por uma carga auxiliar via PowerShell; o fixture oficial permanece UTF-8.
+- A versão técnica do animal deixou de ser exibida no perfil; `expectedVersion` continua restrito ao controle interno e à experiência de conflito.
 
 ## Itens auditados
 
