@@ -6,10 +6,9 @@ import { permissionGuard } from './core/guards/permission.guard';
 
 const unsavedAnimalGuard = (component: { canDeactivate?: () => boolean }) => component.canDeactivate?.() ?? true;
 
-const placeholder = () => import('./features/placeholder/feature-placeholder.component').then((m) => m.FeaturePlaceholderComponent);
-
 export const routes: Routes = [
   { path: 'entrar', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login-page.component').then((m) => m.LoginPageComponent) },
+  { path: 'convites/:token', canActivate: [authGuard], loadComponent: () => import('./features/administration/invitation-acceptance-page.component').then(m => m.InvitationAcceptancePageComponent) },
   ...(environment.production ? [] : [{ path: 'dev/design-system', loadComponent: () => import('./features/design-system/design-system-page.component').then((m) => m.DesignSystemPageComponent) } satisfies Routes[number]]),
   ...(environment.production ? [] : [{ path: 'dev/dashboard', loadChildren: () => import('./features/home/dashboard-showcase.routes').then((m) => m.dashboardShowcaseRoutes) } satisfies Routes[number]]),
   ...(environment.production ? [] : [{ path: 'dev/herd', loadComponent: () => import('./features/herd/herd-showcase.component').then((m) => m.HerdShowcaseComponent) } satisfies Routes[number]]),
@@ -28,9 +27,9 @@ export const routes: Routes = [
       { path: 'rebanho/reproducao', data: { title: 'Reprodução' }, loadComponent: () => import('./features/herd/reproduction-page.component').then(m => m.ReproductionPageComponent) },
       { path: 'rebanho/agenda', data: { title: 'Agenda' }, loadComponent: () => import('./features/herd/agenda-page.component').then(m => m.AgendaPageComponent) },
       { path: 'relatorios', data: { title: 'Relatórios' }, loadComponent: () => import('./features/reports/reports-page.component').then(m => m.ReportsPageComponent) },
-      { path: 'gestao/fazendas', data: { title: 'Fazendas' }, loadComponent: placeholder },
-      { path: 'gestao/usuarios', data: { title: 'Usuários', permission: 'manageUsers' }, canActivate: [permissionGuard], loadComponent: placeholder },
-      { path: 'gestao/configuracoes', data: { title: 'Configurações' }, loadComponent: placeholder },
+      { path: 'administracao', data: { title: 'Administração', permission: 'viewAdministration' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/administration-page.component').then(m => m.AdministrationPageComponent) },
+      { path: 'administracao/fazendas', data: { title: 'Fazendas', permission: 'viewAdministration' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/farms-page.component').then(m => m.FarmsPageComponent) },
+      { path: 'administracao/pessoas', data: { title: 'Pessoas e acessos', permission: 'manageUsers' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/people-page.component').then(m => m.PeoplePageComponent) },
     ],
   },
   { path: '**', redirectTo: '' },

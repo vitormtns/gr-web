@@ -40,6 +40,18 @@ export class ContextStore {
     return this.initialize();
   }
 
+  async revalidateAccess(): Promise<void> {
+    if (this.transitionPending()) return;
+    this.transitionPending.set(true);
+    this.initialization = undefined;
+    this.contextVersion.update((version) => version + 1);
+    try {
+      await this.initialize();
+    } finally {
+      this.transitionPending.set(false);
+    }
+  }
+
   async selectOrganization(organizationId: string): Promise<void> {
     if (this.transitionPending()) return;
     const selected = this.organizations().find((item) => item.organizationId === organizationId);
@@ -116,6 +128,13 @@ export class ContextStore {
     this.user.set(user);
     this.organizations.set(response.items);
     if (!response.items.length) {
+      this.selectedOrganization.set(null);
+      this.selectedFarm.set(null);
+      this.farms.set([]);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(this.organizationKey);
+        localStorage.removeItem(this.farmKey);
+      }
       this.status.set('empty');
       return;
     }
