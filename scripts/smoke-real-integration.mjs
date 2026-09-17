@@ -52,6 +52,12 @@ function expectStatus(result, status, label) {
   assert.equal(result.status, status, `${label}: esperado HTTP ${status}, recebido ${result.status}`);
 }
 
+function isoDate(offsetDays = 0) {
+  const value = new Date();
+  value.setUTCDate(value.getUTCDate() + offsetDays);
+  return value.toISOString().slice(0, 10);
+}
+
 async function main() {
   const firstClient = authClient();
   const signedIn = await firstClient.auth.signInWithPassword({ email, password });
@@ -208,6 +214,109 @@ async function main() {
   const transferredAnimal = batch.data.animals.find((animal) => animal.id === animalId);
   assert.ok(transferredAnimal);
 
+  let operationalAnimal = batch.data.animals.find((animal) => animal.id === secondAnimalId);
+  assert.ok(operationalAnimal);
+  const weightOperationId = randomUUID();
+  const weightCommand = { operationId: weightOperationId, expectedVersion: operationalAnimal.version, weightKg: '318.750', measuredOn: today, notes: 'Pesagem do smoke da Phase 04' };
+  const weight = await api(`/api/v1/herd/animals/${secondAnimalId}/weights`, { ...herdSource.context, method: 'POST', body: weightCommand });
+  expectStatus(weight, 200, 'Registro real de pesagem');
+  assert.equal(weight.data.replayed, false);
+  const weightReplay = await api(`/api/v1/herd/animals/${secondAnimalId}/weights`, { ...herdSource.context, method: 'POST', body: weightCommand });
+  expectStatus(weightReplay, 200, 'Replay idempotente da pesagem');
+  assert.equal(weightReplay.data.replayed, true);
+  operationalAnimal = weight.data.animals[0];
+  const weights = await api(`/api/v1/herd/animals/${secondAnimalId}/weights?page=0&size=20`, herdSource.context);
+  expectStatus(weights, 200, 'Histórico real de pesagens');
+  assert.equal(weights.data.items[0].weightKg, 318.75);
+  const weighingDue = await api(`/api/v1/herd/pending-work?type=WEIGHING_DUE&animalId=${secondAnimalId}&page=0&size=20`, herdSource.context);
+  expectStatus(weighingDue, 200, 'Pendência de pesagem após fato');
+  assert.equal(weighingDue.data.totalElements, 0, 'Pesagem atual deve remover a necessidade derivada correspondente.');
+
+  for (const [treatmentType, dueOffset] of [['VACCINATION', 30], ['DEWORMING', 60]]) {
+    const command = { operationId: randomUUID(), expectedVersion: operationalAnimal.resultingVersion, treatmentType, occurredOn: today, product: `Produto smoke ${treatmentType}`, protocol: null, nextDueOn: isoDate(dueOffset), notes: 'Tratamento seguro do smoke local' };
+    const treatment = await api(`/api/v1/herd/animals/${secondAnimalId}/health-treatments`, { ...herdSource.context, method: 'POST', body: command });
+    expectStatus(treatment, 200, `Registro real de ${treatmentType}`);
+    operationalAnimal = treatment.data.animals[0];
+  }
+  const health = await api(`/api/v1/herd/animals/${secondAnimalId}/health-treatments?page=0&size=20`, herdSource.context);
+  expectStatus(health, 200, 'Histórico real de saúde');
+  assert.ok(health.data.items.some((item) => item.type === 'VACCINATION'));
+  assert.ok(health.data.items.some((item) => item.type === 'DEWORMING'));
+
+  const breeding = await api(`/api/v1/herd/animals/${secondAnimalId}/breedings`, { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), expectedVersion: operationalAnimal.resultingVersion, serviceType: 'INSEMINATION', serviceOn: today, sireReference: 'TOURO-SMOKE', expectedCalvingOn: isoDate(280), notes: 'Serviço reprodutivo do smoke' } });
+  expectStatus(breeding, 201, 'Registro real de serviço reprodutivo');
+  let motherProfile = await api(`/api/v1/herd/animals/${secondAnimalId}`, herdSource.context);
+  expectStatus(motherProfile, 200, 'Versão da mãe após serviço');
+  const confirmationCommand = { operationId: randomUUID(), expectedVersion: breeding.data.version, occurredOn: today };
+  const confirmed = await api(`/api/v1/herd/pregnancies/${breeding.data.id}/confirmation`, { ...herdSource.context, method: 'POST', body: confirmationCommand });
+  expectStatus(confirmed, 200, 'Confirmação real de gestação');
+  const confirmationReplay = await api(`/api/v1/herd/pregnancies/${breeding.data.id}/confirmation`, { ...herdSource.context, method: 'POST', body: confirmationCommand });
+  expectStatus(confirmationReplay, 200, 'Replay da confirmação de gestação');
+  motherProfile = await api(`/api/v1/herd/animals/${secondAnimalId}`, herdSource.context);
+  const calfId = randomUUID();
+  const calvingCommand = { operationId: randomUUID(), expectedVersion: motherProfile.data.version, pregnancyId: breeding.data.id, expectedPregnancyVersion: confirmed.data.version, calvedOn: today, calfId, identification: `SMOKE-CALF-${calfId.slice(0, 6)}`, name: 'Cria Smoke', sex: 'FEMALE', birthDate: today };
+  const calving = await api(`/api/v1/herd/animals/${secondAnimalId}/calvings`, { ...herdSource.context, method: 'POST', body: calvingCommand });
+  expectStatus(calving, 201, 'Parto real com criação inline da cria');
+  const calvingReplay = await api(`/api/v1/herd/animals/${secondAnimalId}/calvings`, { ...herdSource.context, method: 'POST', body: calvingCommand });
+  expectStatus(calvingReplay, 201, 'Replay idempotente do parto');
+  const mother = await api(`/api/v1/herd/animals/${calfId}/mother`, herdSource.context);
+  expectStatus(mother, 200, 'Relação materna vista pela cria');
+  assert.equal(mother.data.id, secondAnimalId);
+  const calves = await api(`/api/v1/herd/animals/${secondAnimalId}/calves?page=0&size=20`, herdSource.context);
+  expectStatus(calves, 200, 'Relação materna vista pela mãe');
+  assert.ok(calves.data.some((item) => item.id === calfId));
+
+  motherProfile = await api(`/api/v1/herd/animals/${secondAnimalId}`, herdSource.context);
+  const calfProfile = await api(`/api/v1/herd/animals/${calfId}`, herdSource.context);
+  const batchHealthCommand = { operationId: randomUUID(), treatmentType: 'VACCINATION', occurredOn: today, product: 'Vacina em lote smoke', protocol: null, nextDueOn: isoDate(90), notes: null, animals: [{ id: secondAnimalId, expectedVersion: motherProfile.data.version }, { id: calfId, expectedVersion: calfProfile.data.version }] };
+  const batchHealth = await api('/api/v1/herd/health-treatments/batch', { ...herdSource.context, method: 'POST', body: batchHealthCommand });
+  expectStatus(batchHealth, 200, 'Vacinação real em lote');
+  const batchHealthReplay = await api('/api/v1/herd/health-treatments/batch', { ...herdSource.context, method: 'POST', body: batchHealthCommand });
+  expectStatus(batchHealthReplay, 200, 'Replay idempotente da vacinação em lote');
+  assert.equal(batchHealthReplay.data.replayed, true);
+
+  motherProfile = await api(`/api/v1/herd/animals/${secondAnimalId}`, herdSource.context);
+  const breedingToTerminate = await api(`/api/v1/herd/animals/${secondAnimalId}/breedings`, { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), expectedVersion: motherProfile.data.version, serviceType: 'NATURAL_SERVICE', serviceOn: today, sireReference: null, expectedCalvingOn: isoDate(280), notes: null } });
+  expectStatus(breedingToTerminate, 201, 'Segundo serviço para encerramento seguro');
+  const terminated = await api(`/api/v1/herd/pregnancies/${breedingToTerminate.data.id}/termination`, { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), expectedVersion: breedingToTerminate.data.version, endedOn: today, reason: 'NOT_PREGNANT' } });
+  expectStatus(terminated, 200, 'Encerramento real de gestação');
+  assert.equal(terminated.data.status, 'TERMINATED');
+
+  const standaloneMotherId = randomUUID();
+  const standaloneMother = await api('/api/v1/herd/animals', { ...herdSource.context, method: 'POST', body: { id: standaloneMotherId, identification: `SMOKE-MOTHER-${standaloneMotherId.slice(0, 6)}`, name: 'Mãe sem gestação Smoke', sex: 'FEMALE', birthDate: '2023-01-10' } });
+  expectStatus(standaloneMother, 201, 'Mãe para parto sem gestação');
+  const standaloneCalfId = randomUUID();
+  const standaloneCalving = await api(`/api/v1/herd/animals/${standaloneMotherId}/calvings`, { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), expectedVersion: standaloneMother.data.version, pregnancyId: null, expectedPregnancyVersion: null, calvedOn: today, calfId: standaloneCalfId, identification: `SMOKE-STANDALONE-${standaloneCalfId.slice(0, 6)}`, name: null, sex: 'MALE', birthDate: today } });
+  expectStatus(standaloneCalving, 201, 'Parto real sem gestação previamente cadastrada');
+
+  const beforePlannerWeights = weights.data.totalElements;
+  const plannerOperationId = randomUUID();
+  const planner = await api('/api/v1/herd/planner-items', { ...herdSource.context, method: 'POST', body: { operationId: plannerOperationId, type: 'WEIGHING', title: 'Pesagem planejada pelo smoke', notes: null, scheduledFor: isoDate(2), animalId: secondAnimalId } });
+  expectStatus(planner, 201, 'Criação real no planejador');
+  const plannerReplay = await api('/api/v1/herd/planner-items', { ...herdSource.context, method: 'POST', body: { operationId: plannerOperationId, type: 'WEIGHING', title: 'Pesagem planejada pelo smoke', notes: null, scheduledFor: isoDate(2), animalId: secondAnimalId } });
+  expectStatus(plannerReplay, 200, 'Replay da criação no planejador');
+  assert.equal(plannerReplay.data.replay, true);
+  const correctedPlanner = await api(`/api/v1/herd/planner-items/${planner.data.id}`, { ...herdSource.context, method: 'PATCH', body: { operationId: randomUUID(), expectedVersion: planner.data.version, type: planner.data.type, title: planner.data.title, notes: 'Reagendado no smoke', scheduledFor: isoDate(3), animalId: secondAnimalId } });
+  expectStatus(correctedPlanner, 200, 'Correção real no planejador');
+  const stalePlanner = await api(`/api/v1/herd/planner-items/${planner.data.id}`, { ...herdSource.context, method: 'PATCH', body: { operationId: randomUUID(), expectedVersion: planner.data.version, type: planner.data.type, title: planner.data.title, notes: null, scheduledFor: isoDate(4), animalId: secondAnimalId } });
+  expectStatus(stalePlanner, 409, 'Conflito otimista real no planejador');
+  const completedPlanner = await api(`/api/v1/herd/planner-items/${planner.data.id}/completion`, { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), expectedVersion: correctedPlanner.data.version } });
+  expectStatus(completedPlanner, 200, 'Conclusão real de item planejado');
+  const weightsAfterPlanner = await api(`/api/v1/herd/animals/${secondAnimalId}/weights?page=0&size=20`, herdSource.context);
+  assert.equal(weightsAfterPlanner.data.totalElements, beforePlannerWeights, 'Concluir planner não pode criar uma pesagem.');
+  const cancellable = await api('/api/v1/herd/planner-items', { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), type: 'GENERAL', title: 'Atividade cancelável do smoke', notes: null, scheduledFor: isoDate(5), animalId: null } });
+  expectStatus(cancellable, 201, 'Segundo item real do planejador');
+  const cancelled = await api(`/api/v1/herd/planner-items/${cancellable.data.id}/cancellation`, { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), expectedVersion: cancellable.data.version } });
+  expectStatus(cancelled, 200, 'Cancelamento real no planejador');
+  const pendingWork = await api('/api/v1/herd/pending-work?page=0&size=20', herdSource.context);
+  expectStatus(pendingWork, 200, 'Pending Work real');
+  const unifiedAgenda = await api(`/api/v1/herd/agenda?animalId=${secondAnimalId}&page=0&size=20`, herdSource.context);
+  expectStatus(unifiedAgenda, 200, 'Agenda operacional unificada');
+  assert.ok(Array.isArray(unifiedAgenda.data.items));
+  const reproductionHistory = await api(`/api/v1/herd/animals/${secondAnimalId}/history?page=0&size=50`, herdSource.context);
+  expectStatus(reproductionHistory, 200, 'Timeline real após parto');
+  assert.ok(reproductionHistory.data.items.some((event) => event.type === 'CALVED'));
+
   const transfer = await api(`/api/v1/herd/animals/${animalId}/transfers`, { ...herdSource.context, method: 'POST', body: { operationId: randomUUID(), expectedVersion: transferredAnimal.version, destinationFarmId: transferFarm.farmId, destinationPaddockId: null, occurredOn: today, notes: 'Transferência segura do smoke local' } });
   expectStatus(transfer, 200, 'Transferência real entre fazendas');
   assert.equal(transfer.data.destinationFarm.id, transferFarm.farmId);
@@ -269,8 +378,9 @@ async function main() {
   assert.ifError(afterLogout.error);
   assert.equal(afterLogout.data.session, null, 'Logout não removeu a sessão persistida.');
 
-  console.log('Smoke local concluído: login, sessão, contextos, dashboard e Herd Core real.');
+  console.log('Smoke local concluído: login, sessão, contextos, dashboard, Herd Core e operações reais.');
   console.log('Herd Core concluído: lista, perfil, criação/replay, correção/409, movimento/replay, lote/replay, transferência e custódia.');
+  console.log('Herd Intelligence concluído: peso/replay, saúde individual/lote, reprodução, encerramento, parto com/sem gestação, relação materna, pendências, planner/replay/409 e agenda.');
   console.log('Cenários negativos concluídos: 400, 401, 404, 409 e backend indisponível.');
   if (process.env.GR_SMOKE_VIEWER_EMAIL) console.log('Cenário 403 concluído com perfil de visualizador.');
 }
