@@ -4,7 +4,7 @@ import { LucideDynamicIcon } from '@lucide/angular';
 import { AuthStore } from '../core/auth/auth.store';
 import { ContextStore } from '../core/context/context.store';
 import { PermissionService } from '../core/permissions/permission.service';
-import { ToastRegionComponent, ToastService } from '../design-system/feedback/feedback';
+import { EmptyStateComponent, ErrorStateComponent, ToastRegionComponent, ToastService } from '../design-system/feedback/feedback';
 import { AvatarComponent } from '../design-system/data-display/data-display';
 import { ContextNavigatorComponent } from '../design-system/navigation/navigation';
 import { IconButtonComponent, TooltipDirective } from '../design-system/primitives/primitives';
@@ -15,7 +15,7 @@ interface NavSection { label?:string; items:NavItem[] }
 
 @Component({
   selector:'app-shell',
-  imports:[RouterOutlet,RouterLink,RouterLinkActive,LucideDynamicIcon,ToastRegionComponent,AvatarComponent,ContextNavigatorComponent,IconButtonComponent,TooltipDirective,MenuComponent,PopoverComponent],
+  imports:[RouterOutlet,RouterLink,RouterLinkActive,LucideDynamicIcon,ToastRegionComponent,ErrorStateComponent,EmptyStateComponent,AvatarComponent,ContextNavigatorComponent,IconButtonComponent,TooltipDirective,MenuComponent,PopoverComponent],
   template:`<div class="shell" [class.collapsed]="collapsed()">
     @if(mobileOpen()){<button class="mobile-backdrop" type="button" aria-label="Fechar menu" (click)="mobileOpen.set(false)"></button>}
     <aside class="sidebar" [class.mobile-open]="mobileOpen()" aria-label="Navegação principal">
@@ -31,7 +31,7 @@ interface NavSection { label?:string; items:NavItem[] }
         <div class="topbar-start"><gr-icon-button class="menu-button" label="Abrir menu" (pressed)="mobileOpen.set(true)"><svg lucideIcon="menu"></svg></gr-icon-button><div class="contexts" [class.pending]="context.transitionPending()"><gr-context-navigator [organizations]="context.organizations()" [farms]="context.farms()" [organization]="context.selectedOrganization()" [farm]="context.selectedFarm()" [disabled]="context.transitionPending()" (organizationChanged)="changeOrganization($event)" (farmChanged)="changeFarm($event)" /></div></div>
         <div class="topbar-actions"><gr-popover label="Abrir menu da conta"><span popover-trigger class="account-trigger"><gr-avatar [name]="displayName"/><span><strong>{{displayName}}</strong><small>{{roleLabel}}</small></span><svg lucideIcon="chevron-down"></svg></span><gr-menu><div class="account-identity"><strong>{{displayName}}</strong><span>{{accountEmail}}</span></div><button type="button" (click)="logout()"><svg lucideIcon="log-out"></svg>Sair</button></gr-menu></gr-popover></div>
       </header>
-      <main class="content" [attr.aria-busy]="context.transitionPending()"><div class="route-content" [class.context-hidden]="context.transitionPending()"><router-outlet /></div>@if(context.transitionPending()){<div class="context-transition" role="status"><span class="transition-indicator" aria-hidden="true"><i></i></span><span>Atualizando contexto</span><p>Validando seu acesso à nova fazenda ou organização...</p><div class="transition-lines" aria-hidden="true"><span></span><span></span></div></div>}</main>
+      <main class="content" [attr.aria-busy]="context.transitionPending()">@if(context.status()==='error'&&!context.transitionPending()){<gr-error-state level="page" title="Não foi possível carregar seu contexto de acesso" description="O serviço pode estar temporariamente indisponível. Tente novamente sem recarregar a página." (retry)="retryContext()" />}@else if(context.status()==='empty'&&!context.transitionPending()){<gr-empty-state [title]="context.selectedOrganization()?'Nenhuma fazenda disponível':'Nenhuma organização disponível'" [description]="context.selectedOrganization()?'Seu acesso não inclui uma fazenda ativa nesta organização.':'Peça a um administrador para vincular sua conta a uma organização.'" />}@else{<div class="route-content" [class.context-hidden]="context.transitionPending()"><router-outlet /></div>}@if(context.transitionPending()){<div class="context-transition" role="status"><span class="transition-indicator" aria-hidden="true"><i></i></span><span>Atualizando contexto</span><p>Validando seu acesso à nova fazenda ou organização...</p><div class="transition-lines" aria-hidden="true"><span></span><span></span></div></div>}</main>
     </div>
     <gr-toast-region />
   </div>`,
@@ -64,5 +64,6 @@ export class AppShellComponent {
   get roleLabel():string{return {OWNER:'Proprietário',ADMIN:'Administrador',MANAGER:'Gerente',OPERATOR:'Operador',VIEWER:'Visualizador'}[this.context.role()||'VIEWER'];}
   async changeOrganization(id:string):Promise<void>{try{await this.context.selectOrganization(id);}catch{this.toast.show('error','Não foi possível trocar a organização','O contexto anterior foi preservado quando possível.');}}
   async changeFarm(id:string):Promise<void>{try{await this.context.selectFarm(id);}catch{this.toast.show('error','Não foi possível trocar a fazenda','Atualize a página e tente novamente.');}}
+  async retryContext():Promise<void>{try{await this.context.retry();}catch{this.toast.show('error','Contexto ainda indisponível','A conexão com o serviço não foi restabelecida.');}}
   async logout():Promise<void>{this.manualLogout.set(true);try{await this.auth.signOut();this.context.clear();await this.router.navigate(['/entrar']);}catch{this.manualLogout.set(false);this.toast.show('error','Não foi possível sair','Tente novamente.');}}
 }

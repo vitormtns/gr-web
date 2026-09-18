@@ -9,6 +9,21 @@ import { AnyReportPage, HealthPage, WeightPage } from './reports.models';
 import { ReportsPageComponent, defaultFilters } from './reports-page.component';
 
 describe('ReportsPageComponent',()=>{
+  it('faz uma única leitura quando back/forward restaura os filtros da URL',async()=>{
+    const params=new BehaviorSubject(convertToParamMap({report:'herd-position'}));
+    const api={load:vi.fn(()=>new Subject<AnyReportPage>().asObservable())};
+    const context={selectedFarm:signal({farmId:'farm-1',farmName:'Fazenda Norte'}),transitionPending:signal(false),contextVersion:signal(0)};
+    await TestBed.configureTestingModule({imports:[ReportsPageComponent],providers:[{provide:ActivatedRoute,useValue:{snapshot:{queryParamMap:params.value},queryParamMap:params.asObservable()}},{provide:Router,useValue:{navigate:vi.fn()}},{provide:ContextStore,useValue:context}]}).overrideComponent(ReportsPageComponent,{set:{providers:[{provide:ReportsApi,useValue:api}]}}).compileComponents();
+    const fixture=TestBed.createComponent(ReportsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    api.load.mockClear();
+    params.next(convertToParamMap({report:'health',treatmentType:'VACCINATION'}));
+    await fixture.whenStable();
+    expect(fixture.componentInstance.filters()).toMatchObject({report:'health',treatmentType:'VACCINATION'});
+    expect(api.load).toHaveBeenCalledOnce();
+  });
+
   it('mantém a intenção mais recente quando respostas chegam fora de ordem',async()=>{
     const params=new BehaviorSubject(convertToParamMap({report:'herd-position'}));
     const requests:Subject<AnyReportPage>[]=[];

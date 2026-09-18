@@ -40,7 +40,7 @@ export interface ItemsResponse<T> { items: T[] }
 
 export interface ValidationError { field: string; message: string }
 
-export type ApiErrorKind = 'validation' | 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'unavailable' | 'unexpected';
+export type ApiErrorKind = 'validation' | 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'rate-limited' | 'unavailable' | 'unexpected';
 
 export class AppError extends Error {
   constructor(

@@ -11,7 +11,7 @@ interface BackendErrorBody {
 
 const kindByStatus: Record<number, ApiErrorKind> = {
   0: 'unavailable', 400: 'validation', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found',
-  409: 'conflict', 503: 'unavailable',
+  409: 'conflict', 429: 'rate-limited', 502: 'unavailable', 503: 'unavailable',
 };
 
 const safeMessages: Record<ApiErrorKind, string> = {
@@ -20,6 +20,7 @@ const safeMessages: Record<ApiErrorKind, string> = {
   forbidden: 'Você não tem permissão para realizar esta ação.',
   'not-found': 'O recurso ou contexto solicitado não está disponível.',
   conflict: 'Os dados foram alterados. Atualize a página e tente novamente.',
+  'rate-limited': 'Muitas solicitações foram feitas. Aguarde um momento e tente novamente.',
   unavailable: 'O serviço está temporariamente indisponível. Tente novamente em instantes.',
   unexpected: 'Ocorreu um erro inesperado.',
 };

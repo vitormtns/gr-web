@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, effect, signal } from '@angular/core';
 import { Observable, Subscription } from 'rxjs';
 import { AppError } from '../../core/api/api.models';
+import { localDateOnly } from '../../core/date/date-only';
 import { ContextStore } from '../../core/context/context.store';
 import { DashboardApiClient } from './dashboard-api.service';
 import { AgendaPage, DashboardActivity, DashboardAttention, DashboardOverview, PaddockDto, PaddockPage, PeriodSelection, SectionState, idleSection, periodIsValid } from './dashboard.models';
@@ -51,7 +52,7 @@ export class DashboardStore {
       case 'overview': this.load('overview', this.overview, this.api.overview(this.period())); break;
       case 'activity': this.load('activity', this.activity, this.api.activity(this.period())); break;
       case 'attention': this.load('attention', this.attention, this.api.attention()); break;
-      case 'agenda': this.load('agenda', this.agenda, this.api.agenda(localDate())); break;
+      case 'agenda': this.load('agenda', this.agenda, this.api.agenda(localDateOnly())); break;
       case 'paddocks': this.loadPaddocks(); break;
     }
   }
@@ -115,9 +116,4 @@ export class DashboardStore {
   private current(name: SectionName, generation: number, key: string): boolean {
     return this.generations[name] === generation && this.activeContext === key && !!key;
   }
-}
-
-function localDate(): string {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

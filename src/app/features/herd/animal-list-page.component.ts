@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -6,6 +6,7 @@ import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
 import { ContextStore } from '../../core/context/context.store';
 import { PermissionService } from '../../core/permissions/permission.service';
 import { AppError } from '../../core/api/api.models';
+import { localDateOnly } from '../../core/date/date-only';
 import { FilterBarComponent, PaginationComponent, TableComponent } from '../../design-system/data-display/data-display';
 import { EmptyStateComponent, ErrorStateComponent, ToastService } from '../../design-system/feedback/feedback';
 import { DialogComponent } from '../../design-system/surfaces/surfaces';
@@ -33,13 +34,13 @@ export class AnimalListPageComponent {
   private readonly destroyRef=inject(DestroyRef); private readonly api=inject(HerdApi); private readonly route=inject(ActivatedRoute); private readonly router=inject(Router); private readonly toast=inject(ToastService);
   readonly context=inject(ContextStore); readonly permissions=inject(PermissionService); readonly searchInput=new Subject<string>();
   readonly state=signal<'loading'|'ready'|'error'>('loading'); readonly page=signal<Page<Animal>|null>(null); readonly error=signal<AppError|null>(null); readonly selected=signal(new Map<string,Animal>()); readonly paddocks=signal<PaddockRef[]>([]); readonly batchOpen=signal(false); readonly batchPending=signal(false); readonly batchError=signal('');
-  readonly filters=signal<AnimalFilters>(parseFilters(this.route.snapshot.queryParamMap)); batchPaddock=''; batchDate=today(); private generation=0; private batchOperationId='';
-  constructor(){this.searchInput.pipe(debounceTime(320),distinctUntilChanged(),takeUntilDestroyed()).subscribe(value=>this.setFilter('search',value.trim()));effect(()=>{this.context.contextVersion();const pending=this.context.transitionPending();const farm=this.context.selectedFarm();this.selected.set(new Map());if(pending||!farm){this.page.set(null);this.state.set('loading');return;}this.load();});}
+  readonly filters=signal<AnimalFilters>(parseFilters(this.route.snapshot.queryParamMap)); batchPaddock=''; batchDate=today(); private generation=0; private batchOperationId=''; private routeReady=false;
+  constructor(){this.searchInput.pipe(debounceTime(320),distinctUntilChanged(),takeUntilDestroyed()).subscribe(value=>this.setFilter('search',value.trim()));this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params=>{this.filters.set(parseFilters(params));if(this.routeReady)this.load();this.routeReady=true;});effect(()=>{this.context.contextVersion();const pending=this.context.transitionPending();const farm=this.context.selectedFarm();this.selected.set(new Map());if(pending||!farm){this.page.set(null);this.state.set('loading');return;}untracked(()=>this.load());});}
   get reference(){return errorReference(this.error()?.requestId);} sex=sexLabel;
   hasFilters(){const f=this.filters();return !!(f.search||f.sex||f.status);}
-  setFilter<K extends 'search'|'sex'|'status'>(key:K,value:AnimalFilters[K]){this.filters.update(f=>({...f,[key]:value,page:0}));this.syncUrl();this.load();}
-  clearFilters(){this.filters.set({search:'',sex:'',status:'',page:0,size:20});this.syncUrl();this.load();}
-  changePage(page:number){this.filters.update(f=>({...f,page}));this.syncUrl();this.load();}
+  setFilter<K extends 'search'|'sex'|'status'>(key:K,value:AnimalFilters[K]){this.filters.update(f=>({...f,[key]:value,page:0}));this.syncUrl();}
+  clearFilters(){this.filters.set({search:'',sex:'',status:'',page:0,size:20});this.syncUrl();}
+  changePage(page:number){this.filters.update(f=>({...f,page}));this.syncUrl();}
   load(){const current=++this.generation;this.state.set('loading');this.error.set(null);this.api.animals(this.filters()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:value=>{if(current!==this.generation)return;this.page.set(value);this.state.set('ready');},error:error=>{if(current!==this.generation)return;this.error.set(error instanceof AppError?error:null);this.state.set('error');}});}
   toggle(animal:Animal){this.selected.update(current=>{const next=new Map(current);next.has(animal.id)?next.delete(animal.id):next.set(animal.id,animal);return next;});}
   openBatch(){this.batchOperationId=newUuid();this.batchPaddock='';this.batchDate=today();this.batchError.set('');this.batchOpen.set(true);this.api.paddocks().subscribe({next:p=>this.paddocks.set(p.items),error:()=>this.batchError.set('Não foi possível carregar os piquetes disponíveis.')});}
@@ -48,5 +49,5 @@ export class AnimalListPageComponent {
   private syncUrl(){const f=this.filters();void this.router.navigate([], {relativeTo:this.route,queryParams:{search:f.search||null,sex:f.sex||null,status:f.status||null,page:f.page||null,size:f.size===20?null:f.size},replaceUrl:true});}
 }
 function parseFilters(params:import('@angular/router').ParamMap):AnimalFilters{const page=Number(params.get('page'));const size=Number(params.get('size'));const sex=params.get('sex');const status=params.get('status');return{search:(params.get('search')||'').slice(0,100),sex:sex==='FEMALE'||sex==='MALE'?sex:'',status:['ACTIVE','SOLD','DECEASED','TRANSFERRED','ARCHIVED'].includes(status||'')?status as AnimalStatus:'',page:Number.isInteger(page)&&page>=0?page:0,size:[20,50,100].includes(size)?size:20};}
-function today(){return new Date().toISOString().slice(0,10);}
+function today(){return localDateOnly();}
 function conflictText(error:unknown){return error instanceof AppError&&error.code==='HERD_VERSION_CONFLICT'?'Um dos animais foi atualizado em outra sessão. Recarregue a lista antes de tentar novamente.':error instanceof AppError?error.message:'Não foi possível concluir a movimentação.';}

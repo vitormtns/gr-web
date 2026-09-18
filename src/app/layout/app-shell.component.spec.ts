@@ -54,6 +54,7 @@ describe('AppShellComponent', () => {
   it('marca a navegação ativa e oculta o conteúdo anterior durante a troca de contexto', async () => {
     const pending = signal(false);
     const context = {
+      status: signal('ready'), retry: vi.fn(),
       transitionPending: pending,
       organizations: signal([]), farms: signal([]), selectedOrganization: signal(null), selectedFarm: signal(null),
       user: signal({ displayName: 'Vítor Martins', email: 'vitor@fazenda.com.br' }), role: signal('OWNER'), clear: vi.fn(),
