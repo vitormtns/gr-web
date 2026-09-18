@@ -66,7 +66,6 @@ import { PaddockTotal, TerritoryItem, mapTerritory } from './dashboard.models';
       <div class="territory-loading" aria-label="Carregando rebanho"><gr-skeleton /><div><gr-skeleton /><gr-skeleton /><gr-skeleton /></div></div>
     }
   </section>`,
-  styleUrl: './territory-overview.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TerritoryOverviewComponent {

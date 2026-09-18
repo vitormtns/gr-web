@@ -11,7 +11,7 @@ import { TerritoryOverviewComponent } from './territory-overview.component';
   selector: 'app-home-page',
   providers: [DashboardStore],
   imports: [RouterLink, EmptyStateComponent, ErrorStateComponent, SkeletonComponent, ActivityChartComponent, TerritoryOverviewComponent],
-  template: `<div class="dashboard page-enter">
+  template: `<div class="dashboard premium-home page-enter">
     <header class="dashboard-hero">
       <div class="hero-copy">
         <span class="eyebrow">VISÃO GERAL DA OPERAÇÃO</span>
@@ -46,6 +46,15 @@ import { TerritoryOverviewComponent } from './territory-overview.component';
       <gr-empty-state title="Nenhuma fazenda disponível" description="Peça ao administrador para revisar seu acesso às fazendas." />
     }
     @else {
+      @if(store.overview().status==='ready' && store.overview().value; as overview){
+        <section class="metric-strip" aria-label="Estado atual da operação">
+          <div class="metric-cell primary"><i class="metric-symbol" aria-hidden="true"></i><div><span>Animais ativos</span><strong>{{formatNumber(overview.herdSnapshot.activeAnimals)}}</strong></div></div>
+          <div class="metric-cell"><i class="metric-symbol" aria-hidden="true"></i><div><span>Piquetes cadastrados</span><strong>{{formatNumber(paddockCount())}}</strong></div></div>
+          <div class="metric-cell"><i class="metric-symbol" aria-hidden="true"></i><div><span>Piquetes ocupados</span><strong>{{formatNumber(occupiedPaddocks())}}</strong></div></div>
+          <div class="metric-cell" [class.warning]="overview.herdSnapshot.unlocatedAnimals>0"><i class="metric-symbol" aria-hidden="true"></i><div><span>Sem localização</span><strong>{{formatNumber(overview.herdSnapshot.unlocatedAnimals)}}</strong></div></div>
+          <div class="metric-cell attention"><i class="metric-symbol" aria-hidden="true"></i><div><span>Para acompanhar</span><strong>{{formatNumber(attentionTotal())}}</strong></div></div>
+        </section>
+      } @else {<div class="metric-strip metric-loading" aria-label="Carregando estado da operação"><gr-skeleton /><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>}
       <div class="primary-grid">
         <app-territory-overview />
 
@@ -122,7 +131,7 @@ import { TerritoryOverviewComponent } from './territory-overview.component';
         }
       </section>
 
-      <div class="secondary-grid">
+      <div class="operations-grid">
         <section class="agenda-section surface-panel" aria-labelledby="agenda-title">
           <div class="section-heading">
             <div><span class="section-kicker">PRÓXIMOS PASSOS</span><h2 id="agenda-title">Agenda operacional</h2></div>
@@ -204,7 +213,6 @@ import { TerritoryOverviewComponent } from './territory-overview.component';
       </div>
     }
   </div>`,
-  styleUrl: './home-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomePageComponent {
@@ -260,6 +268,9 @@ export class HomePageComponent {
   }
 
   toggleItem(id: string): void { this.openItem.set(this.openItem() === id ? null : id); }
+  paddockCount(): number { return this.store.paddocks().value?.length ?? this.store.overview().value?.herdSnapshot.byPaddock.length ?? 0; }
+  occupiedPaddocks(): number { return this.store.overview().value?.herdSnapshot.byPaddock.filter(item => item.total > 0).length ?? 0; }
+  attentionTotal(): number { const value=this.store.overview().value?.attention; return value ? value.vaccinationDue+value.dewormingDue+value.weighingDue+value.calvingUpcoming+value.calvingOverdue+value.openPlannerItems : 0; }
   retryContext(): void { void this.context.retry().catch(() => {}); }
   queue = mapQueueItem;
   formatNumber(value: number): string { return new Intl.NumberFormat('pt-BR').format(value); }
