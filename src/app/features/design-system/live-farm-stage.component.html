@@ -1,0 +1,70 @@
+<section class="experience" aria-labelledby="farm-title">
+  <header class="experience-header">
+    <div class="farm-context">
+      <span class="farm-symbol" aria-hidden="true"><i></i><i></i><i></i></span>
+      <div>
+        <span>Contexto ativo · operação simulada</span>
+        <h1 id="farm-title">Fazenda Norte</h1>
+      </div>
+    </div>
+    <div class="farm-summary">
+      <span><strong>428</strong> animais</span><i></i><span><strong>6</strong> piquetes</span><i></i
+      ><span
+        ><strong>{{ state.attentionCount() }}</strong> atenções</span
+      >
+    </div>
+    <div class="stage-clock">
+      <span>18 SET 2026</span><strong>14:37</strong><small>Brasília · UTC−3</small>
+    </div>
+  </header>
+
+  <div class="state-bar">
+    <div class="state-group">
+      <span>Animal</span>
+      @for (animal of animals; track animal.id) {
+        <button
+          type="button"
+          [class.active]="state.selectedAnimalId() === animal.id"
+          (click)="state.selectAnimal(animal.id)"
+        >
+          {{ animal.name }}
+        </button>
+      }
+    </div>
+    <div class="state-group">
+      <span>Período</span>
+      @for (period of periods; track period.id) {
+        <button
+          type="button"
+          [class.active]="state.selectedPeriod() === period.id"
+          (click)="state.selectedPeriod.set(period.id)"
+        >
+          {{ period.label }}
+        </button>
+      }
+    </div>
+    <div class="state-group scenario">
+      <span>Cenário</span>
+      @for (scenario of scenarios; track scenario.id) {
+        <button
+          type="button"
+          [class.active]="state.scenario() === scenario.id"
+          (click)="state.scenario.set(scenario.id)"
+        >
+          {{ scenario.label }}
+        </button>
+      }
+    </div>
+    <span class="dev-mark">DEV DATA</span>
+  </div>
+
+  <gr-live-metric-deck />
+  <div class="operation-board" [class.focus-mode]="state.focusedDomain()">
+    <gr-live-territory class="territory-object" />
+    <gr-animal-signal class="animal-object" />
+    <gr-attention-stack class="attention-object" />
+    <gr-movement-path class="movement-object" />
+    <gr-animal-lenses class="lenses-object" />
+    <gr-operation-stream class="stream-object" />
+  </div>
+</section>

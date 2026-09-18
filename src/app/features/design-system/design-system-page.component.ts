@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { LucideDynamicIcon, LucideRefreshCw, provideLucideIcons } from '@lucide/angular';
+import {
+  LucideDynamicIcon,
+  LucideInfo,
+  LucideRefreshCw,
+  provideLucideIcons,
+} from '@lucide/angular';
 import {
   AttentionItemComponent,
   FilterBarComponent,
-  MetricComponent,
   PaginationComponent,
   StatusIndicatorComponent,
   TableComponent,
@@ -47,10 +51,12 @@ import {
 import {
   DesignSystemLabBaseThemeComponent,
   DesignSystemLabBaseExtraThemeComponent,
+  DesignSystemLabCardsThemeComponent,
   DesignSystemLabPatternsThemeComponent,
   DesignSystemLabPatternsExtraThemeComponent,
   DesignSystemLabResponsiveThemeComponent,
 } from './design-system-lab-themes';
+import { LiveFarmStageComponent } from './live-farm-stage.component';
 
 @Component({
   selector: 'app-design-system-page',
@@ -59,7 +65,6 @@ import {
     LucideDynamicIcon,
     AttentionItemComponent,
     FilterBarComponent,
-    MetricComponent,
     PaginationComponent,
     StatusIndicatorComponent,
     TableComponent,
@@ -90,35 +95,24 @@ import {
     PopoverComponent,
     DesignSystemLabBaseThemeComponent,
     DesignSystemLabBaseExtraThemeComponent,
+    DesignSystemLabCardsThemeComponent,
     DesignSystemLabPatternsThemeComponent,
     DesignSystemLabPatternsExtraThemeComponent,
     DesignSystemLabResponsiveThemeComponent,
+    LiveFarmStageComponent,
   ],
   templateUrl: './design-system-page.component.html',
-  providers: [provideLucideIcons(LucideRefreshCw)],
+  providers: [provideLucideIcons(LucideInfo, LucideRefreshCw)],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DesignSystemPageComponent {
-  readonly document = document;
   readonly nav = [
-    ['overview', 'Visão geral'],
-    ['foundations', 'Fundamentos'],
-    ['typography', 'Tipografia'],
-    ['colors', 'Cores'],
-    ['surfaces', 'Superfícies'],
-    ['controls', 'Controles'],
-    ['forms', 'Formulários'],
-    ['status', 'Status e métricas'],
-    ['tables', 'Tabelas'],
-    ['timeline', 'Tempo'],
-    ['process', 'Processos'],
-    ['territory', 'Território'],
-    ['data-viz', 'Visualização'],
-    ['feedback', 'Feedback'],
-    ['overlays', 'Camadas'],
-    ['motion', 'Movimento'],
-    ['archetypes', 'Arquétipos'],
-    ['states', 'Interação'],
+    ['experience', 'Experience'],
+    ['foundations', 'Foundations'],
+    ['objects', 'Objects'],
+    ['tables', 'Data'],
+    ['motion', 'Motion'],
+    ['archetypes', 'Archetypes'],
   ];
   readonly colors = [
     { name: 'Canvas mineral', token: '--color-bg', value: '#F4F7F4' },

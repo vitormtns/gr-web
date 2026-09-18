@@ -189,3 +189,111 @@
   }
 }
 
+.lab-commandbar {
+  position: sticky;
+  z-index: 60;
+  top: 0;
+  height: 56px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+  padding: 0 clamp(14px, 2vw, 28px);
+  border-bottom: 1px solid #d2ddd4;
+  background: rgb(250 252 250 / 94%);
+  backdrop-filter: blur(14px);
+}
+.lab-commandbar .brand {
+  margin: 0;
+}
+.lab-commandbar .brand-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+.lab-commandbar .brand strong {
+  font-size: 14px;
+}
+.lab-commandbar .brand small {
+  font-size: 7px;
+}
+.lab-commandbar nav {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+.lab-commandbar nav a {
+  min-height: 31px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: #5d6f63;
+  font-size: 9px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.lab-commandbar nav a:hover,
+.lab-commandbar nav a:focus-visible {
+  color: #155b3b;
+  background: #e5f1e9;
+}
+.lab-commandbar .lab-status {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.lab-commandbar .lab-status strong {
+  font-size: 9px;
+}
+.catalog-bridge {
+  width: min(90rem, calc(100% - 3rem));
+  margin: 0 auto;
+  padding: 64px 0 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+.catalog-bridge > span {
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.catalog-bridge h2 {
+  margin: 8px 0 4px;
+  font-size: 28px;
+  letter-spacing: -0.04em;
+}
+.catalog-bridge p {
+  margin: 0;
+}
+.lab-shell main {
+  padding: 0;
+}
+@media (max-width: 64rem) {
+  .lab-commandbar {
+    grid-template-columns: auto 1fr;
+  }
+  .lab-commandbar nav {
+    justify-content: flex-end;
+    overflow: auto;
+  }
+  .lab-commandbar .lab-status {
+    display: none;
+  }
+}
+@media (max-width: 46rem) {
+  .lab-commandbar .brand small {
+    display: none;
+  }
+  .lab-commandbar {
+    gap: 10px;
+  }
+  .lab-commandbar nav a {
+    padding: 0 7px;
+  }
+  .lab-section,
+  .catalog-bridge {
+    width: calc(100% - 2rem);
+  }
+}

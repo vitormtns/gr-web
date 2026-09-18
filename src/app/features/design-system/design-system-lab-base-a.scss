@@ -16,7 +16,6 @@ app-design-system-page {
   --gr-color-violet-700: #7057a8;
 }
 .lab-shell {
-  --lab-nav: 13.5rem;
   min-height: 100vh;
 }
 .lab-nav {
@@ -123,9 +122,9 @@ app-design-system-page {
   font-size: 0.625rem;
 }
 main {
-  max-width: 96rem;
-  margin-left: var(--lab-nav);
-  padding: 0 clamp(2rem, 5vw, 5rem);
+  max-width: none;
+  margin-left: 0;
+  padding: 0;
 }
 section {
   scroll-margin-top: 1rem;
@@ -297,4 +296,3 @@ section {
   color: var(--color-warning);
   letter-spacing: 0.06em;
 }
-

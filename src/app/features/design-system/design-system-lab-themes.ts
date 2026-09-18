@@ -37,6 +37,15 @@ export class DesignSystemLabPatternsThemeComponent {}
 export class DesignSystemLabPatternsExtraThemeComponent {}
 
 @Component({
+  selector: 'gr-lab-theme-cards',
+  template: '',
+  styleUrl: './design-system-lab-cards.scss',
+  encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class DesignSystemLabCardsThemeComponent {}
+
+@Component({
   selector: 'gr-lab-theme-responsive',
   template: '',
   styleUrl: './design-system-lab-responsive.scss',

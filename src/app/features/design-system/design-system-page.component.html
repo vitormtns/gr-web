@@ -1,74 +1,82 @@
 <div class="lab-shell">
   <gr-lab-theme-base />
   <gr-lab-theme-base-extra />
+  <gr-lab-theme-cards />
   <gr-lab-theme-patterns />
   <gr-lab-theme-patterns-extra />
   <gr-lab-theme-responsive />
-  <aside class="lab-nav" aria-label="Navegação do Design System">
-    <a class="brand" href="#overview"
+  <header class="lab-commandbar">
+    <a class="brand" href="#experience"
       ><span class="brand-mark"><i></i></span
-      ><span><strong>BovNex</strong><small>Territory UI · V2</small></span></a
+      ><span><strong>BovNex</strong><small>Territory UI · Live Lab</small></span></a
     >
-    <nav>
+    <nav aria-label="Navegação do laboratório">
       @for (item of nav; track item[0]) {
         <a [href]="'#' + item[0]">{{ item[1] }}</a>
       }
     </nav>
     <div class="lab-status">
       <span></span>
-      <div><strong>Ambiente de laboratório</strong><small>Dados demonstrativos</small></div>
+      <div><strong>Contexto demonstrativo</strong><small>Isolado da produção</small></div>
     </div>
-  </aside>
+  </header>
   <main>
-    <section class="hero page-enter" id="overview">
-      <div class="hero-copy">
-        <span class="kicker">Precision agriculture · Calm technology</span>
-        <h1>Territory <em>UI</em></h1>
-        <p>
-          Uma linguagem visual para compreender território, movimento, tempo e estado — sem perder a
-          calma operacional.
-        </p>
-        <div class="hero-actions">
-          <gr-button (pressed)="document.getElementById('territory')?.scrollIntoView()"
-            >Explorar território</gr-button
-          ><gr-button
-            variant="secondary"
-            (pressed)="document.getElementById('controls')?.scrollIntoView()"
-            >Ver componentes</gr-button
-          >
+    <gr-live-farm-stage id="experience" />
+    <section class="catalog-bridge">
+      <span>Territory UI · referência secundária</span>
+      <h2>Objetos, dados e comportamentos</h2>
+      <p>Primitives e estados que sustentam a experiência operacional acima.</p>
+    </section>
+    <section class="lab-section" id="objects">
+      <div class="section-heading inline">
+        <div>
+          <span>Objetos operacionais</span>
+          <h2>Cards que trabalham, não decoram</h2>
         </div>
+        <p>Default · seleção · atenção · expansão</p>
       </div>
-      <div class="hero-instrument" aria-label="Pulso operacional demonstrativo">
-        <div class="orbit one"></div>
-        <div class="orbit two"></div>
-        <div class="plot p1"><span>245</span><small>Pasto Norte 1</small></div>
-        <div class="plot p2"><span>198</span><small>Pasto Leste</small></div>
-        <div class="plot p3"><span>312</span><small>Pasto Sul</small></div>
-        <svg viewBox="0 0 420 250" aria-hidden="true">
-          <path d="M74 160 C142 82 190 180 246 117 S330 70 365 102" />
-          <circle cx="74" cy="160" r="5" />
-          <circle cx="246" cy="117" r="5" />
-          <circle cx="365" cy="102" r="5" />
-        </svg>
-        <div class="instrument-label"><span></span>Operação conectada</div>
-      </div>
-      <div class="fixture-note">
-        <strong>DEV SHOWCASE DATA</strong
-        ><span>Conteúdo fictício, identificado e isolado da produção.</span>
+      <div class="operational-card-gallery">
+        <article class="gallery-metric">
+          <span>Animais ativos</span><strong>428</strong
+          ><svg viewBox="0 0 100 30"><path d="M1 24L18 20L34 22L51 11L68 15L83 7L99 9" /></svg
+          ><small>6 piquetes</small>
+        </article>
+        <article class="gallery-entity selected">
+          <span>Entidade</span><strong>Mimosa</strong><code>BR-0187</code>
+          <p>⌖ Pasto Norte 1 · 438 kg</p>
+        </article>
+        <article class="gallery-signal">
+          <span>Pesagem</span><strong>438 <small>kg</small></strong>
+          <p>Última leitura · 04 set.</p>
+        </article>
+        <article class="gallery-attention">
+          <span>Requer ação</span><strong>Pesagem pendente</strong>
+          <p>Mimosa · vence hoje</p>
+          <button type="button">Revisar →</button>
+        </article>
+        <article class="gallery-process">
+          <span>Processo</span><strong>Gestação</strong>
+          <div><i class="done"></i><i class="done"></i><i class="current"></i><i></i></div>
+          <p>Confirmação · Aurora</p>
+        </article>
+        <article class="gallery-temporal">
+          <time>09:31</time><span>Movimentação</span><strong>Norte 1 → Sul</strong
+          ><small>18 animais</small>
+        </article>
+        <article class="gallery-spatial">
+          <span>Espaço</span
+          ><svg viewBox="0 0 120 60">
+            <path d="M5 7L53 3L62 30L40 53L8 44Z" />
+            <path d="M58 5L113 9L107 51L65 32Z" /></svg
+          ><strong>Pasto Norte 1</strong>
+        </article>
+        <button type="button" class="gallery-expandable">
+          <span>Leitura integrada</span><strong>3 sinais conectados</strong>
+          <p>Abra sem perder o contexto atual.</p>
+          <b>Expandir ↗</b>
+        </button>
       </div>
     </section>
-    <div class="metric-strip" aria-label="Métricas demonstrativas">
-      <gr-metric label="Animais acompanhados" value="1.284" detail="Base demonstrativa" /><gr-metric
-        label="Áreas em operação"
-        value="04"
-        detail="de 5 cadastradas"
-      /><gr-metric label="Movimentos hoje" value="12" detail="última atualização 08:40" /><gr-metric
-        label="Atenções abertas"
-        value="03"
-        detail="1 requer ação hoje"
-      />
-    </div>
-
     <section class="lab-section" id="foundations">
       <div class="section-heading">
         <span>01 · Fundamentos</span>
