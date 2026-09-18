@@ -26,12 +26,14 @@ import { DEMO_ANIMALS, LiveFarmState, PADDOCKS } from './live-farm.state';
       .deck {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 5px;
-        padding: 6px;
-        border: 1px solid #244f39;
-        border-radius: 15px;
-        background: linear-gradient(115deg, #103b29, #173f30 64%, #183a35);
-        box-shadow: 0 9px 24px rgb(10 43 27/0.15);
+        gap: 0;
+        overflow: hidden;
+        border: 1px solid #d6ded5;
+        border-radius: 14px;
+        background: rgb(250 251 247/0.9);
+        box-shadow:
+          0 10px 30px rgb(35 52 39/0.06),
+          inset 0 1px #fff;
       }
       article {
         position: relative;
@@ -41,20 +43,21 @@ import { DEMO_ANIMALS, LiveFarmState, PADDOCKS } from './live-farm.state';
         align-items: center;
         gap: 9px;
         overflow: hidden;
-        padding: 10px 12px;
-        border: 1px solid rgb(255 255 255/0.11);
-        border-radius: 12px;
-        color: #eaf3ec;
-        background: rgb(255 255 255/0.045);
+        padding: 11px 15px;
+        border-right: 1px solid #dfe5dc;
+        color: #183025;
+        background: transparent;
         transition:
-          transform var(--duration-fast),
           background var(--duration-fast),
-          border-color var(--duration-fast);
+          box-shadow var(--duration-fast);
+      }
+      article:last-child {
+        border-right: 0;
       }
       article:hover {
-        transform: translateY(-1px);
-        border-color: rgb(255 255 255/0.24);
-        background: rgb(255 255 255/0.08);
+        z-index: 1;
+        background: #fff;
+        box-shadow: 0 7px 20px rgb(34 55 40/0.08);
       }
       .icon {
         width: 28px;
@@ -62,15 +65,15 @@ import { DEMO_ANIMALS, LiveFarmState, PADDOCKS } from './live-farm.state';
         display: grid;
         place-items: center;
         border-radius: 9px;
-        color: #a9cfb5;
-        background: rgb(139 194 155/0.12);
+        color: #1a6243;
+        background: #e4eee5;
         font-size: 14px;
       }
       article > div {
         display: grid;
       }
       small {
-        color: #9db0a3;
+        color: #6d7d71;
         font-size: 9px;
         font-weight: 700;
         letter-spacing: 0.08em;
@@ -83,7 +86,7 @@ import { DEMO_ANIMALS, LiveFarmState, PADDOCKS } from './live-farm.state';
         font-variant-numeric: tabular-nums;
       }
       div > span {
-        color: #9db0a3;
+        color: #78857c;
         font-size: 9px;
       }
       svg {
@@ -92,18 +95,19 @@ import { DEMO_ANIMALS, LiveFarmState, PADDOCKS } from './live-farm.state';
       }
       path {
         fill: none;
-        stroke: #79ad8a;
+        stroke: #518866;
         stroke-width: 2;
       }
       .attention .icon {
-        color: #f0bd72;
-        background: rgb(182 106 8/0.16);
+        color: #a6630c;
+        background: #fff0d8;
       }
       .attention path {
         stroke: #d79231;
       }
       .movement .icon {
-        color: #77b5c9;
+        color: #327989;
+        background: #e3f0f1;
       }
       .movement path {
         stroke: #4f91aa;
@@ -111,6 +115,12 @@ import { DEMO_ANIMALS, LiveFarmState, PADDOCKS } from './live-farm.state';
       @media (max-width: 64rem) {
         .deck {
           grid-template-columns: repeat(2, 1fr);
+        }
+        article:nth-child(2) {
+          border-right: 0;
+        }
+        article:nth-child(-n + 2) {
+          border-bottom: 1px solid #dfe5dc;
         }
       }
     `,
@@ -195,17 +205,21 @@ export class LiveMetricDeckComponent {
       aria-label="Seis piquetes abstratos da Fazenda Norte; representação operacional sem escala"
     >
       <defs>
-        <pattern id="live-grid" width="24" height="24" patternUnits="userSpaceOnUse">
-          <path d="M24 0H0V24" />
+        <pattern id="live-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path class="grid-line" d="M40 0H0V40" />
         </pattern>
-        <pattern id="density" width="13" height="13" patternUnits="userSpaceOnUse">
-          <circle cx="3" cy="4" r="1.25" />
-          <circle cx="10" cy="9" r=".8" />
+        <pattern id="density" width="17" height="17" patternUnits="userSpaceOnUse">
+          <circle cx="4" cy="5" r="1.15" />
+          <circle cx="13" cy="11" r=".7" />
         </pattern>
         <filter id="region-depth">
-          <feDropShadow dx="0" dy="4" stdDeviation="5" flood-opacity=".12" />
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#263a2d" flood-opacity=".08" />
+        </filter>
+        <filter id="region-focus">
+          <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#20392a" flood-opacity=".2" />
         </filter>
       </defs>
+      <rect class="field-base" width="720" height="390" />
       <rect class="field-grid" width="720" height="390" fill="url(#live-grid)" />
       <path
         class="contours"
@@ -214,6 +228,7 @@ export class LiveMetricDeckComponent {
       @for (p of paddocks; track p.id) {
         <g
           class="region"
+          [attr.data-region]="p.id"
           [class.active]="state.activePaddockId() === p.id"
           [class.related]="animalIds(p.id).length"
           [class.receded]="state.hoveredPaddockId() && state.hoveredPaddockId() !== p.id"
@@ -233,7 +248,7 @@ export class LiveMetricDeckComponent {
             class="grain"
             [attr.d]="path(p.id)"
             fill="url(#density)"
-            [style.opacity]="p.level * 0.72"
+            [style.opacity]="p.level * 0.32"
           />
           <text [attr.x]="position(p.id)[0]" [attr.y]="position(p.id)[1]">
             <tspan class="name">{{ p.name }}</tspan>
@@ -274,21 +289,21 @@ export class LiveMetricDeckComponent {
         display: grid;
         grid-template-rows: auto 1fr auto;
         overflow: hidden;
-        border: 1px solid #b9cec0;
-        border-radius: 18px;
-        background: linear-gradient(145deg, #dce9df, #c7dacb 62%, #b9d0c0);
+        border: 1px solid #c5d0c5;
+        border-radius: 20px;
+        background: linear-gradient(145deg, #e4e9e0, #d3ddd2 62%, #c8d6ca);
         box-shadow:
-          0 16px 40px rgb(11 43 26/0.12),
+          0 18px 42px rgb(30 48 34/0.1),
           inset 0 1px rgb(255 255 255/0.7);
         transition:
           border-color var(--duration-standard),
           box-shadow var(--duration-standard);
       }
       .territory.focused {
-        border-color: #56876a;
+        border-color: #8aa596;
         box-shadow:
-          0 18px 46px rgb(11 43 26/0.17),
-          0 0 0 2px rgb(21 91 59/0.09);
+          0 20px 48px rgb(24 51 34/0.14),
+          inset 0 1px #fff;
       }
       header {
         position: relative;
@@ -297,8 +312,8 @@ export class LiveMetricDeckComponent {
         align-items: center;
         justify-content: space-between;
         padding: 13px 16px;
-        border-bottom: 1px solid rgb(21 91 59/0.14);
-        background: rgb(244 249 245/0.7);
+        border-bottom: 1px solid rgb(38 70 50/0.1);
+        background: rgb(248 249 245/0.84);
       }
       header span {
         color: #50705d;
@@ -330,17 +345,21 @@ export class LiveMetricDeckComponent {
         height: 100%;
         min-height: 270px;
       }
-      .field-grid {
-        color: rgb(21 91 59/0.08);
+      .field-base {
+        fill: #cfdacd;
       }
-      defs path {
+      .field-grid {
+        color: rgb(35 66 46/0.025);
+      }
+      .grid-line {
         fill: none;
-        stroke: currentColor;
-        stroke-width: 0.6;
+        stroke: rgb(44 70 52/0.075);
+        stroke-width: 0.45;
       }
       .contours {
         fill: none;
-        stroke: rgb(21 91 59/0.16);
+        stroke: rgb(52 80 61/0.1);
+        stroke-width: 1.2;
       }
       .region {
         outline: none;
@@ -348,33 +367,49 @@ export class LiveMetricDeckComponent {
         transition: opacity var(--duration-standard);
       }
       .land {
-        fill: rgb(242 247 243/0.6);
-        stroke: #8ca994;
-        stroke-width: 1.4;
+        fill: #e1e7de;
+        stroke: #9eaea0;
+        stroke-width: 1.15;
         transition:
           fill var(--duration-standard),
           stroke var(--duration-standard),
-          stroke-width var(--duration-standard);
+          stroke-width var(--duration-standard),
+          filter var(--duration-standard),
+          transform var(--duration-standard);
+      }
+      .region[data-region='norte-2'] .land,
+      .region[data-region='recria'] .land {
+        fill: #d8e1d7;
+      }
+      .region[data-region='sul'] .land,
+      .region[data-region='leste'] .land {
+        fill: #dce4da;
+      }
+      .region[data-region='maternidade'] .land {
+        fill: #e5e4d9;
       }
       .grain {
-        color: #4a8060;
+        color: #436f54;
         pointer-events: none;
+        transition: opacity var(--duration-standard);
       }
       .region:hover .land,
       .region:focus .land,
       .region.active .land {
-        fill: rgb(225 240 229/0.92);
-        stroke: #155b3b;
-        stroke-width: 3;
+        fill: #edf2e9;
+        stroke: #537762;
+        stroke-width: 1.8;
+        filter: url(#region-focus);
       }
       .region.active .grain {
-        opacity: 0.9 !important;
+        opacity: 0.58 !important;
       }
       .region:focus-visible .land {
-        filter: drop-shadow(0 0 4px rgb(21 91 59/0.4));
+        stroke: #174e35;
+        stroke-width: 2.2;
       }
       .region.receded {
-        opacity: 0.64;
+        opacity: 0.78;
       }
       .region text {
         pointer-events: none;
@@ -396,7 +431,8 @@ export class LiveMetricDeckComponent {
       .animal-node.selected {
         r: 6;
         fill: #0d402a;
-        stroke-width: 3;
+        stroke-width: 2.5;
+        filter: drop-shadow(0 3px 3px rgb(13 64 42/0.25));
       }
       .movement-line {
         fill: none;
@@ -430,9 +466,9 @@ export class LiveMetricDeckComponent {
         display: flex;
         gap: 16px;
         padding: 9px 14px;
-        border-top: 1px solid rgb(21 91 59/0.14);
+        border-top: 1px solid rgb(38 70 50/0.1);
         color: #557060;
-        background: rgb(244 249 245/0.66);
+        background: rgb(248 249 245/0.8);
         font-size: 9px;
       }
       footer span {
@@ -538,21 +574,38 @@ export class LiveTerritoryComponent {
       (click)="state.expandedAnimal.set(!state.expandedAnimal())"
     >
       <span class="location">⌖ {{ paddockName() }}</span>
-      <div class="weight">
-        <strong>{{ animal().weight }}</strong
-        ><span
-          >kg<br /><small>em {{ animal().lastWeight }}</small></span
+      <div class="vital-row">
+        <div class="weight">
+          <strong>{{ animal().weight }}</strong
+          ><span
+            >kg<br /><small>em {{ animal().lastWeight }}</small></span
+          >
+        </div>
+        <svg
+          class="weight-trend"
+          viewBox="0 0 96 32"
+          role="img"
+          [attr.aria-label]="
+            'Peso atual ' + animal().weight + ' kg; anterior ' + animal().previousWeight + ' kg'
+          "
         >
+          <path d="M2 27C18 26 24 19 36 21S56 11 68 14 82 6 94 5" />
+          <circle cx="94" cy="5" r="3" />
+        </svg>
       </div>
-      <div class="signal-line">
-        <span>Saúde</span><strong>{{ animal().health }}</strong>
+      <div class="domain-readings">
+        <div>
+          <span>Saúde</span><i class="health-dot"></i><strong>{{ animal().health }}</strong>
+        </div>
+        <div>
+          <span>Reprodução</span><i class="reproduction-dot"></i
+          ><strong>{{ animal().reproduction }}</strong>
+        </div>
       </div>
-      <div class="signal-line">
-        <span>Reprodução</span><strong>{{ animal().reproduction }}</strong>
-      </div>
-      <span class="expand-label"
-        >{{ state.expandedAnimal() ? 'Recolher contexto' : 'Abrir contexto' }} <b>↗</b></span
-      >
+      <span class="next-state">
+        <small>Próximo marco</small><strong>{{ animal().nextEvent }}</strong
+        ><b>{{ state.expandedAnimal() ? '−' : '+' }}</b>
+      </span>
     </button>
     @if (state.expandedAnimal()) {
       <div class="expanded-detail">
@@ -572,17 +625,22 @@ export class LiveTerritoryComponent {
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        border: 1px solid #d2ddd4;
-        border-radius: 16px;
-        background: linear-gradient(160deg, #fff 0%, #f7faf7 68%, #edf4ef);
-        box-shadow: 0 10px 28px rgb(13 41 25/0.08);
+        border: 1px solid #cbd8cd;
+        border-radius: 19px;
+        background: linear-gradient(160deg, #fff 0%, #f8faf6 60%, #edf3eb);
+        box-shadow:
+          0 14px 34px rgb(26 47 31/0.1),
+          inset 0 1px #fff;
         transition:
           transform var(--duration-standard),
           border-color var(--duration-standard);
       }
       .animal.related {
-        border-color: #6d987b;
-        transform: translateY(-1px);
+        border-color: #7e9f89;
+        transform: translateY(-2px);
+        box-shadow:
+          0 18px 38px rgb(27 58 37/0.14),
+          inset 0 1px #fff;
       }
       header {
         display: flex;
@@ -643,8 +701,8 @@ export class LiveTerritoryComponent {
         padding: 0 14px 9px;
       }
       .selectors button {
-        min-height: 25px;
-        padding: 0 8px;
+        min-height: 28px;
+        padding: 0 10px;
         border: 1px solid transparent;
         border-radius: 7px;
         color: #6b7d71;
@@ -659,9 +717,9 @@ export class LiveTerritoryComponent {
         font-weight: 700;
       }
       .signal-body {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 7px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
         flex: 1;
         padding: 11px 14px;
         border: 0;
@@ -672,10 +730,14 @@ export class LiveTerritoryComponent {
         cursor: pointer;
       }
       .location {
-        grid-column: 1/-1;
         color: #2c6446;
         font-size: 10px;
         font-weight: 700;
+      }
+      .vital-row {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
       }
       .weight {
         display: flex;
@@ -695,33 +757,89 @@ export class LiveTerritoryComponent {
       .weight small {
         font-size: 8px;
       }
-      .signal-line {
-        grid-column: 1/-1;
-        display: flex;
-        justify-content: space-between;
-        padding-top: 6px;
-        border-top: 1px solid #e2e9e4;
-        font-size: 9px;
+      .weight-trend {
+        width: 88px;
+        height: 30px;
       }
-      .signal-line span {
+      .weight-trend path {
+        fill: none;
+        stroke: #7057a8;
+        stroke-width: 2;
+      }
+      .weight-trend circle {
+        fill: #7057a8;
+        stroke: #f8faf6;
+        stroke-width: 2;
+      }
+      .domain-readings {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-top: 1px solid #e0e7df;
+        border-bottom: 1px solid #e0e7df;
+      }
+      .domain-readings > div {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 1px 6px;
+        padding: 7px 0;
+      }
+      .domain-readings > div + div {
+        padding-left: 10px;
+        border-left: 1px solid #e0e7df;
+      }
+      .domain-readings span {
         color: #718178;
+        font-size: 7px;
+        text-transform: uppercase;
       }
-      .signal-line strong {
-        font-size: 9px;
+      .domain-readings i {
+        align-self: center;
+        justify-self: end;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #2d8657;
       }
-      .expand-label {
+      .domain-readings .reproduction-dot {
+        background: #8063a4;
+      }
+      .domain-readings strong {
         grid-column: 1/-1;
-        align-self: end;
-        color: #155b3b;
+        overflow: hidden;
         font-size: 9px;
-        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      .expand-label b {
-        display: inline-block;
+      .next-state {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        margin-top: auto;
+        padding: 8px 9px;
+        border-radius: 9px;
+        color: #234b35;
+        background: #e7eee4;
+      }
+      .next-state small {
+        grid-column: 1;
+        color: #758277;
+        font-size: 7px;
+        text-transform: uppercase;
+      }
+      .next-state strong {
+        grid-column: 1;
+        font-size: 9px;
+      }
+      .next-state b {
+        grid-row: 1/3;
+        grid-column: 2;
+        font-size: 16px;
+        font-weight: 500;
         transition: transform var(--duration-fast);
       }
-      .signal-body:hover .expand-label b {
-        transform: translate(2px, -2px);
+      .signal-body:hover .next-state b {
+        transform: scale(1.15);
       }
       .expanded-detail {
         padding: 10px 14px;
@@ -780,6 +898,7 @@ export class AnimalSignalComponent {
       <button type="button" class="urgent" (focus)="state.focusedDomain.set('attention')">
         <span>Hoje</span>
         <div>
+          <em>Pesagem</em>
           <strong>{{ state.selectedAnimal().nextEvent }}</strong
           ><small>{{ state.selectedAnimal().name }} · {{ state.selectedAnimal().id }}</small>
         </div>
@@ -789,12 +908,15 @@ export class AnimalSignalComponent {
         <button type="button">
           <span>22<br />set.</span>
           <div>
+            <em>Peso</em>
             <strong>Conferir lote para pesagem</strong><small>Crescimento A · 18 animais</small>
           </div>
           <b>→</b></button
         ><button type="button">
           <span>24<br />set.</span>
-          <div><strong>Rotação de piquete</strong><small>Pasto Norte 2</small></div>
+          <div>
+            <em>Território</em><strong>Rotação de piquete</strong><small>Pasto Norte 2</small>
+          </div>
           <b>→</b>
         </button>
       }
@@ -810,9 +932,11 @@ export class AnimalSignalComponent {
         height: 100%;
         overflow: hidden;
         border: 1px solid #e3d8c5;
-        border-radius: 16px;
-        background: linear-gradient(155deg, #fffdf9, #f8f3e9);
-        box-shadow: 0 10px 28px rgb(77 48 10/0.07);
+        border-radius: 18px;
+        background: linear-gradient(155deg, #fffdf9, #f9f5ec);
+        box-shadow:
+          0 12px 30px rgb(77 48 10/0.075),
+          inset 0 1px #fff;
       }
       header {
         display: flex;
@@ -848,10 +972,11 @@ export class AnimalSignalComponent {
       .attention button {
         width: 100%;
         display: grid;
-        grid-template-columns: 28px 1fr auto;
+        grid-template-columns: 38px 1fr auto;
         align-items: center;
         gap: 9px;
-        padding: 10px 12px;
+        min-height: 56px;
+        padding: 9px 12px;
         border: 0;
         border-bottom: 1px solid #eee6d8;
         color: inherit;
@@ -865,7 +990,11 @@ export class AnimalSignalComponent {
         background: #fff6e7;
       }
       .attention button > span {
-        color: #8b7860;
+        display: grid;
+        place-items: center;
+        align-self: stretch;
+        border-right: 1px solid #eadfcd;
+        color: #8b6c43;
         font-size: 8px;
         font-weight: 750;
         text-align: center;
@@ -873,6 +1002,14 @@ export class AnimalSignalComponent {
       }
       .attention button div {
         display: grid;
+      }
+      .attention button em {
+        color: #a1600d;
+        font-size: 7px;
+        font-style: normal;
+        font-weight: 750;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
       }
       .attention button strong {
         overflow: hidden;
@@ -888,6 +1025,7 @@ export class AnimalSignalComponent {
         color: #a1600d;
       }
       .urgent {
+        background: rgb(255 248 236/0.7) !important;
         box-shadow: inset 3px 0 #c47a17;
       }
       .empty {
@@ -940,7 +1078,7 @@ export class AttentionStackComponent {
         <circle cx="4" cy="26" r="4" />
         <circle cx="256" cy="8" r="4" />
       </svg>
-      <div class="quantity"><strong>18</strong><span>animais</span></div>
+      <div class="quantity"><small>Em trânsito</small><strong>18</strong><span>animais</span></div>
       <div class="node destination">
         <i></i><span>Destino</span><strong>{{ destination() }}</strong>
       </div>
@@ -967,14 +1105,19 @@ export class AttentionStackComponent {
         min-width: 0;
       }
       .movement {
+        position: relative;
         height: 100%;
         display: grid;
         grid-template-rows: auto 1fr auto;
         overflow: hidden;
-        border: 1px solid #c9dde0;
-        border-radius: 16px;
-        background: linear-gradient(145deg, #f8fcfc, #eaf4f4);
-        box-shadow: 0 9px 24px rgb(24 72 79/0.07);
+        border: 1px solid #bdd4d5;
+        border-radius: 18px;
+        background:
+          radial-gradient(circle at 84% 20%, rgb(61 131 137/0.12), transparent 36%),
+          linear-gradient(145deg, #f9fcfa, #e8f1ef);
+        box-shadow:
+          0 13px 30px rgb(24 72 79/0.09),
+          inset 0 1px #fff;
       }
       header {
         display: flex;
@@ -999,7 +1142,8 @@ export class AttentionStackComponent {
         grid-template-columns: 1fr 70px 1fr;
         align-items: center;
         gap: 4px;
-        padding: 8px 13px;
+        min-height: 70px;
+        padding: 9px 14px;
       }
       .path svg {
         position: absolute;
@@ -1009,9 +1153,9 @@ export class AttentionStackComponent {
       }
       .path path {
         fill: none;
-        stroke: #3a8790;
-        stroke-width: 2;
-        stroke-dasharray: 5 5;
+        stroke: #347e84;
+        stroke-width: 2.3;
+        stroke-dasharray: 4 4;
       }
       .moving .path path {
         animation: path-travel 0.62s var(--ease-emphasized);
@@ -1034,17 +1178,25 @@ export class AttentionStackComponent {
       }
       .node strong {
         max-width: 90px;
-        font-size: 9px;
+        color: #173a3b;
+        font-size: 10px;
       }
       .quantity {
         position: relative;
         z-index: 2;
         display: grid;
         justify-items: center;
-        padding: 4px;
-        border: 1px solid #c8dcde;
-        border-radius: 9px;
-        background: #fff;
+        padding: 5px 7px;
+        border: 1px solid #b8d1d2;
+        border-radius: 10px;
+        background: rgb(255 255 255/0.9);
+        box-shadow: 0 5px 14px rgb(42 101 106/0.1);
+      }
+      .quantity small {
+        color: #377780;
+        font-size: 6px;
+        font-weight: 750;
+        text-transform: uppercase;
       }
       .quantity strong {
         font-size: 14px;
@@ -1054,11 +1206,11 @@ export class AttentionStackComponent {
         font-size: 7px;
       }
       .movement > button {
-        min-height: 31px;
+        min-height: 36px;
         border: 0;
         border-top: 1px solid #d5e4e5;
         color: #256875;
-        background: rgb(255 255 255/0.55);
+        background: rgb(255 255 255/0.7);
         font-size: 9px;
         font-weight: 750;
         cursor: pointer;
@@ -1160,18 +1312,30 @@ export class MovementPathComponent {
         height: 100%;
         display: grid;
         grid-template-columns: 0.9fr 0.85fr 1.5fr;
-        gap: 8px;
+        overflow: hidden;
+        border: 1px solid #d4d9d2;
+        border-radius: 18px;
+        background: #fbfcf9;
+        box-shadow:
+          0 12px 28px rgb(30 44 33/0.07),
+          inset 0 1px #fff;
       }
       .lenses article {
         min-width: 0;
-        padding: 10px 12px;
-        border: 1px solid #d7dfd8;
-        border-radius: 14px;
-        background: #fff;
-        box-shadow: 0 7px 20px rgb(14 38 23/0.055);
+        padding: 11px 12px;
+        border-left: 1px solid #e0e3dd;
+        background: transparent;
         transition:
           opacity var(--duration-standard),
-          transform var(--duration-standard);
+          transform var(--duration-standard),
+          background var(--duration-standard);
+      }
+      .lenses article:first-child {
+        border-left: 0;
+      }
+      .lenses article:hover,
+      .lenses article:focus-within {
+        background: #fff;
       }
       article.dimmed {
         opacity: 0.68;
@@ -1185,6 +1349,33 @@ export class MovementPathComponent {
         font-weight: 750;
         letter-spacing: 0.06em;
         text-transform: uppercase;
+      }
+      .lenses header::before {
+        width: 19px;
+        height: 19px;
+        display: grid;
+        place-items: center;
+        margin-right: 5px;
+        border-radius: 6px;
+        font-size: 9px;
+      }
+      .lenses header > span:first-child {
+        margin-right: auto;
+      }
+      .weight header::before {
+        color: #654c99;
+        background: #eee9f5;
+        content: '↗';
+      }
+      .health header::before {
+        color: #25704a;
+        background: #e4f0e7;
+        content: '+';
+      }
+      .reproduction header::before {
+        color: #73578f;
+        background: #f0eaf5;
+        content: '◇';
       }
       .weight > div {
         display: grid;
@@ -1214,7 +1405,7 @@ export class MovementPathComponent {
         stroke-width: 2;
       }
       .health {
-        background: linear-gradient(155deg, #fff, #eff7f1) !important;
+        background: linear-gradient(155deg, transparent, rgb(232 243 235/0.5)) !important;
       }
       .health header i {
         width: 7px;
@@ -1235,7 +1426,7 @@ export class MovementPathComponent {
         margin-top: 3px;
       }
       .reproduction {
-        background: linear-gradient(155deg, #fff, #f4f0f8) !important;
+        background: linear-gradient(155deg, transparent, rgb(241 236 246/0.58)) !important;
       }
       .reproduction ol {
         display: flex;
@@ -1294,6 +1485,8 @@ export class MovementPathComponent {
         }
         .reproduction {
           grid-column: 1/-1;
+          border-top: 1px solid #e0e3dd;
+          border-left: 0 !important;
         }
       }
     `,
@@ -1331,6 +1524,7 @@ export class AnimalLensesComponent {
           <time>{{ event.time }}</time
           ><i [class]="event.type"></i
           ><span
+            ><em>{{ domainLabel(event.type) }}</em
             ><strong>{{ event.title }}</strong
             ><small>{{ event.detail }}</small></span
           >
@@ -1355,9 +1549,11 @@ export class AnimalLensesComponent {
         grid-template-columns: 145px 1fr;
         overflow: hidden;
         border: 1px solid #d2dcd4;
-        border-radius: 16px;
-        background: #fbfdfb;
-        box-shadow: 0 9px 26px rgb(13 40 23/0.07);
+        border-radius: 18px;
+        background: #fbfcf8;
+        box-shadow:
+          0 12px 28px rgb(25 42 29/0.07),
+          inset 0 1px #fff;
       }
       header {
         display: grid;
@@ -1413,7 +1609,8 @@ export class AnimalLensesComponent {
       .events button:hover,
       .events button:focus-visible,
       .events button.related {
-        background: #eff6f1;
+        background: #edf3ed;
+        box-shadow: inset 0 -2px #6d9478;
       }
       .events time {
         color: #63756a;
@@ -1442,6 +1639,14 @@ export class AnimalLensesComponent {
       .events button span {
         display: grid;
       }
+      .events button em {
+        color: #63806c;
+        font-size: 6px;
+        font-style: normal;
+        font-weight: 750;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
       .events button strong {
         font-size: 9px;
       }
@@ -1467,6 +1672,18 @@ export class AnimalLensesComponent {
 export class OperationStreamComponent {
   readonly state = inject(LiveFarmState);
   readonly density = [8, 14, 10, 21, 17, 24, 12, 20, 16, 25, 18, 11, 22, 15, 19, 9, 16, 23];
+  domainLabel(type: string): string {
+    return (
+      (
+        {
+          movement: 'Território',
+          weight: 'Peso',
+          health: 'Saúde',
+          reproduction: 'Reprodução',
+        } as Record<string, string>
+      )[type] ?? 'Operação'
+    );
+  }
   focus(animalId: string, paddockId?: string): void {
     this.state.selectedAnimalId.set(animalId);
     if (paddockId) this.state.hoveredPaddockId.set(paddockId);

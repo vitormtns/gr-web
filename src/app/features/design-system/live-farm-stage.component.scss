@@ -11,18 +11,23 @@
   padding: 14px clamp(14px, 2vw, 28px) 18px;
   color: #112319;
   background:
-    radial-gradient(circle at 18% 8%, rgb(54 112 76/0.1), transparent 32%),
-    radial-gradient(circle at 88% 30%, rgb(53 106 138/0.07), transparent 28%), #e9efea;
+    radial-gradient(ellipse at 12% 8%, rgb(79 117 88/0.12), transparent 34%),
+    radial-gradient(ellipse at 88% 42%, rgb(80 122 130/0.075), transparent 30%),
+    linear-gradient(145deg, #eef1ec, #e8ede7 58%, #edf0ea);
 }
 .experience:before {
   position: absolute;
-  inset: 0;
+  top: 120px;
+  left: -180px;
+  width: 760px;
+  height: 270px;
   pointer-events: none;
-  opacity: 0.32;
-  background-image:
-    linear-gradient(rgb(21 91 59/0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(21 91 59/0.035) 1px, transparent 1px);
-  background-size: 28px 28px;
+  border: 1px solid rgb(66 91 72/0.07);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 24px rgb(66 91 72/0.025),
+    0 0 0 52px rgb(66 91 72/0.018);
+  transform: rotate(-8deg);
   content: '';
 }
 .experience > * {
@@ -47,9 +52,9 @@
   height: 39px;
   display: grid;
   place-items: center;
-  border-radius: 13px;
-  background: #124c33;
-  box-shadow: 0 7px 16px rgb(13 57 37/0.2);
+  border-radius: 14px 10px 15px 9px;
+  background: linear-gradient(145deg, #174f37, #0f3e2b);
+  box-shadow: 0 8px 18px rgb(13 57 37/0.16);
 }
 .farm-symbol:before {
   width: 20px;
@@ -99,9 +104,8 @@
   align-items: center;
   gap: 12px;
   padding: 9px 15px;
-  border: 1px solid #d4dfd6;
-  border-radius: 12px;
-  background: rgb(255 255 255/0.56);
+  border-block: 1px solid #d2ddd3;
+  background: rgb(255 255 255/0.28);
   color: #617267;
   font-size: 9px;
 }
@@ -144,9 +148,9 @@
   align-items: center;
   gap: 14px;
   padding: 4px 6px 4px 10px;
-  border: 1px solid #d4dfd6;
+  border: 1px solid #d7ded6;
   border-radius: 11px;
-  background: rgb(255 255 255/0.72);
+  background: rgb(253 253 249/0.78);
   box-shadow: 0 4px 14px rgb(14 42 24/0.04);
 }
 .state-group {
@@ -163,7 +167,7 @@
   text-transform: uppercase;
 }
 .state-group button {
-  min-height: 25px;
+  min-height: 28px;
   padding: 0 8px;
   border: 1px solid transparent;
   border-radius: 7px;
@@ -212,9 +216,27 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(430px, 1.48fr) minmax(210px, 0.72fr) minmax(230px, 0.78fr);
-  grid-template-rows: minmax(225px, 1.65fr) minmax(130px, 1fr) minmax(92px, 0.68fr);
+  grid-template-rows: minmax(228px, 1.62fr) minmax(140px, 1fr) minmax(98px, 0.7fr);
   grid-template-areas: 'territory animal attention' 'territory movement lenses' 'stream stream stream';
   gap: 9px;
+}
+.operation-board > * {
+  position: relative;
+  transition:
+    transform var(--duration-standard) var(--ease-emphasized),
+    opacity var(--duration-standard),
+    filter var(--duration-standard);
+}
+.operation-board[data-focus='animal'] > .animal-object,
+.operation-board[data-focus='animal'] > .lenses-object,
+.operation-board[data-focus='stream'] > .stream-object,
+.operation-board[data-focus='territory'] > .territory-object,
+.operation-board[data-focus='attention'] > .attention-object {
+  z-index: 2;
+  transform: translateY(-2px);
+}
+.operation-board[data-focus='animal'] > .attention-object {
+  opacity: 0.88;
 }
 .operation-board > gr-live-territory {
   grid-area: territory;

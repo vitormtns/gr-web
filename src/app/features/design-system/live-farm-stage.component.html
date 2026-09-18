@@ -59,7 +59,11 @@
   </div>
 
   <gr-live-metric-deck />
-  <div class="operation-board" [class.focus-mode]="state.focusedDomain()">
+  <div
+    class="operation-board"
+    [class.focus-mode]="state.focusedDomain()"
+    [attr.data-focus]="state.focusedDomain()"
+  >
     <gr-live-territory class="territory-object" />
     <gr-animal-signal class="animal-object" />
     <gr-attention-stack class="attention-object" />
