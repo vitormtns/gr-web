@@ -26,15 +26,18 @@ Use apenas a chave pública `anon`/publishable. Nunca use `service_role`, senha 
 ## Comandos
 
 ```bash
-npm install
+npm ci
 npm start
 npm run start:local
 npm test
+npm run typecheck:app
+npm run typecheck:spec
 npm run build
+npm run serve:production
 npm run check
 ```
 
-`npm start` serve a interface com placeholders seguros; `npm run start:local` usa a configuração local real. O build de produção nunca lê `environment.local.ts`.
+Use `npm ci` em CI e validações de release. `npm start` serve a interface com placeholders seguros; `npm run start:local` usa a configuração local real. `npm run check` executa os dois typechecks, a suíte completa e o build otimizado. O build de produção nunca lê `environment.local.ts`.
 
 ## Smoke de integração local
 
@@ -70,3 +73,4 @@ Signals armazenam estado local e contextual; RxJS permanece no transporte HTTP. 
 - [Design System v1](docs/design-system/design-system-v1.md)
 - [Integração com o backend](docs/integration/backend-api.md)
 - [Auditoria da Phase 01](docs/phase-01-audit.md)
+- [Portal MVP Readiness, runbook e checklist de release](docs/portal-mvp-readiness.md)
