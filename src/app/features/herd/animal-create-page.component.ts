@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AppError } from '../../core/api/api.models';
+import { localDateOnly } from '../../core/date/date-only';
 import { AlertComponent } from '../../design-system/feedback/feedback';
 import { HerdApi } from './herd-api.service';
 import { AnimalSex, newUuid } from './herd.models';
@@ -16,7 +17,7 @@ import { AnimalSex, newUuid } from './herd.models';
     </form></div>`,changeDetection:ChangeDetectionStrategy.OnPush,
 })
 export class AnimalCreatePageComponent {
-  private readonly api=inject(HerdApi);private readonly router=inject(Router);readonly pending=signal(false);readonly error=signal<AppError|null>(null);readonly today=new Date().toISOString().slice(0,10);readonly operationId=newUuid();identification='';name='';sex:AnimalSex|''='';birthDate='';private saved=false;
+  private readonly api=inject(HerdApi);private readonly router=inject(Router);readonly pending=signal(false);readonly error=signal<AppError|null>(null);readonly today=localDateOnly();readonly operationId=newUuid();identification='';name='';sex:AnimalSex|''='';birthDate='';private saved=false;
   dirty(){return !!(this.identification||this.name||this.sex||this.birthDate)&&!this.saved;}
   canDeactivate(){return !this.dirty()||confirm('Descartar as informações deste animal?');}
   @HostListener('window:beforeunload',['$event']) beforeUnload(event:BeforeUnloadEvent){if(this.dirty())event.preventDefault();}

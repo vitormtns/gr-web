@@ -5,7 +5,7 @@ import { normalizeApiError } from './error-normalizer';
 describe('normalizeApiError', () => {
   it.each([
     [400,'validation'],[401,'unauthorized'],[403,'forbidden'],[404,'not-found'],
-    [409,'conflict'],[500,'unexpected'],[503,'unavailable'],[0,'unavailable'],
+    [409,'conflict'],[429,'rate-limited'],[500,'unexpected'],[502,'unavailable'],[503,'unavailable'],[0,'unavailable'],
   ] as const)('mapeia HTTP %i para %s', (status, kind) => {
     expect(normalizeApiError(new HttpErrorResponse({ status, error: {} })).kind).toBe(kind);
   });

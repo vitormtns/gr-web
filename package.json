@@ -7,9 +7,12 @@
     "start:local": "ng serve --configuration local",
     "smoke:local": "node --env-file-if-exists=.env.smoke.local scripts/smoke-real-integration.mjs",
     "build": "ng build",
+    "serve:production": "node scripts/serve-production.mjs",
+    "typecheck:app": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck:spec": "tsc -p tsconfig.spec.json --noEmit",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false --runner-config=vitest.config.ts",
-    "check": "npm test && npm run build"
+    "check": "npm run typecheck:app && npm run typecheck:spec && npm test && npm run build"
   },
   "private": true,
   "engines": {

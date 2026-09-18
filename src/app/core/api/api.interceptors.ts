@@ -43,7 +43,8 @@ export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
     if (!(error instanceof HttpErrorResponse)) return throwError(() => error);
     const normalized = normalizeApiError(error);
     if (normalized.status === 401 && auth.isAuthenticated()) {
-      void auth.signOut().catch(() => auth.clearSession());
+      auth.clearSession();
+      void auth.signOut().catch(() => undefined);
       context.clear();
       void router.navigate(['/entrar'], { queryParams: { motivo: 'sessao-expirada' } });
     }

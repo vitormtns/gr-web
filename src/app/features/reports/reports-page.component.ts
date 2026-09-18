@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { KeyValuePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { ContextStore } from '../../core/context/context.store';
 import { AppError } from '../../core/api/api.models';
+import { localDateOnly } from '../../core/date/date-only';
 import { EmptyStateComponent, ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
 import { PaginationComponent } from '../../design-system/data-display/data-display';
 import { AnimalIdentityComponent, errorReference, formatDate } from '../herd/herd.shared';
@@ -25,7 +26,7 @@ export class ReportsPageComponent {
   readonly lifecycleLabels=lifecycleLabels;readonly healthLabels=healthLabels;readonly reproductionLabels=reproductionLabels;readonly plannerLabels=plannerLabels;readonly plannerStatusLabels=plannerStatusLabels;readonly serviceLabels=serviceLabels;
   constructor(){
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params=>{this.filters.set(parseFilters(params));if(this.routeReady)this.load();this.routeReady=true;});
-    effect(()=>{this.context.contextVersion();const pending=this.context.transitionPending();const farm=this.context.selectedFarm();if(pending||!farm){this.generation++;this.result.set(null);this.state.set('loading');return;}this.load();});
+    effect(()=>{this.context.contextVersion();const pending=this.context.transitionPending();const farm=this.context.selectedFarm();if(pending||!farm){this.generation++;this.result.set(null);this.state.set('loading');return;}untracked(()=>this.load());});
   }
   get current(){return this.definitions.find(item=>item.id===this.filters().report)!;}
   get reference(){return errorReference(this.error()?.requestId)}
@@ -63,5 +64,5 @@ export function parseFilters(params:ParamMap):ReportFilters{const validReports=r
 export function periodIssue(from:string,to:string):string{if(!validIso(from)||!validIso(to))return'Datas inválidas.';const days=Math.round((Date.parse(`${to}T12:00:00Z`)-Date.parse(`${from}T12:00:00Z`))/86400000);if(days<0)return'A data inicial deve ser anterior ou igual à data final.';if(days>=3650)return'O período pode ter no máximo 3.650 dias.';return''}
 function validIso(value:string|null):boolean{return !!value&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(`${value}T12:00:00Z`))}
 function uuid(value:string|null):string{return value&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)?value:''}
-function today():string{return new Date().toISOString().slice(0,10)}
+function today():string{return localDateOnly()}
 function isoOffset(value:string,days:number):string{const date=new Date(`${value}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10)}
