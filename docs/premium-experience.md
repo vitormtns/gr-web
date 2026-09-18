@@ -2,7 +2,7 @@
 
 ## Vision
 
-Territory UI é a linguagem visual do BovNex. Combina agricultura de precisão, tecnologia calma e território vivo para tornar relações entre fazenda, rebanho, tempo e operação imediatamente compreensíveis. O sistema deve ser reconhecível pela composição, não apenas pelo logo.
+Territory UI é a linguagem de **Spatial Operational Intelligence** do BovNex. A interface não descreve uma fazenda: ela mantém território, animais, sinais, processos e tempo em um contexto operacional conectado. Agricultura de precisão, tecnologia calma e território vivo tornam relações imediatamente compreensíveis. O sistema deve ser reconhecível pela composição e pelo comportamento, não apenas pelo logo.
 
 ## Principles
 
@@ -12,6 +12,34 @@ Territory UI é a linguagem visual do BovNex. Combina agricultura de precisão, 
 - Movimento explica mudança, foco, causalidade ou continuidade.
 - Cor comunica identidade ou semântica; nunca decoração gratuita.
 - Fixtures do laboratório são identificadas como `DEV SHOWCASE DATA`.
+
+## Objects
+
+A experiência é formada por objetos operacionais vivos: `Entity`, `Signal`, `Field`, `Stream`, `Path`, `Process`, `Pulse`, `Context` e `Action`. Cards continuam disponíveis, mas cada família possui anatomia e comportamento próprios: métrica contém leitura e microvisualização; entidade preserva identidade; atenção prioriza ação; processo mostra estágio; temporal materializa tempo; espacial mantém escopo e relações.
+
+## Cross-object reactions
+
+O Lab usa um estado compartilhado dev-only. Selecionar Mimosa, Aurora ou Estrela atualiza conjuntamente território, peso, saúde, reprodução, movimento e fluxo. Foco e hover realçam relações sem esconder os demais objetos. Selecionar um piquete também pode transferir o contexto para um animal relacionado.
+
+## Dynamic cards
+
+Cards variam por função usando tint, edge, ritmo interno, microvisualização e profundidade controlada. Hover e foco aumentam contraste em 1 px; seleção persiste; atenção usa borda semântica em vez de fundo vermelho; carregamento é local. O catálogo secundário demonstra `MetricCard`, `EntityCard`, `SignalCard`, `AttentionCard`, `ProcessCard`, `TemporalCard`, `SpatialCard` e `ExpandableCard`.
+
+## Focus context
+
+Uma entidade selecionada cria um contexto de foco. Objetos relacionados ficam mais nítidos e os não relacionados recuam discretamente sem mudar o layout. `Escape` limpa hover, expansão e foco contextual.
+
+## Motion causality
+
+“Simular movimentação” enfatiza origem, desenha o trajeto uma vez, atualiza o território e insere o evento no fluxo. Trocas de animal e período atualizam apenas regiões relacionadas. Não há count-up, movimento contínuo ou animação decorativa. Em redução de movimento, o trajeto aparece diretamente.
+
+## Time and streams
+
+Tempo é parte da estrutura: relógio operacional, seletor Hoje/7/30/90 dias, blocos de data, densidade temporal e fluxo recente. `Operation Stream` conecta evento, animal, território e domínio sem se tornar uma lista administrativa.
+
+## Progressive disclosure
+
+O `Animal Signal` responde em três níveis: leitura essencial no estado padrão, affordance em hover/foco e expansão contextual no clique. A identidade persiste durante a expansão; não há troca por modal genérico.
 
 ## Tokens
 
