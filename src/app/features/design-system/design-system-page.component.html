@@ -1,0 +1,701 @@
+<div class="lab-shell">
+  <gr-lab-theme-base />
+  <gr-lab-theme-base-extra />
+  <gr-lab-theme-patterns />
+  <gr-lab-theme-patterns-extra />
+  <gr-lab-theme-responsive />
+  <aside class="lab-nav" aria-label="Navegação do Design System">
+    <a class="brand" href="#overview"
+      ><span class="brand-mark"><i></i></span
+      ><span><strong>BovNex</strong><small>Territory UI · V2</small></span></a
+    >
+    <nav>
+      @for (item of nav; track item[0]) {
+        <a [href]="'#' + item[0]">{{ item[1] }}</a>
+      }
+    </nav>
+    <div class="lab-status">
+      <span></span>
+      <div><strong>Ambiente de laboratório</strong><small>Dados demonstrativos</small></div>
+    </div>
+  </aside>
+  <main>
+    <section class="hero page-enter" id="overview">
+      <div class="hero-copy">
+        <span class="kicker">Precision agriculture · Calm technology</span>
+        <h1>Territory <em>UI</em></h1>
+        <p>
+          Uma linguagem visual para compreender território, movimento, tempo e estado — sem perder a
+          calma operacional.
+        </p>
+        <div class="hero-actions">
+          <gr-button (pressed)="document.getElementById('territory')?.scrollIntoView()"
+            >Explorar território</gr-button
+          ><gr-button
+            variant="secondary"
+            (pressed)="document.getElementById('controls')?.scrollIntoView()"
+            >Ver componentes</gr-button
+          >
+        </div>
+      </div>
+      <div class="hero-instrument" aria-label="Pulso operacional demonstrativo">
+        <div class="orbit one"></div>
+        <div class="orbit two"></div>
+        <div class="plot p1"><span>245</span><small>Pasto Norte 1</small></div>
+        <div class="plot p2"><span>198</span><small>Pasto Leste</small></div>
+        <div class="plot p3"><span>312</span><small>Pasto Sul</small></div>
+        <svg viewBox="0 0 420 250" aria-hidden="true">
+          <path d="M74 160 C142 82 190 180 246 117 S330 70 365 102" />
+          <circle cx="74" cy="160" r="5" />
+          <circle cx="246" cy="117" r="5" />
+          <circle cx="365" cy="102" r="5" />
+        </svg>
+        <div class="instrument-label"><span></span>Operação conectada</div>
+      </div>
+      <div class="fixture-note">
+        <strong>DEV SHOWCASE DATA</strong
+        ><span>Conteúdo fictício, identificado e isolado da produção.</span>
+      </div>
+    </section>
+    <div class="metric-strip" aria-label="Métricas demonstrativas">
+      <gr-metric label="Animais acompanhados" value="1.284" detail="Base demonstrativa" /><gr-metric
+        label="Áreas em operação"
+        value="04"
+        detail="de 5 cadastradas"
+      /><gr-metric label="Movimentos hoje" value="12" detail="última atualização 08:40" /><gr-metric
+        label="Atenções abertas"
+        value="03"
+        detail="1 requer ação hoje"
+      />
+    </div>
+
+    <section class="lab-section" id="foundations">
+      <div class="section-heading">
+        <span>01 · Fundamentos</span>
+        <h2>Precisão que permanece humana</h2>
+        <p>Escala de 4 px, contraste firme, elevação mínima e hierarquia antes de ornamentação.</p>
+      </div>
+      <div class="foundation-grid">
+        <article>
+          <span class="foundation-number">04</span><strong>Ritmo espacial</strong>
+          <p>Uma unidade previsível organiza controles densos e grandes composições.</p>
+        </article>
+        <article>
+          <span class="foundation-number">03</span><strong>Níveis de profundidade</strong>
+          <p>Canvas, superfície e camada elevada. Nada flutua sem motivo.</p>
+        </article>
+        <article>
+          <span class="foundation-number">01</span><strong>Acento dominante</strong>
+          <p>O verde identifica marca, ação primária e contexto territorial.</p>
+        </article>
+      </div>
+    </section>
+    <section class="lab-section split" id="typography">
+      <div class="section-heading">
+        <span>02 · Tipografia</span>
+        <h2>Voz clara, dados precisos</h2>
+        <p>
+          Inter Variable é a família disponível e licenciada no projeto. Pesos contidos distinguem
+          leitura, operação e dados.
+        </p>
+      </div>
+      <div class="type-specimen">
+        <div class="display-sample">O território<br />em movimento.</div>
+        <div class="type-row"><span>HERO / 40·44 / 680</span><strong>Fazenda Norte</strong></div>
+        <div class="type-row"><span>SEÇÃO / 18·24 / 650</span><b>Leitura do rebanho</b></div>
+        <div class="type-row">
+          <span>CORPO / 14·21 / 430</span>
+          <p>Acompanhe a operação sem perder o contexto.</p>
+        </div>
+        <div class="type-row"><span>DADO / TABULAR</span><code>BR-0421 · 482 kg · 08:40</code></div>
+      </div>
+    </section>
+    <section class="lab-section" id="colors">
+      <div class="section-heading">
+        <span>03 · Cores</span>
+        <h2>Neutros sustentam. A cor informa.</h2>
+      </div>
+      <div class="swatches">
+        @for (color of colors; track color.token) {
+          <article>
+            <i [style.background]="color.value"></i><strong>{{ color.name }}</strong
+            ><code>{{ color.token }}</code
+            ><small>{{ color.value }}</small>
+          </article>
+        }
+      </div>
+    </section>
+    <section class="lab-section" id="surfaces">
+      <div class="section-heading">
+        <span>04 · Superfícies</span>
+        <h2>Quatro famílias, quatro intenções</h2>
+      </div>
+      <div class="surface-grid">
+        <article class="surface canvas">
+          <span>Canvas</span><strong>Relações espaciais</strong
+          ><svg viewBox="0 0 180 70"><path d="M8 52C41 4 68 59 102 26s54-10 72-18" /></svg>
+        </article>
+        <article class="surface data">
+          <span>Data</span><strong>Leitura densa</strong>
+          <div class="mini-rows"><i></i><i></i><i></i></div>
+        </article>
+        <article class="surface action">
+          <span>Action</span><strong>Decisão focada</strong
+          ><button type="button">Confirmar alteração</button>
+        </article>
+        <article class="surface insight">
+          <span>Insight</span><strong>3 protocolos vencem hoje</strong>
+          <p>Priorize o lote Crescimento A.</p>
+        </article>
+      </div>
+    </section>
+    <section class="lab-section" id="controls">
+      <div class="section-heading">
+        <span>05 · Controles</span>
+        <h2>Ação explícita, resposta imediata</h2>
+        <p>
+          Hover discreto, deslocamento de 1 px no clique, foco visível e largura estável durante
+          carregamento.
+        </p>
+      </div>
+      <div class="demo-surface">
+        <div class="control-row">
+          <gr-button>Salvar alterações</gr-button
+          ><gr-button variant="secondary">Revisar dados</gr-button
+          ><gr-button variant="ghost">Ver detalhes</gr-button
+          ><gr-button variant="danger">Excluir registro</gr-button>
+        </div>
+        <gr-divider />
+        <div class="control-row">
+          <gr-button [loading]="true">Salvando</gr-button
+          ><gr-button [disabled]="true">Indisponível</gr-button
+          ><gr-icon-button label="Mais informações" grTooltip="Mais informações"
+            ><svg lucideIcon="info" [attr.width]="18" [attr.height]="18"></svg></gr-icon-button
+          ><gr-chip [removable]="true">Nelore</gr-chip><gr-chip>Fêmeas</gr-chip>
+        </div>
+      </div>
+    </section>
+    <section class="lab-section" id="forms">
+      <div class="section-heading">
+        <span>06 · Formulários</span>
+        <h2>Uma conversa, não uma pilha de campos</h2>
+      </div>
+      <div class="forms-layout">
+        <form class="action-surface">
+          <header>
+            <div>
+              <span>Cadastro simples</span>
+              <h3>Identificação da fazenda</h3>
+            </div>
+            <gr-status-indicator tone="neutral">Rascunho</gr-status-indicator>
+          </header>
+          <div class="form-grid">
+            <gr-input
+              label="Nome da fazenda"
+              description="Como a equipe reconhece esta unidade."
+              [formControl]="name"
+            /><gr-select
+              label="Categoria principal"
+              [options]="[
+                { value: 'corte', label: 'Gado de corte' },
+                { value: 'leite', label: 'Gado leiteiro' },
+              ]"
+              [formControl]="category"
+            /><gr-textarea class="full" label="Observações" [formControl]="notes" /><gr-input
+              label="Código de integração"
+              [formControl]="disabled"
+            /><gr-input
+              label="Responsável técnico"
+              placeholder="Informe o nome completo"
+              error="Responsável técnico é obrigatório."
+              [formControl]="invalid"
+            />
+          </div>
+          <div class="option-row">
+            <gr-checkbox [formControl]="alerts">Receber alertas operacionais</gr-checkbox
+            ><gr-switch [formControl]="active">Fazenda ativa</gr-switch>
+          </div>
+          <footer>
+            <span>Campos com * são obrigatórios.</span>
+            <div>
+              <gr-button variant="ghost">Cancelar</gr-button
+              ><gr-button>Salvar alterações</gr-button>
+            </div>
+          </footer>
+        </form>
+        <aside class="review-surface">
+          <span>Etapa de revisão</span>
+          <h3>Antes de concluir</h3>
+          <dl>
+            <div>
+              <dt>Fazenda</dt>
+              <dd>Fazenda Norte</dd>
+            </div>
+            <div>
+              <dt>Categoria</dt>
+              <dd>Gado de corte</dd>
+            </div>
+            <div>
+              <dt>Responsável</dt>
+              <dd>Não informado</dd>
+            </div>
+          </dl>
+          <gr-alert tone="warning" title="Informação pendente"
+            ><p>Informe o responsável técnico para continuar.</p></gr-alert
+          >
+        </aside>
+      </div>
+    </section>
+    <section class="lab-section" id="status">
+      <div class="section-heading">
+        <span>07 · Status e métricas</span>
+        <h2>Sinal antes de decoração</h2>
+      </div>
+      <div class="status-layout">
+        <div class="status-list">
+          <gr-status-indicator tone="success">Operação normal</gr-status-indicator
+          ><gr-status-indicator tone="warning">Revisão necessária</gr-status-indicator
+          ><gr-status-indicator tone="danger">Ação vencida</gr-status-indicator
+          ><gr-status-indicator tone="neutral">Sem informação</gr-status-indicator>
+        </div>
+        <div class="badge-list">
+          <gr-badge tone="success">Ativo</gr-badge><gr-badge tone="warning">Pendente</gr-badge
+          ><gr-badge tone="danger">Bloqueado</gr-badge><gr-badge tone="info">Em análise</gr-badge>
+        </div>
+        <div class="metric-feature">
+          <span>Ganho médio diário</span><strong>0,842 <small>kg</small></strong>
+          <p>Valor demonstrativo · lote Crescimento A</p>
+        </div>
+      </div>
+    </section>
+    <section class="lab-section" id="tables">
+      <div class="section-heading inline">
+        <div>
+          <span>08 · Tabelas e filtros</span>
+          <h2>Densidade com orientação</h2>
+        </div>
+        <div class="density-control" aria-label="Densidade da tabela">
+          <button
+            type="button"
+            [class.active]="density() === 'comfortable'"
+            (click)="density.set('comfortable')"
+          >
+            Confortável</button
+          ><button
+            type="button"
+            [class.active]="density() === 'compact'"
+            (click)="density.set('compact')"
+          >
+            Compacta
+          </button>
+        </div>
+      </div>
+      <gr-filter-bar
+        ><label class="filter-search"
+          ><span>Buscar no rebanho</span
+          ><input type="search" placeholder="Brinco ou nome do animal" /></label
+        ><label
+          ><span>Status</span
+          ><select>
+            <option>Todos</option>
+            <option>Ativo</option>
+          </select></label
+        ><gr-chip [removable]="true">Pasto Norte 1</gr-chip
+        ><button class="clear-button" type="button">Limpar filtros</button></gr-filter-bar
+      >
+      <div [class.compact-table]="density() === 'compact'">
+        <gr-table
+          ><thead>
+            <tr>
+              <th>Animal</th>
+              <th>Status</th>
+              <th>Território atual</th>
+              <th>Último evento</th>
+              <th><span class="sr-only">Ações</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (
+              animal of [
+                {
+                  id: 'BR-0421',
+                  name: 'Mimosa',
+                  status: 'Ativo',
+                  place: 'Pasto Norte 1',
+                  event: 'Pesagem · hoje',
+                },
+                {
+                  id: 'BR-0187',
+                  name: 'Estrela',
+                  status: 'Em tratamento',
+                  place: 'Pasto Leste',
+                  event: 'Saúde · 17 set.',
+                },
+                {
+                  id: 'BR-0312',
+                  name: 'Aurora',
+                  status: 'Ativo',
+                  place: 'Sem localização',
+                  event: 'Movimentação · 16 set.',
+                },
+                {
+                  id: 'BR-0098',
+                  name: 'Canela',
+                  status: 'Inativo',
+                  place: 'Pasto Sul',
+                  event: 'Parto · 12 set.',
+                },
+              ];
+              track animal.id
+            ) {
+              <tr
+                [attr.aria-selected]="selectedAnimal() === animal.id"
+                (click)="selectedAnimal.set(animal.id)"
+              >
+                <td>
+                  <div class="identity-cell">
+                    <span>{{ animal.name.slice(0, 1) }}</span>
+                    <div>
+                      <strong>{{ animal.name }}</strong
+                      ><code>{{ animal.id }}</code>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <gr-status-indicator
+                    [tone]="
+                      animal.status === 'Ativo'
+                        ? 'success'
+                        : animal.status === 'Em tratamento'
+                          ? 'warning'
+                          : 'neutral'
+                    "
+                    >{{ animal.status }}</gr-status-indicator
+                  >
+                </td>
+                <td>
+                  <div class="territory-cell"><i></i>{{ animal.place }}</div>
+                </td>
+                <td>{{ animal.event }}</td>
+                <td>
+                  <button class="row-action" type="button">Ver perfil <span>→</span></button>
+                </td>
+              </tr>
+            }
+          </tbody></gr-table
+        >
+      </div>
+      <gr-pagination [page]="0" [totalPages]="8" />
+    </section>
+    <section class="lab-section dual" id="timeline">
+      <div>
+        <div class="section-heading">
+          <span>09 · Tempo</span>
+          <h2>Histórico com continuidade</h2>
+        </div>
+        <div class="demo-surface"><gr-timeline [items]="events" /></div>
+      </div>
+      <div id="process">
+        <div class="section-heading">
+          <span>10 · Processos</span>
+          <h2>Progresso sem ambiguidade</h2>
+        </div>
+        <div class="demo-surface process-demo">
+          <gr-process-rail [steps]="steps" [active]="2" /><gr-alert
+            tone="info"
+            title="Movimentação em andamento"
+            ><p>O destino será confirmado após a leitura do brinco.</p></gr-alert
+          >
+        </div>
+      </div>
+    </section>
+    <section class="lab-section" id="territory">
+      <div class="section-heading inline">
+        <div>
+          <span>11 · Território vivo</span>
+          <h2>O espaço como instrumento operacional</h2>
+          <p>Uma abstração relacional — sem coordenadas, escala ou geografia inventada.</p>
+        </div>
+        <div class="territory-summary">
+          <strong>{{
+            selectedRegion() === 'norte'
+              ? '245'
+              : selectedRegion() === 'leste'
+                ? '198'
+                : selectedRegion() === 'sul'
+                  ? '312'
+                  : '0'
+          }}</strong
+          ><span>animais na área selecionada</span>
+        </div>
+      </div>
+      <gr-territory-field
+        [regions]="regions"
+        [selected]="selectedRegion()"
+        (selectedChange)="selectedRegion.set($event)"
+      />
+      <div class="territory-insights">
+        <article>
+          <span class="territory-icon">⌖</span>
+          <div>
+            <strong>Escopo atual</strong>
+            <p>
+              Fazenda Norte ›
+              {{
+                selectedRegion() === 'norte'
+                  ? 'Pasto Norte 1'
+                  : selectedRegion() === 'leste'
+                    ? 'Pasto Leste'
+                    : selectedRegion() === 'sul'
+                      ? 'Pasto Sul'
+                      : 'Pasto Retiro'
+              }}
+            </p>
+          </div>
+        </article>
+        <article>
+          <span class="territory-icon">↝</span>
+          <div>
+            <strong>Caminho operacional</strong>
+            <p>Pasto Sul → Pasto Norte 1 · 12 animais</p>
+          </div>
+        </article>
+        <article class="attention">
+          <span class="territory-icon">!</span>
+          <div>
+            <strong>Sem localização</strong>
+            <p>18 animais aguardam associação territorial.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="lab-section" id="data-viz">
+      <div class="section-heading inline">
+        <div>
+          <span>12 · Visualização de dados</span>
+          <h2>Comparar antes de impressionar</h2>
+        </div>
+        <div class="chart-legend">
+          <span><i></i>Movimentações</span><span><i></i>Tratamentos</span>
+        </div>
+      </div>
+      <div class="chart-frame">
+        <header>
+          <div>
+            <strong>Atividade da fazenda</strong
+            ><span>Últimas cinco semanas · dados demonstrativos</span>
+          </div>
+          <button type="button" (click)="refresh()">
+            <svg lucideIcon="refresh-cw" [attr.width]="15" [attr.height]="15"></svg>Atualizar
+          </button>
+        </header>
+        <div class="chart" [class.refreshing]="!refreshed()">
+          <div class="y-axis"><span>30</span><span>20</span><span>10</span><span>0</span></div>
+          @for (group of [0, 1, 2, 3, 4]; track group) {
+            <div class="bar-group">
+              <div class="bars">
+                <i [style.height.%]="[55, 82, 48, 74, 66][group]"></i
+                ><i [style.height.%]="[34, 45, 63, 38, 52][group]"></i>
+              </div>
+              <span>{{ ['20 ago.', '27 ago.', '03 set.', '10 set.', '17 set.'][group] }}</span>
+            </div>
+          }
+        </div>
+        <footer>
+          <span>Leitura: atividade operacional por semana</span
+          ><span>Fonte: fixture isolada do Lab</span>
+        </footer>
+      </div>
+    </section>
+    <section class="lab-section" id="feedback">
+      <div class="section-heading">
+        <span>13 · Feedback e estados</span>
+        <h2>Cada estado orienta o próximo passo</h2>
+      </div>
+      <div class="feedback-grid">
+        <div>
+          <gr-alert tone="success" title="Alteração concluída"
+            ><p>As informações foram atualizadas.</p></gr-alert
+          ><gr-alert tone="warning" title="Atenção necessária"
+            ><p>Há dados que precisam de revisão.</p></gr-alert
+          ><gr-alert tone="error" title="Não foi possível salvar"
+            ><p>Revise os campos indicados.</p></gr-alert
+          ><gr-alert tone="info" title="Contexto disponível"
+            ><p>Consulte o histórico antes de continuar.</p></gr-alert
+          >
+        </div>
+        <gr-card
+          ><gr-empty-state
+            title="Nenhum animal neste piquete"
+            description="Associe animais para iniciar a leitura territorial."
+            ><gr-button>Associar animais</gr-button></gr-empty-state
+          ></gr-card
+        >
+        <div class="loading-panel">
+          <span>Carregando território</span
+          ><gr-skeleton /><gr-skeleton /><gr-skeleton /><gr-progress
+            [value]="64"
+            label="Carregamento demonstrativo"
+          />
+        </div>
+        <gr-error-state
+          title="Não foi possível carregar o território"
+          description="Verifique sua conexão e tente novamente."
+          reference="TERR-209"
+        />
+      </div>
+    </section>
+    <section class="lab-section" id="overlays">
+      <div class="section-heading">
+        <span>14 · Camadas</span>
+        <h2>Contexto sem perder o lugar</h2>
+      </div>
+      <div class="demo-surface control-row">
+        <gr-button variant="secondary" (pressed)="dialogOpen.set(true)">Abrir diálogo</gr-button
+        ><gr-button variant="secondary" (pressed)="drawerOpen.set(true)"
+          >Abrir painel lateral</gr-button
+        ><gr-popover label="Abrir ações"
+          ><span popover-trigger class="popover-trigger">Mais ações <span>⌄</span></span
+          ><gr-menu
+            ><button type="button">Duplicar registro</button
+            ><button type="button">Arquivar registro</button></gr-menu
+          ></gr-popover
+        ><gr-button variant="ghost" (pressed)="showToast()">Exibir notificação</gr-button>
+      </div>
+    </section>
+    <section class="lab-section" id="motion">
+      <div class="section-heading">
+        <span>15 · Movimento</span>
+        <h2>Causalidade, foco e continuidade</h2>
+        <p>A interface permanece calma quando a pessoa para.</p>
+      </div>
+      <div class="motion-grid">
+        <button type="button" (click)="refresh()">
+          <span class="motion-box"></span><strong>FAST · 120 ms</strong
+          ><small>Hover e foco</small></button
+        ><button
+          type="button"
+          (click)="selectedRegion.set(selectedRegion() === 'norte' ? 'leste' : 'norte')"
+        >
+          <span class="motion-path"><i></i></span><strong>STANDARD · 180 ms</strong
+          ><small>Mudança de estado</small></button
+        ><button type="button" (click)="drawerOpen.set(true)">
+          <span class="motion-layer"></span><strong>EMPHASIS · 280 ms</strong
+          ><small>Continuidade espacial</small>
+        </button>
+      </div>
+    </section>
+    <section class="lab-section" id="archetypes">
+      <div class="section-heading">
+        <span>16 · Arquétipos de página</span>
+        <h2>Estruturas reconhecíveis, não templates rígidos</h2>
+      </div>
+      <div class="archetype-grid">
+        @for (
+          item of [
+            {
+              name: 'Home operacional',
+              type: 'Pulse',
+              desc: 'Sinais, agenda e território em uma composição.',
+            },
+            {
+              name: 'Workspace de entidade',
+              type: 'Index',
+              desc: 'Busca, filtros e dados com alta legibilidade.',
+            },
+            {
+              name: 'Perfil de entidade',
+              type: 'Profile',
+              desc: 'Identidade, estado e histórico contínuo.',
+            },
+            {
+              name: 'Workspace de processo',
+              type: 'Flow',
+              desc: 'Etapas, exceções e ações no mesmo contexto.',
+            },
+            {
+              name: 'Workspace analítico',
+              type: 'Analysis',
+              desc: 'Comparação, período e fonte sempre visíveis.',
+            },
+            {
+              name: 'Administração',
+              type: 'Control',
+              desc: 'Escopo, permissões e mudanças auditáveis.',
+            },
+          ];
+          track item.type
+        ) {
+          <article>
+            <span>{{ item.type }}</span>
+            <div class="mini-page"><i></i><b></b><b></b><em></em></div>
+            <strong>{{ item.name }}</strong>
+            <p>{{ item.desc }}</p>
+          </article>
+        }
+      </div>
+    </section>
+    <section class="lab-section states-section" id="states">
+      <div class="section-heading">
+        <span>17 · Interação e causalidade</span>
+        <h2>Uma ação deve explicar o que mudou</h2>
+      </div>
+      <div class="causality">
+        <div>
+          <span>01</span><strong>Selecione um animal</strong>
+          <p>A linha ganha contexto sem alterar a altura.</p>
+        </div>
+        <span class="causal-arrow">→</span>
+        <div>
+          <span>02</span><strong>Registre o movimento</strong>
+          <p>A ação mantém o foco e comunica progresso.</p>
+        </div>
+        <span class="causal-arrow">→</span>
+        <div>
+          <span>03</span><strong>Veja a consequência</strong>
+          <p>Território, histórico e notificação convergem.</p>
+        </div>
+      </div>
+      <div class="focus-demo">
+        <button type="button">Use Tab para inspecionar o foco</button
+        ><button type="button">Próximo controle</button
+        ><span>Todos os alvos interativos preservam foco visível e área mínima.</span>
+      </div>
+    </section>
+    <footer class="lab-footer">
+      <span>Territory UI · BovNex · laboratório de desenvolvimento</span
+      ><a href="#overview">Voltar ao início ↑</a>
+    </footer>
+  </main>
+  <gr-dialog [open]="dialogOpen()" (closed)="dialogOpen.set(false)"
+    ><strong dialog-title>Confirmar movimentação</strong>
+    <p>12 animais serão movidos do Pasto Sul para o Pasto Norte 1.</p>
+    <div class="dialog-summary">
+      <span>Origem<strong>Pasto Sul</strong></span
+      ><span>Destino<strong>Pasto Norte 1</strong></span>
+    </div>
+    <div dialog-actions>
+      <gr-button variant="secondary" (pressed)="dialogOpen.set(false)">Cancelar</gr-button
+      ><gr-button (pressed)="dialogOpen.set(false); showToast()">Confirmar movimentação</gr-button>
+    </div></gr-dialog
+  >
+  <gr-drawer
+    label="Detalhes do Pasto Norte 1"
+    [open]="drawerOpen()"
+    (closed)="drawerOpen.set(false)"
+    ><div class="drawer-content">
+      <span class="kicker">Território selecionado</span>
+      <h2>Pasto Norte 1</h2>
+      <div class="drawer-metric"><strong>245</strong><span>animais associados</span></div>
+      <gr-divider /><gr-attention-item
+        title="Pesagem prevista"
+        description="Lote Crescimento A"
+        meta="22 set."
+      /><gr-attention-item
+        title="Rotação de pasto"
+        description="Revisar disponibilidade"
+        meta="24 set."
+      /></div
+  ></gr-drawer>
+  <gr-toast-region />
+</div>

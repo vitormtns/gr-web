@@ -1,0 +1,300 @@
+app-design-system-page {
+  display: block;
+  min-height: 100vh;
+  background: var(--color-bg);
+  --gr-color-mineral-50: #f7faf7;
+  --gr-color-mineral-100: #f4f7f4;
+  --gr-color-mineral-200: #eef5f0;
+  --gr-color-mineral-300: #dce5de;
+  --gr-color-mineral-400: #c8d6cc;
+  --gr-color-forest-700: #155b3b;
+  --gr-color-forest-800: #10492f;
+  --gr-color-ink-900: #0d1b12;
+  --gr-color-amber-700: #b66a08;
+  --gr-color-red-700: #c44136;
+  --gr-color-blue-700: #356a8a;
+  --gr-color-violet-700: #7057a8;
+}
+.lab-shell {
+  --lab-nav: 13.5rem;
+  min-height: 100vh;
+}
+.lab-nav {
+  position: fixed;
+  z-index: 20;
+  inset: 0 auto 0 0;
+  width: var(--lab-nav);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-4);
+  border-right: 1px solid var(--color-border);
+  background: rgb(250 252 249/0.95);
+  backdrop-filter: blur(14px);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  color: var(--color-text);
+  text-decoration: none;
+}
+.brand-mark {
+  position: relative;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+}
+.brand-mark:before {
+  width: 1.1rem;
+  height: 0.75rem;
+  border: 1.5px solid #fff;
+  border-radius: 65% 35% 65% 35%;
+  transform: rotate(-22deg);
+  content: '';
+}
+.brand-mark i {
+  position: absolute;
+  width: 1px;
+  height: 1rem;
+  background: #fff;
+  transform: rotate(35deg);
+}
+.brand > span:last-child {
+  display: grid;
+}
+.brand strong {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+.brand small {
+  color: var(--color-text-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.lab-nav nav {
+  display: grid;
+  overflow: auto;
+}
+.lab-nav nav a {
+  position: relative;
+  padding: 0.38rem 0.6rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  text-decoration: none;
+  transition:
+    color var(--duration-fast),
+    background var(--duration-fast);
+}
+.lab-nav nav a:hover,
+.lab-nav nav a:focus-visible {
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+.lab-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.lab-status > span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px var(--color-success-subtle);
+}
+.lab-status div {
+  display: grid;
+}
+.lab-status strong {
+  font-size: 0.6875rem;
+}
+.lab-status small {
+  color: var(--color-text-muted);
+  font-size: 0.625rem;
+}
+main {
+  max-width: 96rem;
+  margin-left: var(--lab-nav);
+  padding: 0 clamp(2rem, 5vw, 5rem);
+}
+section {
+  scroll-margin-top: 1rem;
+}
+.hero {
+  position: relative;
+  min-height: 34rem;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(30rem, 1.1fr);
+  align-items: center;
+  gap: var(--space-10);
+  overflow: hidden;
+  margin: 0 calc(clamp(2rem, 5vw, 5rem) * -1);
+  padding: var(--space-16) clamp(2rem, 5vw, 5rem) var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(135deg, #f7faf7 0%, #eef4ee 60%, #e6eee7 100%);
+}
+.hero:before {
+  position: absolute;
+  inset: -40%;
+  opacity: 0.38;
+  background: repeating-radial-gradient(
+    ellipse at 70% 50%,
+    transparent 0 34px,
+    rgb(21 91 59/0.08) 35px 36px
+  );
+  transform: rotate(-8deg);
+  content: '';
+}
+.hero-copy,
+.hero-instrument,
+.fixture-note {
+  position: relative;
+}
+.kicker,
+.section-heading > span,
+.section-heading > div > span,
+.surface > span,
+.action-surface header span,
+.review-surface > span {
+  color: var(--color-primary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0.6rem 0 var(--space-4);
+  font-size: clamp(3.2rem, 6vw, 6rem);
+  line-height: 0.88;
+  letter-spacing: -0.07em;
+}
+.hero h1 em {
+  color: var(--color-primary);
+  font-style: normal;
+  font-weight: 500;
+}
+.hero-copy > p {
+  max-width: 34rem;
+  margin-bottom: var(--space-6);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+.hero-actions,
+.control-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.hero-instrument {
+  height: 22rem;
+  border: 1px solid rgb(21 91 59/0.18);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    rgb(255 255 255/0.72),
+    rgb(255 255 255/0.18) 55%,
+    transparent 56%
+  );
+}
+.orbit {
+  position: absolute;
+  border: 1px solid rgb(21 91 59/0.18);
+  border-radius: 50%;
+}
+.orbit.one {
+  inset: 12%;
+}
+.orbit.two {
+  inset: 28%;
+}
+.hero-instrument svg {
+  position: absolute;
+  inset: 15% 5%;
+  width: 90%;
+  height: 70%;
+}
+.hero-instrument path {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  stroke-dasharray: 5 7;
+}
+.hero-instrument circle {
+  fill: var(--color-primary);
+  stroke: white;
+  stroke-width: 3;
+}
+.plot {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgb(21 91 59/0.18);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255/0.82);
+  box-shadow: var(--shadow-raised);
+  backdrop-filter: blur(8px);
+}
+.plot span {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.plot small {
+  color: var(--color-text-secondary);
+  font-size: 0.625rem;
+}
+.p1 {
+  top: 54%;
+  left: 7%;
+}
+.p2 {
+  top: 26%;
+  right: 3%;
+}
+.p3 {
+  bottom: 8%;
+  right: 24%;
+}
+.instrument-label {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transform: translate(-50%, -50%);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+.instrument-label span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-success);
+}
+.fixture-note {
+  position: absolute;
+  right: clamp(2rem, 5vw, 5rem);
+  bottom: var(--space-5);
+  display: flex;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 0.625rem;
+}
+.fixture-note strong {
+  color: var(--color-warning);
+  letter-spacing: 0.06em;
+}
+
