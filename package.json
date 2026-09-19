@@ -6,6 +6,7 @@
     "start": "ng serve",
     "start:local": "ng serve --configuration local",
     "smoke:local": "node --env-file-if-exists=.env.smoke.local scripts/smoke-real-integration.mjs",
+    "smoke:home:local": "node --env-file-if-exists=.env.smoke.local scripts/smoke-home-readonly.mjs",
     "build": "ng build",
     "serve:production": "node scripts/serve-production.mjs",
     "typecheck:app": "tsc -p tsconfig.app.json --noEmit",

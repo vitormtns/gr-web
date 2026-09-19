@@ -128,4 +128,37 @@ A rota `/dev/design-system` permanece condicionada a `ngDevMode`, lazy-loaded e 
 2. Registrar aprovação humana e ajustes de linguagem.
 3. Priorizar primitives estáveis por risco e frequência de uso.
 4. Reconstruir cada arquétipo por fluxo, com testes funcionais preservados.
-5. Não propagar o sistema ao Portal nem mesclar em `main` antes da aprovação humana.
+5. Propagar por blocos isolados e não mesclar em `main` antes da aprovação humana.
+
+## Production Promotion
+
+O Block 08B promoveu para produção apenas padrões sem dependência de fixtures: `MetricDeck`, `TerritoryField`, a coluna de ações operacionais e o `ContextNavigator`. A página faz o mapeamento de DTOs reais para view models pequenos; os componentes de apresentação não conhecem endpoints. `LiveFarmStage`, controles de cenário e estado demonstrativo continuam exclusivos das rotas condicionadas por `ngDevMode`.
+
+## Shell
+
+O shell real usa o canvas mineral, separação por borda e realce interno discreto. A navegação preserva rotas, permissões, recolhimento e comportamento responsivo. O item ativo combina trilho lateral, tint de superfície, ênfase do ícone e marcador espacial. O topbar mantém apenas contexto e conta, sem busca, notificações ou comandos fictícios.
+
+## Context Ribbon
+
+Organização e fazenda formam uma única faixa territorial compacta. O glifo indica escopo, o separador explicita o caminho e o popover mantém troca de fazenda e organização. Durante uma transição, o conteúdo anterior sai antes da entrada do novo contexto; falhas preservam o contexto anterior quando possível.
+
+## Operational Home
+
+A Home segue a sequência contexto ativo → estado atual → território → atenção → tempo → próximas ações. O cabeçalho é operacional e compacto. Métricas reais ocupam uma faixa única; o campo territorial domina a composição; atenção e agenda compartilham uma coluna de ação; atividade e leitura do rebanho completam o fluxo sem criar um painel de cards equivalentes.
+
+## Real Data Adaptation
+
+Toda leitura de produção deriva de `DashboardStore` e dos contratos existentes. A interface não calcula tendências, capacidade, clima ou recomendações. Mudanças de período invalidam somente visão geral e atividade. Falhas permanecem isoladas por seção, e a proteção contra respostas obsoletas continua no store.
+
+## Sparse Data Rules
+
+- Zero itens de atenção vira o estado compacto “Operação em dia”.
+- Zero eventos reduz a atividade a uma leitura curta, sem reservar a altura do gráfico.
+- De um a três eventos usa marcas temporais com detalhe textual.
+- Acima de três eventos usa o pulso operacional navegável por teclado.
+- Agenda vazia e fazenda sem piquetes usam estados compactos e orientativos.
+- Poucos dados não são completados com métricas, tendências ou eventos fictícios.
+
+## Territory Layout Rules
+
+O campo territorial é abstrato, determinístico e explicitamente sem escala. De um a seis piquetes usam composições específicas e equilibradas; dois piquetes formam uma divisão orgânica completa, e três usam uma assimetria legível. Acima de seis, cinco regiões permanecem individuais e as demais são agrupadas em “Outros piquetes”, com total real de animais e quantidade real de piquetes. A densidade usa um único pattern SVG com opacidade proporcional, sem nós por animal. Animais sem localização aparecem fora do campo. Seleção reforça a região, suaviza as demais e oferece resumo textual.

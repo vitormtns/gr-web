@@ -42,8 +42,14 @@ describe('Home operacional acessível', () => {
     expect(element.querySelector('app-activity-chart svg')?.getAttribute('aria-label')).toContain('Use as setas');
     expect(element.querySelector('app-activity-chart table caption')?.textContent).toContain('Atividade diária');
   });
-  it('retry de seção mantém botão focável e não recarrega a página', () => {
-    expect(element.querySelector('.territory-section')?.textContent).toContain('428');
+  it('mapeia métricas reais e expõe o território selecionável sem geografia falsa', () => {
+    expect(element.querySelector('gr-metric-deck')?.textContent).toContain('428');
+    const region = element.querySelector<SVGGElement>('gr-territory-field [role="button"]');
+    expect(region?.getAttribute('aria-label')).toContain('Piquete Norte');
+    expect(region?.getAttribute('aria-pressed')).toBe('false');
+    region?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+    expect(region?.getAttribute('aria-pressed')).toBe('true');
     expect(element.querySelector('.attention-section')?.textContent).toContain('Planejado');
   });
 });
