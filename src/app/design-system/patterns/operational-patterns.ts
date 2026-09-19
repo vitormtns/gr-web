@@ -6,11 +6,15 @@ export interface TerritoryRegion {
   count: number;
   status: 'normal' | 'attention' | 'empty';
   path: string;
+  labelX?: number;
+  labelY?: number;
+  detail?: string;
+  density?: number;
 }
 
 @Component({
   selector: 'gr-territory-field',
-  template: ` <section class="field" aria-label="Representação operacional do território">
+  template: ` <section class="field" [class.compact]="compact" aria-label="Representação operacional do território">
     <div class="field-head">
       <div>
         <span class="eyebrow">Território sem escala</span><strong>{{ title }}</strong>
@@ -21,6 +25,9 @@ export interface TerritoryRegion {
       <defs>
         <pattern id="field-grid" width="28" height="28" patternUnits="userSpaceOnUse">
           <path d="M 28 0 L 0 0 0 28" fill="none" stroke="currentColor" stroke-width=".6" />
+        </pattern>
+        <pattern id="field-density" width="17" height="17" patternUnits="userSpaceOnUse">
+          <circle cx="4" cy="5" r="1.15"/><circle cx="13" cy="11" r=".7"/>
         </pattern>
         <filter id="field-shadow">
           <feDropShadow dx="0" dy="5" stdDeviation="7" flood-opacity=".08" />
@@ -40,12 +47,14 @@ export interface TerritoryRegion {
           [class.empty]="region.status === 'empty'"
           tabindex="0"
           role="button"
-          [attr.aria-label]="region.name + ', ' + region.count + ' animais'"
+          [attr.aria-label]="regionLabel(region)"
+          [attr.aria-pressed]="region.id === selected"
           (click)="selectedChange.emit(region.id)"
           (keydown.enter)="selectedChange.emit(region.id)"
           (keydown.space)="$event.preventDefault(); selectedChange.emit(region.id)"
         >
-          <path [attr.d]="region.path" filter="url(#field-shadow)" />
+          <path class="land" [attr.d]="region.path" filter="url(#field-shadow)" />
+          <path class="density" [attr.d]="region.path" fill="url(#field-density)" [style.opacity]="region.density || 0" />
           <text
             [attr.x]="labelPosition(region.id).x"
             [attr.y]="labelPosition(region.id).y"
@@ -53,20 +62,16 @@ export interface TerritoryRegion {
           >
             <tspan class="name">{{ region.name }}</tspan>
             <tspan class="count" dy="22" [attr.x]="labelPosition(region.id).x">
-              {{ region.count ? region.count + ' animais' : 'Sem animais' }}
+              {{ region.detail || (region.count ? region.count + (region.count === 1 ? ' animal' : ' animais') : 'Sem animais') }}
             </tspan>
           </text>
         </g>
       }
-      <path class="route" d="M165 235 C245 190 317 237 390 188 S510 138 575 171" />
-      <circle class="route-point" cx="165" cy="235" r="5" />
-      <circle class="route-point end" cx="575" cy="171" r="5" />
     </svg>
     <footer>
-      <span><i class="legend normal"></i>Operação normal</span
-      ><span><i class="legend warning"></i>Requer atenção</span
-      ><span><i class="legend vacant"></i>Disponível</span
-      ><span class="hint">Selecione uma área para comparar</span>
+      <span><i class="legend normal"></i>Com animais</span
+      ><span><i class="legend vacant"></i>Sem animais</span
+      ><span class="hint">Selecione uma região para destacar</span>
     </footer>
   </section>`,
   styles: [
@@ -117,6 +122,7 @@ export interface TerritoryRegion {
         max-height: 28rem;
         color: rgb(19 86 58/0.09);
       }
+      .field.compact svg { max-height: 19rem; }
       .grid {
         pointer-events: none;
       }
@@ -130,7 +136,7 @@ export interface TerritoryRegion {
         outline: none;
         transition: opacity var(--duration-standard) var(--ease-standard);
       }
-      .region path {
+      .region .land {
         fill: #dce9df;
         stroke: #7fa58a;
         stroke-width: 2;
@@ -139,30 +145,30 @@ export interface TerritoryRegion {
           stroke var(--duration-standard) var(--ease-standard),
           stroke-width var(--duration-standard) var(--ease-standard);
       }
-      .region:hover path,
-      .region:focus path,
-      .region.selected path {
+      .region:hover .land,
+      .region:focus .land,
+      .region.selected .land {
         fill: #c8dfcf;
         stroke: var(--color-primary);
         stroke-width: 3;
       }
-      .region:focus-visible path {
+      .region:focus-visible .land {
         filter: drop-shadow(0 0 5px rgb(19 86 58/0.35));
       }
       .region.receded {
         opacity: 0.52;
       }
-      .region.attention path {
+      .region.attention .land {
         fill: #f1dfbc;
         stroke: #bc7a25;
       }
-      .region.attention:hover path,
-      .region.attention:focus path,
-      .region.attention.selected path {
+      .region.attention:hover .land,
+      .region.attention:focus .land,
+      .region.attention.selected .land {
         fill: #ead09e;
         stroke: #985706;
       }
-      .region.empty path {
+      .region.empty .land {
         fill: #f4f7f4;
         stroke: #aebdb2;
         stroke-dasharray: 7 6;
@@ -180,21 +186,7 @@ export interface TerritoryRegion {
         font-size: 12px;
         font-weight: 500;
       }
-      .route {
-        fill: none;
-        stroke: var(--color-primary);
-        stroke-width: 2.5;
-        stroke-dasharray: 5 7;
-        opacity: 0.72;
-      }
-      .route-point {
-        fill: var(--color-primary);
-        stroke: white;
-        stroke-width: 3;
-      }
-      .route-point.end {
-        fill: var(--color-warning);
-      }
+      .density{pointer-events:none;fill:#315f40;transition:opacity var(--duration-standard)}
       footer {
         display: flex;
         align-items: center;
@@ -252,8 +244,11 @@ export class TerritoryFieldComponent {
   @Input() label = 'Distribuição demonstrativa do rebanho por área';
   @Input() regions: TerritoryRegion[] = [];
   @Input() selected = '';
+  @Input() compact = false;
   @Output() selectedChange = new EventEmitter<string>();
   labelPosition(id: string): { x: number; y: number } {
+    const region = this.regions.find(item => item.id === id);
+    if (region?.labelX !== undefined && region.labelY !== undefined) return { x: region.labelX, y: region.labelY };
     return (
       (
         {
@@ -264,6 +259,10 @@ export class TerritoryFieldComponent {
         } as Record<string, { x: number; y: number }>
       )[id] ?? { x: 360, y: 190 }
     );
+  }
+  regionLabel(region: TerritoryRegion): string {
+    const count = `${region.count} ${region.count === 1 ? 'animal' : 'animais'}`;
+    return [region.name, count, region.detail].filter(Boolean).join(', ');
   }
 }
 
