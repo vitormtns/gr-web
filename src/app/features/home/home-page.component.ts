@@ -2,11 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/c
 import { ContextStore } from '../../core/context/context.store';
 import { EmptyStateComponent, ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
 import { MetricDeckComponent, OperationalMetric } from '../../design-system/patterns/metric-deck';
-import { InsightCardComponent } from '../../design-system/patterns/v3-components';
+import { BrandedInsightSurfaceComponent } from '../../design-system/patterns/branded-insight-surface';
+import { BrandGrowthBarsComponent } from '../../design-system/primitives/brand-growth-bars';
+import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
+import { OperationalUrgencyBoardComponent } from './operational-urgency-board.component';
 import { ActivityChartComponent } from './activity-chart.component';
 import { DashboardStore } from './dashboard.store';
 import { DashboardPeriod } from './dashboard.models';
-import { TerritoryOverviewComponent } from './territory-overview.component';
 import { HomeActionsComponent } from './home-actions.component';
 
 @Component({
@@ -17,14 +19,14 @@ import { HomeActionsComponent } from './home-actions.component';
     ErrorStateComponent,
     SkeletonComponent,
     MetricDeckComponent,
-    InsightCardComponent,
+    BrandedInsightSurfaceComponent,
+    BrandGrowthBarsComponent,
+    DomainIconComponent,
+    OperationalUrgencyBoardComponent,
     ActivityChartComponent,
-    TerritoryOverviewComponent,
     HomeActionsComponent,
   ],
   template: `<section class="home-page">
-  <div class="home-page__background" aria-hidden="true"></div>
-  <div class="home-page__background-overlay" aria-hidden="true"></div>
   <div class="home-page__content">
   <div class="dashboard page-enter">
     <header class="operation-header">
@@ -34,9 +36,12 @@ import { HomeActionsComponent } from './home-actions.component';
           <span class="operation-org-chip">{{context.selectedOrganization()?.organizationName || 'Organização'}}</span>
         </div>
         <h1>{{context.selectedFarm()?.farmName || 'Fazenda atual'}}</h1>
+        <p class="operation-standfirst">Panorama atual da operação</p>
         <p class="summary-line">{{operationalSummary()}}</p>
       </div>
-      <div class="period-area">
+      <div class="header-side">
+        <gr-brand-growth-bars class="header-brand-mark" />
+        <div class="period-area">
         <span class="control-label">Período de leitura</span>
         <div class="period-pills" role="group" aria-label="Período do dashboard">
           @for(option of periods; track option.value){
@@ -47,6 +52,7 @@ import { HomeActionsComponent } from './home-actions.component';
               (click)="choosePeriod(option.value)"
             >{{option.label}}</button>
           }
+        </div>
         </div>
       </div>
     </header>
@@ -78,20 +84,18 @@ import { HomeActionsComponent } from './home-actions.component';
         <gr-metric-deck [metrics]="metrics()" />
       } @else {
         <div class="metric-loading" aria-label="Carregando estado da operação">
-          <gr-skeleton /><gr-skeleton /><gr-skeleton /><gr-skeleton /><gr-skeleton />
+          <gr-skeleton /><gr-skeleton /><gr-skeleton /><gr-skeleton />
         </div>
       }
 
-      <div class="operation-board">
-        <app-territory-overview />
-        <app-home-actions />
-      </div>
+      <app-urgency-board />
+
+      <app-home-actions />
 
       @if(editorialInsight(); as insight){
-        <gr-insight-card
+        <gr-branded-insight-surface
           [title]="insight.title"
           [description]="insight.description"
-          [tone]="insight.tone"
         />
       }
 
@@ -123,7 +127,7 @@ import { HomeActionsComponent } from './home-actions.component';
       </section>
 
       <section class="reading-section" aria-labelledby="reading-title">
-        <div class="section-heading reading-heading">
+        <div class="section-heading">
           <div>
             <span class="section-kicker">LEITURA DO REBANHO</span>
             <h2 id="reading-title">Sinais operacionais</h2>
@@ -131,38 +135,59 @@ import { HomeActionsComponent } from './home-actions.component';
         </div>
         @if(store.overview().status==='ready' && store.overview().value; as overview){
           <div class="context-rail">
-            <div class="reading weight">
-              <span>Pesagens em dia</span>
-              <strong>{{formatPercentage(overview.insights.weighingCoverage.coveragePercentage)}}</strong>
-              <small>{{formatNumber(overview.insights.weighingCoverage.coveredAnimals)}} de {{formatNumber(overview.insights.weighingCoverage.totalEligibleAnimals)}} animais</small>
-              <i role="progressbar" aria-label="Cobertura de pesagens" [attr.aria-valuenow]="overview.insights.weighingCoverage.coveragePercentage" aria-valuemin="0" aria-valuemax="100">
+            <div class="signal weight">
+              <span class="signal-label">Pesagens em dia</span>
+              <gr-domain-icon domain="weight" size="sm" />
+              <strong class="signal-value">{{formatPercentage(overview.insights.weighingCoverage.coveragePercentage)}}</strong>
+              <small class="signal-note">{{formatNumber(overview.insights.weighingCoverage.coveredAnimals)}} de {{formatNumber(overview.insights.weighingCoverage.totalEligibleAnimals)}} animais</small>
+              <i class="coverage-meter" role="progressbar" aria-label="Cobertura de pesagens" [attr.aria-valuenow]="overview.insights.weighingCoverage.coveragePercentage" aria-valuemin="0" aria-valuemax="100">
                 <b [style.width.%]="overview.insights.weighingCoverage.coveragePercentage"></b>
               </i>
             </div>
-            <div class="reading health">
-              <span>Saúde pendente</span>
-              <strong>{{formatNumber(overview.insights.healthDue.vaccinationDue + overview.insights.healthDue.dewormingDue)}}</strong>
-              <small>{{formatNumber(overview.insights.healthDue.vaccinationDue)}} vacinações · {{formatNumber(overview.insights.healthDue.dewormingDue)}} vermifugações</small>
+            <div class="signal health">
+              <span class="signal-label">Saúde pendente</span>
+              <gr-domain-icon domain="health" size="sm" />
+              <strong class="signal-value">{{formatNumber(overview.insights.healthDue.vaccinationDue + overview.insights.healthDue.dewormingDue)}}</strong>
+              <div class="signal-split">
+                <span>Vacinas <b>{{formatNumber(overview.insights.healthDue.vaccinationDue)}}</b></span>
+                <span>Vermífugos <b>{{formatNumber(overview.insights.healthDue.dewormingDue)}}</b></span>
+              </div>
             </div>
-            <div class="reading reproduction">
-              <span>Gestações confirmadas</span>
-              <strong>{{formatNumber(overview.insights.reproductionPipeline.openConfirmedPregnancies)}}</strong>
-              <small>{{formatNumber(overview.insights.reproductionPipeline.openPossiblePregnancies)}} possíveis em acompanhamento</small>
+            <div class="signal reproduction">
+              <span class="signal-label">Gestações confirmadas</span>
+              <gr-domain-icon domain="reproduction" size="sm" />
+              <strong class="signal-value">{{formatNumber(overview.insights.reproductionPipeline.openConfirmedPregnancies)}}</strong>
+              <div class="signal-split">
+                <span>Confirmadas <b>{{formatNumber(overview.insights.reproductionPipeline.openConfirmedPregnancies)}}</b></span>
+                <span>Possíveis <b>{{formatNumber(overview.insights.reproductionPipeline.openPossiblePregnancies)}}</b></span>
+              </div>
             </div>
-            <div class="reading attention">
-              <span>Partos em atenção</span>
-              <strong>{{formatNumber(overview.insights.calvingAttention.upcomingCalvings + overview.insights.calvingAttention.overdueCalvings)}}</strong>
-              <small>{{formatNumber(overview.insights.calvingAttention.upcomingCalvings)}} próximos · {{formatNumber(overview.insights.calvingAttention.overdueCalvings)}} atrasados</small>
+            <div class="signal calving">
+              <span class="signal-label">Partos em atenção</span>
+              <gr-domain-icon domain="calving" size="sm" />
+              <strong class="signal-value">{{formatNumber(overview.insights.calvingAttention.upcomingCalvings + overview.insights.calvingAttention.overdueCalvings)}}</strong>
+              <div class="signal-split">
+                <span>Próximos <b>{{formatNumber(overview.insights.calvingAttention.upcomingCalvings)}}</b></span>
+                <span [class.is-overdue]="overview.insights.calvingAttention.overdueCalvings > 0">Atrasados <b>{{formatNumber(overview.insights.calvingAttention.overdueCalvings)}}</b></span>
+              </div>
             </div>
-            <div class="reading planner">
-              <span>Planejamento aberto</span>
-              <strong>{{formatNumber(overview.insights.plannerExecution.currentlyOpen)}}</strong>
-              <small>{{formatNumber(overview.insights.plannerExecution.completed)}} concluídos no período</small>
+            <div class="signal planner">
+              <span class="signal-label">Planejamento aberto</span>
+              <gr-domain-icon domain="planner" size="sm" />
+              <strong class="signal-value">{{formatNumber(overview.insights.plannerExecution.currentlyOpen)}}</strong>
+              <div class="signal-split">
+                <span>Abertos <b>{{formatNumber(overview.insights.plannerExecution.currentlyOpen)}}</b></span>
+                <span>Concluídos <b>{{formatNumber(overview.insights.plannerExecution.completed)}}</b></span>
+              </div>
             </div>
-            <div class="reading movement">
-              <span>Movimento do rebanho</span>
-              <strong>{{formatNumber(overview.insights.herdActivity.movements)}}</strong>
-              <small>{{formatNumber(overview.insights.herdActivity.births)}} nascimentos no período</small>
+            <div class="signal movement">
+              <span class="signal-label">Movimento do rebanho</span>
+              <gr-domain-icon domain="movement" size="sm" />
+              <strong class="signal-value">{{formatNumber(overview.insights.herdActivity.movements)}}</strong>
+              <div class="signal-split">
+                <span>Movimentações <b>{{formatNumber(overview.insights.herdActivity.movements)}}</b></span>
+                <span>Nascimentos <b>{{formatNumber(overview.insights.herdActivity.births)}}</b></span>
+              </div>
             </div>
           </div>
         } @else if(store.overview().status==='error'){
@@ -202,14 +227,20 @@ export class HomePageComponent {
     if (!overview) return [];
     const paddocks = this.paddockCount();
     const occupied = this.occupiedPaddocks();
+    const occupancyPercentage = paddocks > 0 ? (occupied / paddocks) * 100 : 0;
     const unlocated = overview.herdSnapshot.unlocatedAnimals;
     const attention = this.attentionTotal();
     return [
-      { label: 'Animais ativos', value: this.formatNumber(overview.herdSnapshot.activeAnimals), detail: 'no contexto atual', icon: '◒', tone: 'territory' },
-      { label: 'Piquetes', value: this.formatNumber(paddocks), detail: `${this.formatNumber(occupied)} ocupados`, icon: '⌗', tone: 'territory' },
-      { label: 'Áreas ocupadas', value: this.formatNumber(occupied), detail: 'com animais associados', icon: '●', tone: 'neutral' },
-      { label: 'Sem localização', value: this.formatNumber(unlocated), detail: 'fora do campo territorial', icon: '○', tone: unlocated ? 'attention' : 'neutral' },
-      { label: 'Para acompanhar', value: this.formatNumber(attention), detail: 'situações identificadas', icon: '!', tone: attention ? 'attention' : 'neutral' },
+      { kind: 'herd', animals: this.formatNumber(overview.herdSnapshot.activeAnimals) },
+      {
+        kind: 'territory',
+        total: this.formatNumber(paddocks),
+        occupied: this.formatNumber(occupied),
+        occupancyPercentage,
+        occupancyLabel: this.formatPercentage(occupancyPercentage),
+      },
+      { kind: 'location', unlocated: this.formatNumber(unlocated), hasPending: unlocated > 0 },
+      { kind: 'attention', total: this.formatNumber(attention), hasPending: attention > 0 },
     ];
   });
   readonly editorialInsight = computed<{ title: string; description: string; tone: 'territory' | 'warning' | 'info' | 'success' } | null>(() => {

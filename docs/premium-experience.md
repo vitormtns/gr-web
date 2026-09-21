@@ -2,7 +2,7 @@
 
 ## Vision
 
-Territory UI é a linguagem de **Spatial Operational Intelligence** do BovNex. A interface não descreve uma fazenda: ela mantém território, animais, sinais, processos e tempo em um contexto operacional conectado. Agricultura de precisão, tecnologia calma e território vivo tornam relações imediatamente compreensíveis. O sistema deve ser reconhecível pela composição e pelo comportamento, não apenas pelo logo.
+Territory UI é a linguagem de **Spatial Operational Intelligence** do eBov. A interface não descreve uma fazenda: ela mantém território, animais, sinais, processos e tempo em um contexto operacional conectado. Agricultura de precisão, tecnologia calma e território vivo tornam relações imediatamente compreensíveis. O sistema deve ser reconhecível pela composição e pelo comportamento, não apenas pelo logo.
 
 ## Principles
 
@@ -53,11 +53,11 @@ A escala espacial usa base de 4 px: 4, 8, 12, 16, 20, 24, 32, 40, 48 e 64. Valor
 
 ## Typography
 
-Inter Variable é a família instalada, licenciada e carregada localmente. Geist Sans permanece uma recomendação futura, condicionada a avaliação de dependência e licenciamento. A escala principal é: hero 40/44, entidade 32/36, seção 18/24, superfície 15/20, corpo 14/21 e rótulo operacional 11/14. Números comparáveis usam algarismos tabulares; fonte monoespaçada fica restrita a identificadores técnicos.
+Inter Variable é a família instalada, licenciada e carregada localmente para interface e corpo. Desde o Brand Foundation, **Poppins** (`--font-display`, pesos latin 600/700/800 via `@fontsource/poppins`) cobre títulos de página, cabeçalhos de seção, valores de métricas e nome da marca; ver valores vigentes em `## eBov Brand Foundation`. Geist Sans permanece uma recomendação futura, condicionada a avaliação de dependência e licenciamento. A escala principal é: hero 40/44, entidade 32/36, seção 18/24, superfície 15/20, corpo 14/21 e rótulo operacional 11/14. Números comparáveis usam algarismos tabulares; fonte monoespaçada fica restrita a identificadores técnicos.
 
 ## Colors
 
-Canvas `#F4F7F4`, superfície `#FFFFFF`, tinta `#0D1B12`, texto secundário `#5F6F65`, identidade `#155B3B`, atenção `#B66A08`, perigo `#C44136`, informação `#356A8A` e reprodução `#7057A8`. Verde identifica marca, ação primária e território, mas não colore toda a interface. Séries de dados não representam estados de interface.
+Canvas `#F4F7F4`, superfície `#FFFFFF`, tinta `#0D1B12`, texto secundário `#5F6F65`, identidade `#155B3B`, atenção `#B66A08`, perigo `#C44136`, informação `#356A8A` e reprodução `#7057A8`. Verde identifica marca, ação primária e território, mas não colore toda a interface. Séries de dados não representam estados de interface. Valores oficiais vigentes da marca eBov em `## eBov Brand Foundation`.
 
 ## Surface Model
 
@@ -162,3 +162,48 @@ Toda leitura de produção deriva de `DashboardStore` e dos contratos existentes
 ## Territory Layout Rules
 
 O campo territorial é abstrato, determinístico e explicitamente sem escala. De um a seis piquetes usam composições específicas e equilibradas; dois piquetes formam uma divisão orgânica completa, e três usam uma assimetria legível. Acima de seis, cinco regiões permanecem individuais e as demais são agrupadas em “Outros piquetes”, com total real de animais e quantidade real de piquetes. A densidade usa um único pattern SVG com opacidade proporcional, sem nós por animal. Animais sem localização aparecem fora do campo. Seleção reforça a região, suaviza as demais e oferece resumo textual.
+
+## eBov Brand Foundation
+
+A identidade visual do produto é **eBov**. Estes tokens e regras formam a fundação do Portal; a arquitetura visual operacional Territory UI continua existindo sobre ela.
+
+### Official colors
+
+- `--brand-primary: #0F5132` — marca, ação primária, território.
+- `--brand-live: #22C55E` — sinal de vida/crescimento/estado ativo (rails, marcadores, indicadores). Nunca como fundo gigante nem como cor de texto sobre fundo claro.
+- `--brand-amber: #F59E0B` — atenção e sinal de produtividade (indicadores e marcadores, nunca decoração).
+- `--brand-ink: #1F2937` — texto primário (`--text-primary`).
+- `--brand-neutral: #E5E7EB` — base das bordas (`--border-soft`).
+- `--brand-canvas: #FAFAF8` — canvas global (`--canvas-base`).
+
+Texto em âmbar continua usando o tom escuro legível (`--semantic-warning: #b36605`); o âmbar oficial aparece em indicadores, não em texto corrido. Texto de sucesso continua no verde escuro legível (`--semantic-success`); o verde vivo aparece em sinais, não em texto.
+
+### Typography roles
+
+- `--font-display: Poppins` — títulos de página (`h1`), cabeçalhos de seção (`h2`), valores de métricas operacionais, nome da marca. Carregada localmente via `@fontsource/poppins` (pesos latin 600/700/800), mesmo mecanismo do Inter.
+- `--font-interface: Inter Variable` — corpo, controles, tabelas, navegação, texto secundário e técnico. Continua sendo a fonte principal da interface.
+
+### Brand vs domain colors
+
+A marca não transforma tudo em verde. Cores de domínio com função semântica são preservadas: peso (violeta), movimento (teal/mineral blue), reprodução (plum), saúde (verde/âmbar quando devido), atenção (âmbar), overdue (vermelho de perigo). A marca entra por tint, borda, pequenos indicadores e acentos tipográficos.
+
+### Sidebar usage
+
+Fundo sólido `--brand-primary`, texto off-white, ícones sage claro, rótulos de grupo em off-white com opacidade controlada. Item ativo: superfície branca translúcida (`rgba(255,255,255,0.12)`) com borda sutil, label e ícone brancos, trilho/marcador em `--brand-live`. Hover: branco em alpha baixo, sem pintar o item de verde vivo. Foco de teclado preservado com anel claro.
+
+### Canvas
+
+Base `--brand-canvas` (`#FAFAF8`), com nuances minerais discretas herdadas. Sem imagem, sem fotografia.
+
+### Positive vs attention semantics
+
+`--brand-live` (`#22C55E`): crescimento, atividade, estado ativo. `--brand-amber` (`#F59E0B`): atenção, vencimento próximo, produtividade. Vermelho (`--semantic-danger`) fica reservado a atraso/criticidade real (`OVERDUE`).
+
+### Logo asset locations
+
+- `public/brand/ebov/logo-horizontal.svg` — uso geral sobre fundo claro.
+- `public/brand/ebov/logo-negative.svg` — sidebar verde e fundos escuros (referenciado pelo shell, com fallback textual `eBov`).
+- `public/brand/ebov/symbol.svg` — símbolo isolado.
+- `public/brand/ebov/app-icon.png` — ícone do aplicativo.
+
+Os arquivos ainda não existem; quando disponíveis, colocá-los nesses caminhos. Não commitar reconstruções provisórias.

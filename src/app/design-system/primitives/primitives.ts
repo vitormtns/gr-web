@@ -145,12 +145,12 @@ const checkStyles = `
     .gr-button:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
     .primary {
       color: #fff;
-      background: linear-gradient(180deg, #166843 0%, #115233 100%);
+      background: var(--brand-primary);
       border-color: rgba(11, 25, 16, 0.2);
       box-shadow: 0 1px 3px rgba(11, 25, 16, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
     .primary:hover:not(:disabled) {
-      background: linear-gradient(180deg, #1a774d 0%, #135c39 100%);
+      background: var(--color-primary-hover);
       box-shadow: 0 2px 6px rgba(11, 25, 16, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
     }
     .secondary {
@@ -450,12 +450,22 @@ export class SwitchComponent extends ValueAccessor<boolean> {
       color: var(--color-text-secondary);
       border: 1px solid var(--color-border);
     }
-    .success {
+    .success, .active {
       background: var(--color-success-subtle);
       color: var(--color-success);
       border-color: rgba(21, 121, 69, 0.2);
     }
-    .warning {
+    .health {
+      background: rgba(34, 197, 94, 0.12);
+      color: #0d6b3f;
+      border-color: rgba(34, 197, 94, 0.35);
+    }
+    .reproduction {
+      background: #f1eaf7;
+      color: #6d3f92;
+      border-color: rgba(138, 88, 166, 0.3);
+    }
+    .warning, .attention {
       background: var(--color-warning-subtle);
       color: #925304;
       border-color: rgba(179, 102, 5, 0.2);
@@ -474,7 +484,7 @@ export class SwitchComponent extends ValueAccessor<boolean> {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BadgeComponent {
-  @Input() tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info' = 'neutral';
+  @Input() tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'active' | 'attention' | 'health' | 'reproduction' = 'neutral';
 }
 
 @Component({

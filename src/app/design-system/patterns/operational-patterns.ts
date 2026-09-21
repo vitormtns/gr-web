@@ -25,31 +25,102 @@ export interface TerritoryRegion {
     <svg viewBox="0 0 720 380" role="img" [attr.aria-label]="label">
       <defs>
         <pattern id="field-grid" width="32" height="32" patternUnits="userSpaceOnUse">
-          <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(18,84,52,0.06)" stroke-width=".75" />
+          <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(18,84,52,0.045)" stroke-width=".75" />
         </pattern>
         <pattern id="field-density" width="16" height="16" patternUnits="userSpaceOnUse">
-          <circle cx="4" cy="4" r="1.3" fill="rgba(18,84,52,0.35)" />
-          <circle cx="12" cy="12" r="0.9" fill="rgba(18,84,52,0.25)" />
+          <circle cx="4" cy="4" r="1.3" fill="rgba(18,84,52,0.34)" />
+          <circle cx="12" cy="12" r="0.9" fill="rgba(18,84,52,0.22)" />
         </pattern>
-        <linearGradient id="paddock-grad-normal" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#d7edd9" />
-          <stop offset="100%" stop-color="#b6dcc1" />
+        <pattern id="territory-material" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="5" cy="6" r="1" fill="rgba(43,66,50,0.5)" />
+          <path d="M11 14h5" stroke="rgba(43,66,50,0.45)" stroke-width="1" stroke-linecap="round" />
+          <circle cx="15" cy="5" r="0.6" fill="rgba(43,66,50,0.4)" />
+        </pattern>
+        <!-- Normal state gradients -->
+        <linearGradient id="paddock-grad-normal-top" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#D3E8D7" />
+          <stop offset="52%" stop-color="#B9D7C0" />
+          <stop offset="100%" stop-color="#96BEA0" />
         </linearGradient>
-        <linearGradient id="paddock-grad-attention" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#fdf1dc" />
-          <stop offset="100%" stop-color="#f4d498" />
+        <linearGradient id="paddock-grad-normal-depth" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#6F9577" />
+          <stop offset="100%" stop-color="#587D61" />
         </linearGradient>
-        <linearGradient id="paddock-grad-empty" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#f8faf8" />
-          <stop offset="100%" stop-color="#edf2ed" />
+        <linearGradient id="paddock-grad-normal-selected-top" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#C6DDCC" />
+          <stop offset="52%" stop-color="#A6C9B1" />
+          <stop offset="100%" stop-color="#84AE90" />
         </linearGradient>
-        <filter id="field-shadow" x="-15%" y="-15%" width="130%" height="130%">
-          <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0b1910" flood-opacity=".10" />
-          <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#0b1910" flood-opacity=".06" />
+        <linearGradient id="paddock-grad-normal-selected-depth" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#658A6D" />
+          <stop offset="100%" stop-color="#4A6E56" />
+        </linearGradient>
+        <!-- Attention state gradients -->
+        <linearGradient id="paddock-grad-attention-top" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FBF3E2" />
+          <stop offset="52%" stop-color="#F3E2BC" />
+          <stop offset="100%" stop-color="#E3C893" />
+        </linearGradient>
+        <linearGradient id="paddock-grad-attention-depth" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#A7783D" />
+          <stop offset="100%" stop-color="#875F2D" />
+        </linearGradient>
+        <linearGradient id="paddock-grad-attention-selected-top" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#F8ECD2" />
+          <stop offset="52%" stop-color="#EDD3A0" />
+          <stop offset="100%" stop-color="#D9B478" />
+        </linearGradient>
+        <linearGradient id="paddock-grad-attention-selected-depth" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#93682E" />
+          <stop offset="100%" stop-color="#744F22" />
+        </linearGradient>
+        <!-- Empty state gradients -->
+        <linearGradient id="paddock-grad-empty-top" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#E3EDE3" />
+          <stop offset="52%" stop-color="#D0DFD1" />
+          <stop offset="100%" stop-color="#B9CCBB" />
+        </linearGradient>
+        <linearGradient id="paddock-grad-empty-depth" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#879B8B" />
+          <stop offset="100%" stop-color="#728675" />
+        </linearGradient>
+        <linearGradient id="paddock-grad-empty-selected-top" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#D8E3D8" />
+          <stop offset="52%" stop-color="#C2D2C3" />
+          <stop offset="100%" stop-color="#A9BCAC" />
+        </linearGradient>
+        <linearGradient id="paddock-grad-empty-selected-depth" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#7B8E80" />
+          <stop offset="100%" stop-color="#647763" />
+        </linearGradient>
+        <!-- Diffuse light from top/left over the top surface -->
+        <linearGradient id="territory-surface-light" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="rgba(255,255,255,0.42)" />
+          <stop offset="48%" stop-color="rgba(255,255,255,0.10)" />
+          <stop offset="72%" stop-color="rgba(255,255,255,0)" />
+        </linearGradient>
+        <!-- Soft shade toward bottom/right over the top surface -->
+        <linearGradient id="territory-surface-shade" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="rgba(11,25,16,0)" />
+          <stop offset="55%" stop-color="rgba(11,25,16,0)" />
+          <stop offset="85%" stop-color="rgba(11,25,16,0.08)" />
+          <stop offset="100%" stop-color="rgba(11,25,16,0.14)" />
+        </linearGradient>
+        <!-- Subtle inner bevel stroke, light on top fading to shade at bottom -->
+        <linearGradient id="territory-inner-edge" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="rgba(255,255,255,0)" />
+          <stop offset="62%" stop-color="rgba(255,255,255,0)" />
+          <stop offset="82%" stop-color="rgba(255,255,255,0.38)" />
+          <stop offset="100%" stop-color="rgba(11,25,16,0.16)" />
+        </linearGradient>
+        <!-- Shadow filters -->
+        <filter id="field-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0b1910" flood-opacity=".12" />
+          <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#0b1910" flood-opacity=".07" />
         </filter>
-        <filter id="field-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#125434" flood-opacity=".32" />
-          <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0b1910" flood-opacity=".15" />
+        <filter id="field-shadow-selected" x="-25%" y="-25%" width="150%" height="150%">
+          <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#0b1910" flood-opacity=".16" />
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0b1910" flood-opacity=".09" />
         </filter>
       </defs>
       <rect class="grid" width="720" height="380" fill="url(#field-grid)" />
@@ -72,8 +143,64 @@ export interface TerritoryRegion {
           (keydown.enter)="selectedChange.emit(region.id)"
           (keydown.space)="$event.preventDefault(); selectedChange.emit(region.id)"
         >
-          <path class="land" [attr.d]="region.path" filter="url(#field-shadow)" />
-          <path class="density" [attr.d]="region.path" fill="url(#field-density)" [style.opacity]="region.density || 0" />
+          <!-- Depth face (bottom) -->
+          <path
+            class="land-depth"
+            [attr.d]="region.path"
+            [attr.transform]="depthTransform(region.id)"
+            aria-hidden="true"
+          />
+          <!-- Shadow layer -->
+          <path
+            class="land-shadow"
+            [attr.d]="region.path"
+            [attr.transform]="depthTransform(region.id)"
+            aria-hidden="true"
+          />
+          <!-- Top surface -->
+          <path
+            class="land"
+            [attr.d]="region.path"
+            [attr.filter]="region.id === selected ? 'url(#field-shadow-selected)' : 'url(#field-shadow)'"
+          />
+          <!-- Highlight on top surface -->
+          <path
+            class="land-highlight"
+            [attr.d]="region.path"
+            fill="url(#territory-surface-light)"
+            aria-hidden="true"
+          />
+          <!-- Soft shade toward bottom/right on top surface -->
+          <path
+            class="land-shade"
+            [attr.d]="region.path"
+            fill="url(#territory-surface-shade)"
+            aria-hidden="true"
+          />
+          <!-- Micro material grain breaking the flat digital fill -->
+          <path
+            class="land-material"
+            [attr.d]="region.path"
+            fill="url(#territory-material)"
+            aria-hidden="true"
+          />
+          <!-- Density pattern -->
+          <path
+            class="density"
+            [attr.d]="region.path"
+            fill="url(#field-density)"
+            [style.opacity]="region.density || 0"
+            aria-hidden="true"
+          />
+          <!-- Discreet inner bevel on the lower part of the top surface -->
+          <path
+            class="land-bevel"
+            [attr.d]="region.path"
+            fill="none"
+            stroke="url(#territory-inner-edge)"
+            aria-hidden="true"
+          />
+          <!-- Labels -->
           <text
             [attr.x]="labelPosition(region.id).x"
             [attr.y]="labelPosition(region.id).y"
@@ -103,8 +230,10 @@ export interface TerritoryRegion {
       overflow: hidden;
       border: 1px solid var(--border-soft);
       border-radius: var(--radius-xl);
-      background: linear-gradient(155deg, var(--surface-territory) 0%, rgba(224, 238, 227, 0.95) 100%);
-      box-shadow: var(--shadow-raised);
+      background:
+        radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 55%),
+        linear-gradient(155deg, #e7eee8 0%, #dce6de 100%);
+      box-shadow: var(--shadow-raised), inset 0 0 60px rgba(11, 25, 16, 0.05);
       position: relative;
     }
     .field-head {
@@ -153,57 +282,148 @@ export interface TerritoryRegion {
     .grid { pointer-events: none; }
     .contour {
       fill: none;
-      stroke: rgba(18, 84, 52, 0.12);
+      stroke: rgba(18, 84, 52, 0.1);
       stroke-width: 1;
-      stroke-dasharray: 4 4;
+      stroke-dasharray: 3 5;
     }
     .region {
       cursor: pointer;
       outline: none;
-      transition: opacity var(--duration-standard) var(--ease-standard);
+      transform-box: fill-box;
+      transform-origin: center;
+      transform: translateY(0);
+      transition:
+        transform var(--motion-base) var(--ease-emphasized),
+        opacity var(--motion-base) var(--ease-standard);
+    }
+    .region:hover,
+    .region:focus {
+      transform: translateY(-2px);
+    }
+    .region.selected {
+      transform: translateY(-5px);
+    }
+    .region .land-depth {
+      pointer-events: none;
+      fill: url(#paddock-grad-normal-depth);
+      stroke: #4e7360;
+      stroke-width: 1.25;
+      stroke-linejoin: round;
+    }
+    .region .land-shadow {
+      pointer-events: none;
+      fill: rgba(11, 25, 16, 0.14);
+      stroke: none;
+      opacity: 0.55;
+    }
+    .region.selected .land-shadow {
+      fill: rgba(11, 25, 16, 0.18);
+      opacity: 0.7;
     }
     .region .land {
-      fill: url(#paddock-grad-normal);
-      stroke: #5d936e;
-      stroke-width: 2.25;
+      fill: url(#paddock-grad-normal-top);
+      stroke: #4e7a5d;
+      stroke-width: 1.25;
       stroke-linejoin: round;
       transition:
-        fill var(--duration-standard) var(--ease-standard),
-        stroke var(--duration-standard) var(--ease-standard),
-        stroke-width var(--duration-standard) var(--ease-standard),
-        transform var(--duration-standard) var(--ease-standard);
+        fill var(--motion-base) var(--ease-standard),
+        stroke var(--motion-base) var(--ease-standard),
+        stroke-width var(--motion-base) var(--ease-standard);
     }
-    .region:hover .land,
-    .region:focus .land,
+    .region:hover .land {
+      stroke: #2f6b4a;
+      stroke-width: 1.5;
+    }
+    .region:focus .land {
+      stroke: #2f6b4a;
+      stroke-width: 1.5;
+    }
     .region.selected .land {
-      fill: #aed9b6;
+      fill: url(#paddock-grad-normal-selected-top);
       stroke: var(--color-primary);
-      stroke-width: 3.25;
+      stroke-width: 2;
     }
-    .region.selected .land {
-      filter: url(#field-glow);
+    .region.selected .land-depth {
+      fill: url(#paddock-grad-normal-selected-depth);
+      stroke: #435f4e;
+    }
+    .region:focus-visible {
+      outline: none;
     }
     .region:focus-visible .land {
       stroke: var(--color-focus);
-      stroke-width: 3.5;
+      stroke-width: 2.5;
+    }
+    .region.attention.selected:focus-visible .land,
+    .region.empty.selected:focus-visible .land {
+      stroke: var(--color-focus);
+      stroke-width: 2.5;
     }
     .region.receded {
-      opacity: 0.45;
+      opacity: 0.74;
     }
     .region.attention .land {
-      fill: url(#paddock-grad-attention);
-      stroke: #c27b1c;
+      fill: url(#paddock-grad-attention-top);
+      stroke: #a5712c;
+    }
+    .region.attention .land-depth {
+      fill: url(#paddock-grad-attention-depth);
+      stroke: #6e4e24;
+      stroke-width: 1.25;
     }
     .region.attention:hover .land,
-    .region.attention:focus .land,
+    .region.attention:focus .land {
+      stroke: #7c4a0a;
+      stroke-width: 1.5;
+    }
     .region.attention.selected .land {
-      fill: #f5cf8c;
-      stroke: #925304;
+      fill: url(#paddock-grad-attention-selected-top);
+      stroke: #7c4a0a;
+      stroke-width: 2;
+    }
+    .region.attention.selected .land-depth {
+      fill: url(#paddock-grad-attention-selected-depth);
     }
     .region.empty .land {
-      fill: url(#paddock-grad-empty);
-      stroke: #a2b7a8;
-      stroke-dasharray: 6 5;
+      fill: url(#paddock-grad-empty-top);
+      stroke: #8ca094;
+      stroke-dasharray: 4 5;
+    }
+    .region.empty .land-depth {
+      fill: url(#paddock-grad-empty-depth);
+      stroke: #677a6e;
+      stroke-width: 1.25;
+    }
+    .region.empty:hover .land,
+    .region.empty:focus .land {
+      stroke: #6b7f73;
+      stroke-width: 1.5;
+    }
+    .region.empty.selected .land {
+      fill: url(#paddock-grad-empty-selected-top);
+      stroke: var(--color-primary);
+      stroke-width: 2;
+    }
+    .region.empty.selected .land-depth {
+      fill: url(#paddock-grad-empty-selected-depth);
+    }
+    .region .land-highlight {
+      pointer-events: none;
+      opacity: 0.75;
+    }
+    .region .land-shade {
+      pointer-events: none;
+      opacity: 0.9;
+    }
+    .region .land-bevel {
+      pointer-events: none;
+      stroke-width: 1;
+      stroke-linejoin: round;
+      opacity: 0.7;
+    }
+    .region .land-material {
+      pointer-events: none;
+      opacity: 0.2;
     }
     .region text {
       pointer-events: none;
@@ -212,10 +432,10 @@ export interface TerritoryRegion {
     }
     .region .name {
       font-size: 13.5px;
-      font-weight: 780;
+      font-weight: 800;
       letter-spacing: -0.015em;
       paint-order: stroke fill;
-      stroke: rgba(255, 255, 255, 0.85);
+      stroke: rgba(255, 255, 255, 0.9);
       stroke-width: 3px;
       stroke-linejoin: round;
     }
@@ -225,13 +445,13 @@ export interface TerritoryRegion {
       font-weight: 650;
       font-variant-numeric: tabular-nums;
       paint-order: stroke fill;
-      stroke: rgba(255, 255, 255, 0.85);
+      stroke: rgba(255, 255, 255, 0.9);
       stroke-width: 2.5px;
       stroke-linejoin: round;
     }
     .density {
       pointer-events: none;
-      transition: opacity var(--duration-standard);
+      transition: opacity var(--motion-base) var(--ease-standard);
     }
     footer {
       display: flex;
@@ -255,15 +475,15 @@ export interface TerritoryRegion {
       width: 0.65rem;
       height: 0.65rem;
       border-radius: 3px;
-      background: #5d936e;
+      background: #7fa88b;
       box-shadow: 0 1px 2px rgba(11, 25, 16, 0.12);
     }
     .legend.warning {
-      background: #c27b1c;
+      background: #c08a3e;
     }
     .legend.vacant {
-      border: 1px dashed #8fa395;
-      background: #edf2ed;
+      border: 1px dashed #8ca094;
+      background: #d0dfd1;
       box-shadow: none;
     }
     .legend.unlocated {
@@ -313,6 +533,11 @@ export class TerritoryFieldComponent {
   regionLabel(region: TerritoryRegion): string {
     const count = `${region.count} ${region.count === 1 ? 'animal' : 'animais'}`;
     return [region.name, count, region.detail].filter(Boolean).join(', ');
+  }
+
+  depthTransform(_id?: string): string {
+    // Fixed 6px depth offset reusing the same region.path; only ~6px stay visible.
+    return `translate(0, 6)`;
   }
 }
 

@@ -1,14 +1,112 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { LucideDynamicIcon } from '@lucide/angular';
 import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
+import { BadgeComponent } from '../../design-system/primitives/primitives';
+import { DomainIconComponent, type DomainIconName } from '../../design-system/primitives/domain-icon';
 import { DashboardStore } from './dashboard.store';
 import { QueueItem, mapQueueItem } from './dashboard.models';
 
+interface AgendaDayView {
+  isoDate: string;
+  weekday: string;
+  day: string;
+  month: string;
+  isToday: boolean;
+  count: number;
+}
+
+const ISO_DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 @Component({
   selector: 'app-home-actions',
-  imports: [RouterLink, ErrorStateComponent, SkeletonComponent],
-  template: `<div class="action-column">
-    <section class="surface-panel attention-section" aria-labelledby="attention-title">
+  imports: [RouterLink, LucideDynamicIcon, BadgeComponent, DomainIconComponent, ErrorStateComponent, SkeletonComponent],
+  template: `<div class="home-operational-row">
+    <section class="surface-panel agenda-section" aria-labelledby="agenda-title">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">PRÓXIMOS PASSOS</span>
+          <h2 id="agenda-title">Agenda operacional</h2>
+        </div>
+        <a class="inline-link" routerLink="/rebanho/agenda">Ver agenda <span aria-hidden="true">→</span></a>
+      </div>
+      @if(store.agenda().status==='ready' && store.agenda().value; as agenda){
+        <div class="agenda-week" role="tablist" aria-label="Próximos 7 dias">
+          @for(day of agendaDays(); track day.isoDate){
+            <button
+              type="button"
+              role="tab"
+              class="agenda-day"
+              [id]="'agenda-day-tab-' + day.isoDate"
+              [class.today]="day.isToday"
+              [class.selected]="day.isoDate === activeAgendaDate()"
+              [class.has-events]="day.count > 0"
+              [attr.aria-selected]="day.isoDate === activeAgendaDate()"
+              aria-controls="agenda-schedule"
+              [attr.aria-label]="agendaDayLabel(day)"
+              (click)="selectAgendaDate(day.isoDate)"
+            >
+              <span class="agenda-weekday">{{day.weekday}}</span>
+              <strong class="agenda-day-number">{{day.day}}</strong>
+              <span class="agenda-day-marker" aria-hidden="true">
+                @if(day.count > 1){<b>{{day.count}}</b>}
+                @else if(day.count === 1){<i></i>}
+              </span>
+              @if(day.isToday){<span class="agenda-today-label">Hoje</span>}
+            </button>
+          }
+        </div>
+        @if(agenda.items.length){
+          <div class="agenda-schedule" id="agenda-schedule" role="tabpanel" [attr.aria-label]="'Atividades de ' + activeAgendaDayLabel()">
+            <h3 class="agenda-schedule-title">{{activeAgendaDayLabel()}}</h3>
+            @if(selectedAgendaItems().length){
+              <ol class="schedule-list">
+                @for(entry of selectedAgendaItems(); track entry.id){
+                  <li class="schedule-item" [class.critical]="entry.status==='OVERDUE'">
+                    <span class="domain-rail schedule-rail" [attr.data-domain]="domain(entry.kind)" aria-hidden="true"></span>
+                    <gr-domain-icon [domain]="iconDomain(entry.kind)" size="sm" />
+                    <div class="schedule-copy">
+                      <strong>{{entry.title}}</strong>
+                      <span>{{entry.context || kindLabel(entry.kind)}} · {{sourceLabel(entry.source)}}</span>
+                      <time [attr.datetime]="entry.date">{{formatDate(entry.date)}}</time>
+                    </div>
+                    @if(entry.status){
+                      <gr-badge [tone]="statusTone(entry.status)">{{statusLabel(entry.status)}}</gr-badge>
+                    }
+                  </li>
+                }
+              </ol>
+            } @else {
+              <div class="compact-empty schedule-empty">
+                <span class="agenda-empty-icon" aria-hidden="true"><svg lucideIcon="calendar-days" [attr.width]="26" [attr.height]="26"></svg></span>
+                <div>
+                  <strong>Nenhuma atividade neste dia</strong>
+                  <p>Selecione outro dia ou abra a agenda completa.</p>
+                </div>
+              </div>
+            }
+          </div>
+          @if(hasMoreAgendaItems()){
+            <p class="agenda-more">Há mais atividades na agenda completa.</p>
+          }
+        } @else {
+          <div class="compact-empty agenda-empty">
+            <span class="agenda-empty-icon" aria-hidden="true"><svg lucideIcon="calendar-days" [attr.width]="26" [attr.height]="26"></svg></span>
+            <div>
+              <strong>Nada programado nos próximos dias</strong>
+              <p>Novas atividades aparecerão aqui.</p>
+              <a class="inline-link" routerLink="/rebanho/agenda">Ver agenda completa <span aria-hidden="true">→</span></a>
+            </div>
+          </div>
+        }
+      } @else if(store.agenda().status==='error'){
+        <gr-error-state title="Não foi possível carregar a agenda" [description]="errorText(store.agenda().error?.message)" [reference]="reference(store.agenda().error?.requestId)" (retry)="store.retry('agenda')" />
+      } @else {
+        <div class="queue-skeleton"><gr-skeleton /><gr-skeleton /></div>
+      }
+    </section>
+
+    <section class="surface-panel attention-section" aria-labelledby="attention-title" [class.has-items]="hasAttentionItems()">
       <div class="section-heading">
         <div>
           <span class="section-kicker attention-kicker">AGORA · PRIORIDADE</span>
@@ -25,9 +123,10 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
           <div class="queue" role="list">
             @for(item of attention.preview; track item.stableId){
               @let entry = queue(item);
-              <div class="queue-entry" role="listitem" [class.critical]="entry.status==='OVERDUE'">
+              <div class="queue-entry" role="listitem" [class.critical]="entry.status==='OVERDUE'" [class.due-today]="isDueToday(entry)" [class.open]="openItem()===entry.id">
                 <button type="button" class="queue-button" [attr.aria-expanded]="openItem()===entry.id" (click)="toggleItem(entry.id)">
-                  <span class="domain-dot" [attr.data-domain]="domain(entry.kind)" aria-hidden="true"></span>
+                  <span class="domain-rail" [attr.data-domain]="domain(entry.kind)" aria-hidden="true"></span>
+                  <gr-domain-icon [domain]="iconDomain(entry.kind)" size="sm" />
                   <span class="queue-copy">
                     <strong>{{entry.title}}</strong>
                     <small>{{entry.context || kindLabel(entry.kind)}} · {{sourceLabel(entry.source)}}</small>
@@ -40,7 +139,7 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
                     <span class="detail-badge">{{kindLabel(entry.kind)}}</span>
                     <span>Data operacional: {{formatDate(entry.date)}}</span>
                     @if(entry.status){
-                      <span class="status-tag">Situação: {{statusLabel(entry.status)}}</span>
+                      <gr-badge [tone]="statusTone(entry.status)">Situação: {{statusLabel(entry.status)}}</gr-badge>
                     }
                   </div>
                 }
@@ -63,57 +162,21 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       }
       <a class="section-link" routerLink="/rebanho/agenda">Abrir agenda completa <span aria-hidden="true">→</span></a>
     </section>
-
-    <section class="surface-panel agenda-section" aria-labelledby="agenda-title">
-      <div class="section-heading">
-        <div>
-          <span class="section-kicker">PRÓXIMOS PASSOS</span>
-          <h2 id="agenda-title">Agenda operacional</h2>
-        </div>
-        <a class="inline-link" routerLink="/rebanho/agenda">Ver agenda <span aria-hidden="true">→</span></a>
-      </div>
-      @if(store.agenda().status==='ready' && store.agenda().value; as agenda){
-        @if(agenda.items.length){
-          <div class="agenda-list">
-            @for(item of agenda.items; track item.stableId){
-              @let entry = queue(item);
-              <div class="agenda-row">
-                <time [attr.datetime]="entry.date" class="agenda-calendar-tile">
-                  <strong>{{day(entry.date)}}</strong>
-                  <small>{{month(entry.date)}}</small>
-                </time>
-                <span class="agenda-axis" [attr.data-domain]="domain(entry.kind)" aria-hidden="true"></span>
-                <div class="agenda-copy">
-                  <strong>{{entry.title}}</strong>
-                  <span>{{entry.context || kindLabel(entry.kind)}} · {{sourceLabel(entry.source)}}</span>
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="compact-empty">
-            <strong>Nada programado a partir de hoje</strong>
-            <p>Os próximos itens da operação aparecerão aqui.</p>
-          </div>
-        }
-      } @else if(store.agenda().status==='error'){
-        <gr-error-state title="Não foi possível carregar a agenda" [description]="errorText(store.agenda().error?.message)" [reference]="reference(store.agenda().error?.requestId)" (retry)="store.retry('agenda')" />
-      } @else {
-        <div class="queue-skeleton"><gr-skeleton /><gr-skeleton /></div>
-      }
-    </section>
   </div>`,
   styles: [`
     :host {
       display: block;
+      align-self: start;
       min-width: 0;
-      height: 100%;
+      height: auto;
     }
-    .action-column {
+    .home-operational-row {
       min-width: 0;
-      height: 100%;
+      height: auto;
       display: grid;
-      grid-template-rows: minmax(14rem, 1.15fr) minmax(12rem, 0.85fr);
+      grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.75fr);
+      align-content: start;
+      align-items: start;
       gap: var(--space-4);
     }
     .surface-panel {
@@ -126,30 +189,17 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       display: flex;
       flex-direction: column;
       position: relative;
-      transition: box-shadow var(--motion-fast) var(--ease-standard);
     }
-    .surface-panel:hover {
-      box-shadow: var(--shadow-2);
+    .attention-section.has-items {
+      background: #fbf5e9;
+      border-color: #e3cfa0;
     }
-    .attention-section::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 1.5rem;
-      right: 1.5rem;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--semantic-warning), transparent);
-      border-radius: var(--radius-pill);
+    .attention-section:not(.has-items) {
+      background: #f1f6f2;
+      border-color: var(--border-soft);
     }
-    .agenda-section::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 1.5rem;
-      right: 1.5rem;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
-      border-radius: var(--radius-pill);
+    .agenda-section {
+      background: #eef3f0;
     }
     .section-heading {
       display: flex;
@@ -177,17 +227,18 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       color: var(--semantic-warning);
     }
     .attention-count {
-      width: 1.85rem;
+      min-width: 1.85rem;
       height: 1.85rem;
       display: grid;
       place-items: center;
-      border-radius: 50%;
+      padding: 0 0.45rem;
+      border-radius: var(--radius-pill);
       color: #925304;
-      background: var(--color-warning-subtle);
-      border: 1px solid rgba(179, 102, 5, 0.28);
+      background: #f8ecd4;
+      border: 1px solid rgba(179, 102, 5, 0.35);
       font-size: 0.75rem;
       font-weight: 800;
-      box-shadow: 0 0 8px rgba(179, 102, 5, 0.18);
+      font-variant-numeric: tabular-nums;
     }
     .attention-count.empty {
       color: var(--semantic-success);
@@ -203,9 +254,9 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       padding-right: 4px;
     }
     .queue-entry {
-      border-bottom: 1px solid var(--border-soft);
-      transition: background var(--motion-fast);
+      border-bottom: 1px solid rgba(179, 102, 5, 0.14);
       border-radius: var(--radius-sm);
+      transition: background var(--motion-fast) var(--ease-standard);
     }
     .queue-entry:last-child {
       border-bottom: 0;
@@ -213,7 +264,7 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
     .queue-button {
       width: 100%;
       display: grid;
-      grid-template-columns: 0.55rem minmax(0, 1fr) auto 0.75rem;
+      grid-template-columns: 3px auto minmax(0, 1fr) auto 0.75rem;
       align-items: center;
       gap: 0.75rem;
       padding: 0.7rem 0.45rem;
@@ -223,47 +274,45 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       background: transparent;
       text-align: left;
       cursor: pointer;
-      transition: background var(--motion-fast);
+      transition: background var(--motion-fast) var(--ease-standard);
     }
-    .queue-button:hover, .queue-button[aria-expanded="true"] {
-      background: rgba(179, 102, 5, 0.06);
+    .queue-button:hover {
+      background: rgba(179, 102, 5, 0.07);
     }
-    .domain-dot {
-      width: 0.55rem;
-      height: 0.55rem;
-      border-radius: 50%;
+    .queue-entry.open .queue-button {
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      background: rgba(179, 102, 5, 0.08);
+    }
+    .domain-rail {
+      width: 3px;
+      height: 1.75rem;
+      border-radius: var(--radius-pill);
       background: var(--color-primary);
-      box-shadow: 0 0 4px rgba(18, 84, 52, 0.25);
     }
-    .domain-dot[data-domain="health"] {
+    .domain-rail[data-domain="health"] {
       background: var(--data-amber);
-      box-shadow: 0 0 6px rgba(179, 102, 5, 0.45);
     }
-    .domain-dot[data-domain="weight"] {
+    .domain-rail[data-domain="weight"] {
       background: var(--data-violet);
-      box-shadow: 0 0 6px rgba(107, 82, 165, 0.45);
     }
-    .domain-dot[data-domain="reproduction"] {
+    .domain-rail[data-domain="reproduction"] {
       background: #8a58a6;
-      box-shadow: 0 0 6px rgba(138, 88, 166, 0.45);
     }
-    .domain-dot[data-domain="movement"] {
+    .domain-rail[data-domain="movement"] {
       background: var(--color-info);
-      box-shadow: 0 0 6px rgba(42, 105, 136, 0.45);
     }
-    .critical .domain-dot {
+    .critical .domain-rail {
       background: var(--semantic-danger);
-      box-shadow: 0 0 6px rgba(193, 60, 49, 0.5);
     }
     .queue-copy { min-width: 0; }
-    .queue-copy strong, .agenda-copy strong {
+    .queue-copy strong {
       display: block;
       font-size: 0.8125rem;
       font-weight: 700;
       line-height: 1.25;
       color: var(--text-primary);
     }
-    .queue-copy small, .agenda-copy span {
+    .queue-copy small {
       display: block;
       margin-top: 0.15rem;
       overflow: hidden;
@@ -277,6 +326,14 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       font-size: 0.6875rem;
       font-weight: 650;
       font-variant-numeric: tabular-nums;
+    }
+    .due-today .queue-button time {
+      color: #925304;
+      font-weight: 750;
+    }
+    .critical .queue-button time {
+      color: var(--semantic-danger);
+      font-weight: 750;
     }
     .queue-chevron {
       color: var(--text-tertiary);
@@ -293,9 +350,11 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       flex-wrap: wrap;
       align-items: center;
       gap: var(--space-2);
-      padding: 0 var(--space-3) var(--space-3) 1.6rem;
+      padding: 0 var(--space-3) var(--space-3) 1.35rem;
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
       color: var(--text-secondary);
       font-size: 0.6875rem;
+      background: rgba(179, 102, 5, 0.08);
       animation: detail-in var(--motion-fast) var(--ease-standard);
     }
     @keyframes detail-in {
@@ -308,13 +367,6 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       border: 1px solid var(--border-soft);
       font-weight: 650;
       color: var(--text-primary);
-    }
-    .status-tag {
-      color: var(--semantic-warning);
-      font-weight: 650;
-    }
-    .critical .status-tag {
-      color: var(--semantic-danger);
     }
     .attention-clear {
       min-height: 5.5rem;
@@ -362,78 +414,157 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       text-decoration: underline;
       color: var(--color-primary-hover);
     }
-    .agenda-list {
-      max-height: 11rem;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-    .agenda-row {
+    .agenda-week {
       display: grid;
-      grid-template-columns: 2.5rem 0.6rem minmax(0, 1fr);
-      align-items: center;
-      gap: 0.75rem;
-      min-height: 3.4rem;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+      margin-bottom: var(--space-3);
     }
-    .agenda-calendar-tile {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 3px;
-      border-radius: var(--radius-sm);
-      background: var(--surface-subtle);
+    .agenda-day {
+      min-width: 0;
+      display: grid;
+      justify-items: center;
+      gap: 1px;
+      padding: 0.55rem 0.15rem 0.5rem;
       border: 1px solid var(--border-soft);
-      line-height: 1;
-      box-shadow: 0 1px 2px rgba(11, 25, 16, 0.05);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      background: var(--canvas-elevated);
+      font-size: 0.6875rem;
+      cursor: pointer;
+      transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
     }
-    .agenda-calendar-tile strong {
-      font-size: 0.95rem;
-      font-weight: 800;
-      color: var(--color-primary);
+    .agenda-day:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-subtle);
+    }
+    .agenda-day.selected {
+      border-color: var(--brand-primary);
+      color: var(--text-primary);
+      background: #f2f7f3;
+      box-shadow: inset 0 0 0 1px var(--brand-primary);
+    }
+    .agenda-weekday {
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+    .agenda-day.selected .agenda-weekday {
+      color: var(--brand-primary);
+    }
+    .agenda-day-number {
+      font-family: var(--font-display);
+      font-size: 1.0625rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--text-primary);
       font-variant-numeric: tabular-nums;
     }
-    .agenda-calendar-tile small {
-      margin-top: 2px;
-      color: var(--text-tertiary);
-      font-size: 0.58rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+    .agenda-day-marker {
+      height: 0.9rem;
+      display: grid;
+      place-items: center;
     }
-    .agenda-axis {
-      position: relative;
-      width: 1px;
-      height: 100%;
-      justify-self: center;
-      background: var(--border-soft);
-    }
-    .agenda-axis::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0.55rem;
-      height: 0.55rem;
-      border: 2px solid var(--canvas-elevated);
+    .agenda-day-marker i {
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
-      background: var(--color-primary);
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 0 1px var(--border-soft);
+      background: var(--color-info);
     }
-    .agenda-axis[data-domain="health"]::before { background: var(--data-amber); }
-    .agenda-axis[data-domain="weight"]::before { background: var(--data-violet); }
-    .agenda-axis[data-domain="reproduction"]::before { background: #8a58a6; }
-    .agenda-axis[data-domain="movement"]::before { background: var(--color-info); }
-    .agenda-copy {
+    .agenda-day-marker b {
+      min-width: 1rem;
+      height: 1rem;
+      display: grid;
+      place-items: center;
+      padding: 0 0.2rem;
+      border-radius: var(--radius-pill);
+      color: #fff;
+      background: var(--color-info);
+      font-size: 0.625rem;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+    }
+    .agenda-today-label {
+      font-size: 0.5625rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--brand-primary);
+    }
+    .agenda-schedule {
       min-width: 0;
-      padding: 0.65rem 0;
+    }
+    .agenda-schedule-title {
+      margin: 0 0 var(--space-2);
+      font-size: 0.6875rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+    .schedule-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .schedule-item {
+      display: grid;
+      grid-template-columns: 3px auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.15rem;
       border-bottom: 1px solid var(--border-soft);
     }
-    .agenda-row:last-child .agenda-copy {
+    .schedule-item:last-child {
       border-bottom: 0;
     }
+    .schedule-rail {
+      align-self: stretch;
+      height: auto;
+      min-height: 2.75rem;
+    }
+    .schedule-copy {
+      min-width: 0;
+    }
+    .schedule-copy strong {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--text-primary);
+    }
+    .schedule-copy span {
+      display: block;
+      margin-top: 0.15rem;
+      overflow: hidden;
+      color: var(--text-tertiary);
+      font-size: 0.6875rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .schedule-copy time {
+      display: block;
+      margin-top: 0.15rem;
+      color: var(--text-secondary);
+      font-size: 0.6875rem;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+    }
+    .critical .schedule-copy time {
+      color: var(--semantic-danger);
+      font-weight: 750;
+    }
+    .schedule-item gr-badge {
+      align-self: start;
+    }
+    .agenda-more {
+      margin: var(--space-3) 0 0;
+      font-size: 0.6875rem;
+      color: var(--text-tertiary);
+    }
     .compact-empty {
-      min-height: 5.5rem;
       display: grid;
       align-content: center;
       padding: var(--space-3);
@@ -448,19 +579,33 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
       font-size: 0.6875rem;
       color: var(--text-secondary);
     }
+    .agenda-empty {
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: var(--space-3);
+      border-block: 0;
+      padding: var(--space-2) 0;
+    }
+    .agenda-empty-icon {
+      width: 2.25rem;
+      height: 2.25rem;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-soft);
+      color: var(--color-info);
+      background: var(--canvas-elevated);
+    }
+    .agenda-empty .inline-link {
+      margin-top: 0.35rem;
+    }
     .queue-skeleton {
       display: grid;
       gap: 0.6rem;
     }
     .queue-skeleton gr-skeleton { height: 2.2rem; }
     @media (max-width: 64rem) {
-      .action-column {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto;
-      }
-    }
-    @media (max-width: 52rem) {
-      .action-column {
+      .home-operational-row {
         grid-template-columns: 1fr;
       }
     }
@@ -474,9 +619,99 @@ import { QueueItem, mapQueueItem } from './dashboard.models';
 })
 export class HomeActionsComponent {
   readonly openItem = signal<string | null>(null);
+  readonly selectedAgendaDate = signal<string | null>(null);
   queue = mapQueueItem;
   constructor(readonly store: DashboardStore) {}
   toggleItem(id: string): void { this.openItem.set(this.openItem() === id ? null : id); }
+  hasAttentionItems(): boolean { return (this.store.attention().value?.preview.length ?? 0) > 0; }
+  selectAgendaDate(isoDate: string): void { this.selectedAgendaDate.set(isoDate); }
+  parseIsoDay(value: string): { year: number; month: number; day: number } | null {
+    const match = ISO_DAY_PATTERN.exec(value);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return { year, month, day };
+  }
+  formatIsoDay(year: number, month: number, day: number): string {
+    const pad = (part: number) => String(part).padStart(2, '0');
+    return `${year}-${pad(month)}-${pad(day)}`;
+  }
+  addIsoDays(isoDate: string, delta: number): string | null {
+    const parts = this.parseIsoDay(isoDate);
+    if (!parts) return null;
+    const date = new Date(parts.year, parts.month - 1, parts.day, 12);
+    date.setDate(date.getDate() + delta);
+    return this.formatIsoDay(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  }
+  todayIsoDay(): string {
+    const now = new Date();
+    return this.formatIsoDay(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  }
+  agendaReferenceDate(): string {
+    const reference = this.store.attention().value?.referenceDate;
+    return reference && this.parseIsoDay(reference) ? reference : this.todayIsoDay();
+  }
+  weekday(isoDate: string): string {
+    const parts = this.parseIsoDay(isoDate);
+    if (!parts) return '';
+    return new Intl.DateTimeFormat('pt-BR', { weekday: 'short' })
+      .format(new Date(parts.year, parts.month - 1, parts.day, 12))
+      .replace('.', '');
+  }
+  readonly agendaDays = computed<AgendaDayView[]>(() => {
+    const reference = this.agendaReferenceDate();
+    const today = this.todayIsoDay();
+    const counts = new Map<string, number>();
+    for (const item of this.store.agenda().value?.items ?? []) {
+      if (!this.parseIsoDay(item.operationalDate)) continue;
+      counts.set(item.operationalDate, (counts.get(item.operationalDate) ?? 0) + 1);
+    }
+    const days: AgendaDayView[] = [];
+    for (let offset = 0; offset < 7; offset++) {
+      const isoDate = this.addIsoDays(reference, offset);
+      if (!isoDate) continue;
+      days.push({
+        isoDate,
+        weekday: this.weekday(isoDate),
+        day: isoDate.slice(8, 10),
+        month: this.month(isoDate),
+        isToday: isoDate === today,
+        count: counts.get(isoDate) ?? 0,
+      });
+    }
+    return days;
+  });
+  readonly defaultAgendaDate = computed<string>(() => {
+    const days = this.agendaDays();
+    return days.find(day => day.count > 0)?.isoDate ?? days[0]?.isoDate ?? this.agendaReferenceDate();
+  });
+  readonly activeAgendaDate = computed<string>(() => {
+    const selected = this.selectedAgendaDate();
+    if (selected && this.agendaDays().some(day => day.isoDate === selected)) return selected;
+    return this.defaultAgendaDate();
+  });
+  readonly selectedAgendaItems = computed<QueueItem[]>(() => {
+    const active = this.activeAgendaDate();
+    return (this.store.agenda().value?.items ?? [])
+      .filter(item => item.operationalDate === active)
+      .map(item => this.queue(item));
+  });
+  readonly hasMoreAgendaItems = computed<boolean>(() => {
+    const agenda = this.store.agenda().value;
+    if (!agenda) return false;
+    return (agenda.totalElements ?? agenda.items.length) > agenda.items.length;
+  });
+  activeAgendaDayLabel(): string {
+    const active = this.agendaDays().find(day => day.isoDate === this.activeAgendaDate());
+    if (active) return `${active.weekday} · ${active.day} ${active.month}`;
+    return this.formatDate(this.activeAgendaDate());
+  }
+  agendaDayLabel(day: AgendaDayView): string {
+    const count = day.count === 0 ? 'sem atividades' : day.count === 1 ? '1 atividade' : `${day.count} atividades`;
+    return `${day.weekday} ${day.day}, ${count}${day.isToday ? ', hoje' : ''}`;
+  }
   formatDate(value?: string): string {
     if (!value) return '—';
     const [year, month, day] = value.split('-');
@@ -486,7 +721,6 @@ export class HomeActionsComponent {
     const [, month, day] = value.split('-');
     return `${day}/${month}`;
   }
-  day(value: string): string { return value.slice(8, 10); }
   month(value: string): string {
     return new Intl.DateTimeFormat('pt-BR', { month: 'short', timeZone: 'UTC' })
       .format(new Date(`${value}T12:00:00Z`))
@@ -517,6 +751,20 @@ export class HomeActionsComponent {
       PREGNANCY_CHECK: 'reproduction',
       MOVEMENT: 'movement',
     } as Record<string, string>)[kind] ?? 'territory';
+  }
+  iconDomain(kind: string): DomainIconName {
+    const domain = this.domain(kind);
+    return domain === 'health' || domain === 'weight' || domain === 'reproduction' || domain === 'movement' ? domain : 'traceability';
+  }
+  isDueToday(entry: QueueItem): boolean {
+    const reference = this.store.attention().value?.referenceDate;
+    return !!reference && entry.date === reference && entry.status !== 'OVERDUE';
+  }
+  statusTone(status: string | null): 'danger' | 'attention' | 'success' | 'neutral' {
+    if (status === 'OVERDUE') return 'danger';
+    if (status === 'OPEN') return 'attention';
+    if (status === 'COMPLETED') return 'success';
+    return 'neutral';
   }
   statusLabel(status: string): string {
     return ({

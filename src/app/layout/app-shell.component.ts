@@ -20,8 +20,19 @@ interface NavSection { label?: string; items: NavItem[] }
     @if(mobileOpen()){<button class="mobile-backdrop" type="button" aria-label="Fechar menu" (click)="mobileOpen.set(false)"></button>}
     <aside class="sidebar" [class.mobile-open]="mobileOpen()" aria-label="Navegação principal">
       <div class="brand">
-        <span class="brand-mark"><i></i></span>
-        <div class="brand-text"><strong>BovNex</strong><span class="brand-badge">PRO</span></div>
+        @if (!collapsed()) {
+          @if (!brandLogoMissing()) {
+            <img class="brand-logo-full" src="/images/brand/ebov/sidebar-logo.png" alt="eBov" (error)="brandLogoMissing.set(true)" />
+          } @else {
+            <span class="brand-mark" aria-hidden="true"><i></i></span>
+            <strong class="brand-fallback-name">eBov</strong>
+          }
+          <span class="brand-badge">PRO</span>
+        } @else if (!brandLogoMissing()) {
+          <img class="brand-logo-symbol" src="/images/brand/ebov/symbol.svg" alt="eBov" (error)="brandLogoMissing.set(true)" />
+        } @else {
+          <span class="brand-mark" aria-hidden="true"><i></i></span>
+        }
         <button type="button" class="close-mobile" aria-label="Fechar menu" (click)="mobileOpen.set(false)"><svg lucideIcon="x"></svg></button>
       </div>
       <div class="mobile-contexts">
@@ -96,15 +107,25 @@ interface NavSection { label?: string; items: NavItem[] }
   styles: [`
     .shell { --app-sidebar-width: var(--sidebar-width); min-height: 100dvh; }
     .sidebar {
+      --sidebar-bg: var(--brand-primary);
+      --sidebar-bg-deep: color-mix(in srgb, var(--brand-primary) 72%, var(--brand-ink));
+      --sidebar-border: rgba(255, 255, 255, 0.12);
+      --sidebar-text: #dce8de;
+      --sidebar-text-muted: rgba(250, 250, 248, 0.72);
+      --sidebar-active-bg: rgba(255, 255, 255, 0.12);
+      --sidebar-active-border: rgba(255, 255, 255, 0.14);
+      --sidebar-hover-bg: rgba(255, 255, 255, 0.07);
+      --sidebar-live-accent: var(--brand-live);
       position: fixed;
       z-index: 40;
       inset: 0 auto 0 0;
       width: var(--sidebar-width);
       display: grid;
       grid-template-rows: auto 1fr auto;
-      border-right: 1px solid var(--color-border);
-      background: linear-gradient(180deg, #fbfdfb, #f1f6f2);
-      box-shadow: inset -1px 0 rgba(255, 255, 255, 0.8), 2px 0 16px rgba(11, 25, 16, 0.02);
+      border-right: 1px solid #082419;
+      color: var(--sidebar-text);
+      background: var(--sidebar-bg);
+      box-shadow: 2px 0 16px rgba(6, 26, 17, 0.22);
       transition: width var(--duration-context) var(--ease-standard), transform var(--duration-context) var(--ease-standard);
     }
     .brand {
@@ -113,12 +134,24 @@ interface NavSection { label?: string; items: NavItem[] }
       align-items: center;
       gap: var(--space-3);
       padding: 0 var(--space-5);
-      border-bottom: 1px solid var(--color-border);
-      background: rgba(255, 255, 255, 0.5);
+      border-bottom: 1px solid var(--sidebar-border);
+      background: var(--sidebar-bg-deep);
     }
-    .brand-text { display: flex; align-items: center; gap: var(--space-2); }
-    .brand strong { font-size: 0.9375rem; font-weight: 800; line-height: 1; letter-spacing: -0.035em; color: var(--color-text); }
-    .brand-badge { padding: 1px 5px; border-radius: 4px; font-size: 0.575rem; font-weight: 800; letter-spacing: 0.06em; color: var(--color-primary); background: var(--color-primary-subtle); }
+    .brand-fallback-name { font-family: var(--font-display); font-size: 1.0625rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; color: #fafaf8; }
+    .brand-badge { padding: 1px 5px; border-radius: 4px; font-size: 0.575rem; font-weight: 800; letter-spacing: 0.06em; color: #d9ebde; background: rgba(255, 255, 255, 0.14); }
+    .brand-logo-full {
+      max-height: 2rem;
+      max-width: 11rem;
+      width: auto;
+      flex: 0 1 auto;
+      object-fit: contain;
+    }
+    .brand-logo-symbol {
+      width: 2rem;
+      height: 2rem;
+      flex: 0 0 auto;
+      object-fit: contain;
+    }
     .brand-mark {
       width: 2.15rem;
       height: 2.15rem;
@@ -126,17 +159,17 @@ interface NavSection { label?: string; items: NavItem[] }
       place-items: center;
       flex: 0 0 auto;
       border-radius: 0.65rem;
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.35);
       color: #fff;
-      background: linear-gradient(145deg, #186a45, #0d4228);
-      box-shadow: 0 4px 12px rgba(18, 84, 52, 0.22);
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow: 0 4px 12px rgba(6, 26, 17, 0.25);
     }
     .brand-mark i { width: 1.05rem; height: 0.75rem; border: 1.6px solid currentColor; border-radius: 60% 40% 55% 45%; transform: rotate(-12deg); }
     .close-mobile, .mobile-contexts { display: none; }
-    .close-mobile { margin-left: auto; border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+    .close-mobile { margin-left: auto; border: 0; background: transparent; color: var(--sidebar-text-muted); cursor: pointer; }
     nav { overflow-y: auto; padding: var(--space-5) var(--space-3); }
     nav section + section { margin-top: var(--space-6); }
-    nav h2 { height: 1.25rem; margin: 0 var(--space-3) var(--space-2); font-size: 0.625rem; font-weight: 750; line-height: 1.25rem; letter-spacing: 0.11em; color: var(--color-text-muted); text-transform: uppercase; }
+    nav h2 { height: 1.25rem; margin: 0 var(--space-3) var(--space-2); font-size: 0.625rem; font-weight: 750; line-height: 1.25rem; letter-spacing: 0.11em; color: var(--sidebar-text-muted); text-transform: uppercase; }
     ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
     a {
       position: relative;
@@ -146,20 +179,22 @@ interface NavSection { label?: string; items: NavItem[] }
       gap: var(--space-3);
       padding: 0 var(--space-3);
       border-radius: var(--radius-md);
-      color: var(--color-text-secondary);
+      color: var(--sidebar-text);
       font-size: 0.835rem;
       font-weight: 520;
       text-decoration: none;
       transition: color var(--duration-fast), background var(--duration-fast);
     }
-    a:hover { color: var(--color-text); background: rgba(220, 238, 226, 0.6); }
-    a.active { color: var(--color-primary); background: linear-gradient(90deg, rgba(229, 242, 233, 0.95), rgba(229, 242, 233, 0.45)); font-weight: 700; }
-    a.active::before { content: ''; position: absolute; left: -0.75rem; width: 3.5px; height: 1.5rem; border-radius: 0 3px 3px 0; background: var(--color-primary); box-shadow: 0 0 8px rgba(18, 84, 52, 0.4); }
-    a.active::after { content: ''; position: absolute; right: 0.75rem; width: 0.35rem; height: 0.35rem; border-radius: 50%; background: var(--color-accent); }
-    a.active svg { stroke-width: 2.2; color: var(--color-primary); }
+    a:hover { color: #fff; background: var(--sidebar-hover-bg); }
+    a.active { color: #fff; background: var(--sidebar-active-bg); font-weight: 700; box-shadow: inset 0 0 0 1px var(--sidebar-active-border); }
+    a.active::before { content: ''; position: absolute; left: -0.75rem; width: 3px; height: 1.5rem; border-radius: 0 3px 3px 0; background: var(--sidebar-live-accent); }
+    a.active svg { stroke-width: 2.2; color: #fff; }
     a svg, .sidebar-footer svg { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; stroke-width: 1.8; }
-    .sidebar-footer { position: relative; padding: var(--space-3); border-top: 1px solid var(--color-border); }
-    .sidebar-footer::before { content: ''; position: absolute; top: -1px; left: var(--space-6); width: 2rem; height: 2px; background: var(--color-accent); }
+    a svg { color: var(--sidebar-text-muted); }
+    a:hover svg { color: #fff; }
+    .sidebar a:focus-visible, .sidebar-footer button:focus-visible, .brand .close-mobile:focus-visible { outline: 2px solid #eaf4ed; outline-offset: 2px; }
+    .sidebar-footer { position: relative; padding: var(--space-3); border-top: 1px solid var(--sidebar-border); background: var(--sidebar-bg-deep); }
+    .sidebar-footer::before { content: ''; position: absolute; top: -1px; left: var(--space-6); width: 2rem; height: 2px; background: var(--sidebar-live-accent); }
     .sidebar-footer button {
       width: 100%;
       min-height: var(--control-height-small);
@@ -169,12 +204,12 @@ interface NavSection { label?: string; items: NavItem[] }
       padding: 0 var(--space-3);
       border: 0;
       border-radius: var(--radius-sm);
-      color: var(--color-text-muted);
+      color: var(--sidebar-text-muted);
       background: transparent;
       font-size: 0.8125rem;
       cursor: pointer;
     }
-    .sidebar-footer button:hover { color: var(--color-text); background: var(--color-surface-soft); }
+    .sidebar-footer button:hover { color: #fff; background: var(--sidebar-hover-bg); }
     .workspace { min-height: 100dvh; margin-left: var(--sidebar-width); overflow-x: clip; transition: margin-left var(--duration-context) var(--ease-standard); }
     .topbar {
       position: sticky;
@@ -231,12 +266,11 @@ interface NavSection { label?: string; items: NavItem[] }
     .collapsed .sidebar { width: 4.5rem; }
     .collapsed .workspace { margin-left: 4.5rem; }
     .collapsed .brand { justify-content: center; padding: 0; }
-    .collapsed .brand-text, .collapsed nav h2, .collapsed nav a span, .collapsed .sidebar-footer span { display: none; }
+    .collapsed nav h2, .collapsed nav a span, .collapsed .sidebar-footer span { display: none; }
     .collapsed nav { padding-inline: var(--space-2); }
     .collapsed nav section + section { margin-top: var(--space-3); }
     .collapsed nav a, .collapsed .sidebar-footer button { justify-content: center; padding: 0; }
     .collapsed nav a.active::before { left: -0.5rem; }
-    .collapsed nav a.active::after { display: none; }
     .mobile-backdrop { position: fixed; z-index: 35; inset: 0; border: 0; background: rgba(11, 25, 16, 0.42); backdrop-filter: blur(4px); }
     @media (max-width: 64rem) {
       .shell, .collapsed { --app-sidebar-width: 0rem; }
@@ -246,13 +280,13 @@ interface NavSection { label?: string; items: NavItem[] }
       .menu-button, .close-mobile { display: inline-flex; }
       .collapsed .sidebar { width: min(var(--sidebar-width), 88vw); }
       .collapsed .brand { justify-content: flex-start; padding: 0 var(--space-5); }
-      .collapsed .brand-text, .collapsed nav h2, .collapsed nav a span, .collapsed .sidebar-footer span { display: initial; }
+      .collapsed nav h2, .collapsed nav a span, .collapsed .sidebar-footer span { display: initial; }
       .collapsed nav { padding: var(--space-4) var(--space-3); }
       .collapsed nav a, .collapsed .sidebar-footer button { justify-content: flex-start; padding: 0 var(--space-3); }
     }
     @media (max-width: 46rem) {
       .sidebar { grid-template-rows: auto auto 1fr auto; }
-      .mobile-contexts { display: block; padding: var(--space-3); border-bottom: 1px solid var(--color-border); }
+      .mobile-contexts { display: block; padding: var(--space-3); border-bottom: 1px solid var(--sidebar-border); }
       .topbar { padding: 0 var(--space-4); }
       .account-info, .account-chevron { display: none; }
       .account-trigger { padding: 2px; }
@@ -268,6 +302,7 @@ interface NavSection { label?: string; items: NavItem[] }
 export class AppShellComponent {
   readonly collapsed = signal(false);
   readonly mobileOpen = signal(false);
+  readonly brandLogoMissing = signal(false);
   private readonly manualLogout = signal(false);
   readonly navigation: NavSection[] = [
     { items: [{ label: 'Visão geral', icon: 'house', route: '/visao-geral' }] },

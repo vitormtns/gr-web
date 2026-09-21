@@ -85,4 +85,46 @@ describe('AppShellComponent', () => {
     expect(fixture.nativeElement.querySelector('.route-content.context-hidden')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Atualizando contexto');
   });
+
+  it('usa os assets oficiais da marca conforme o estado do menu', async () => {
+    const pending = signal(false);
+    const context = {
+      status: signal('ready'), retry: vi.fn(),
+      transitionPending: pending,
+      organizations: signal([]), farms: signal([]), selectedOrganization: signal(null), selectedFarm: signal(null),
+      user: signal({ displayName: 'Vítor Martins', email: 'vitor@fazenda.com.br' }), role: signal('OWNER'), clear: vi.fn(),
+    };
+    TestBed.configureTestingModule({
+      imports: [AppShellComponent],
+      providers: [
+        ...appConfig.providers.filter(provider => provider && typeof provider === 'object' && !('ɵproviders' in provider)),
+        provideRouter([{ path: 'visao-geral', component: EmptyRouteComponent }]),
+        { provide: ContextStore, useValue: context },
+        { provide: AuthStore, useValue: { status: signal('authenticated'), userEmail: signal('vitor@fazenda.com.br') } },
+        { provide: PermissionService, useValue: { can: () => true } },
+        { provide: ToastService, useValue: { show: vi.fn(), toasts: signal([]) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(AppShellComponent);
+    fixture.detectChanges();
+    const full = fixture.nativeElement.querySelector('.brand-logo-full') as HTMLImageElement;
+    expect(full?.getAttribute('src')).toBe('/images/brand/ebov/sidebar-logo.png');
+    expect(full?.getAttribute('alt')).toBe('eBov');
+    expect(fixture.nativeElement.querySelector('.brand .brand-fallback-name')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.brand .brand-badge')?.textContent).toBe('PRO');
+    fixture.componentInstance.collapsed.set(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.brand-logo-full')).toBeNull();
+    const symbol = fixture.nativeElement.querySelector('.brand-logo-symbol') as HTMLImageElement;
+    expect(symbol?.getAttribute('src')).toBe('/images/brand/ebov/symbol.svg');
+    expect(symbol?.getAttribute('alt')).toBe('eBov');
+    fixture.componentInstance.collapsed.set(false);
+    fixture.detectChanges();
+    const reloaded = fixture.nativeElement.querySelector('.brand-logo-full') as HTMLImageElement;
+    reloaded.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.brand-logo-full')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.brand .brand-fallback-name')?.textContent).toBe('eBov');
+    expect(fixture.nativeElement.querySelector('.brand .brand-badge')?.textContent).toBe('PRO');
+  });
 });

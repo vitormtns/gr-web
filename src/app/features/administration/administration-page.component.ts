@@ -18,7 +18,7 @@ import { AdministrationHeaderComponent } from './administration-header.component
 @else if(state()==='error'){<gr-error-state level="page" title="Não foi possível carregar a administração" description="Seu acesso pode ter mudado. Recarregue os dados para continuar." [reference]="reference" (retry)="load()"/>}
 @else if(!organization()){<gr-empty-state title="Nenhuma organização disponível" description="Sua conta ainda não possui acesso a uma organização."/>}
 @else{
-  <section class="admin-intro"><div><span>VISÃO GERAL</span><h2>{{organization()!.name}}</h2><p>Estrutura administrativa e alcance do seu acesso no BovNex.</p></div><span class="status" [class.muted]="organization()!.status!=='ACTIVE'">{{statusLabels[organization()!.status]||organization()!.status}}</span></section>
+  <section class="admin-intro"><div><span>VISÃO GERAL</span><h2>{{organization()!.name}}</h2><p>Estrutura administrativa e alcance do seu acesso no eBov.</p></div><span class="status" [class.muted]="organization()!.status!=='ACTIVE'">{{statusLabels[organization()!.status]||organization()!.status}}</span></section>
   <section class="overview-grid" aria-label="Resumo da organização">
     <article><span>Fazendas</span><strong>{{farms().length}}</strong><p>{{activeFarms}} ativas nesta organização</p><a routerLink="/administracao/fazendas">Ver fazendas</a></article>
     <article><span>Pessoas</span><strong>{{permissions.canManageUsers()?(members().length===100?'100+':members().length):'—'}}</strong><p>{{permissions.canManageUsers()?'participantes visíveis':'Informação restrita a administradores'}}</p>@if(permissions.canManageUsers()){<a routerLink="/administracao/pessoas">Ver pessoas e acessos</a>}</article>

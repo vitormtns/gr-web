@@ -1,16 +1,30 @@
 @use './app/features/herd/herd-page';
 @use './app/features/reports/reports-page.component';
 @import '@fontsource-variable/inter/index.css';
+@import '@fontsource/poppins/latin-600.css';
+@import '@fontsource/poppins/latin-700.css';
+@import '@fontsource/poppins/latin-800.css';
 
 :root {
   color-scheme: light;
+
+  /* ======================================================================
+     EBOV BRAND FOUNDATION (official identity)
+     ====================================================================== */
+
+  --brand-primary: #0F5132;
+  --brand-live: #22C55E;
+  --brand-amber: #F59E0B;
+  --brand-ink: #1F2937;
+  --brand-neutral: #E5E7EB;
+  --brand-canvas: #FAFAF8;
 
   /* ======================================================================
      VISUAL SYSTEM V3 TOKENS
      ====================================================================== */
 
   /* A) CANVAS / SUPERFÍCIES */
-  --canvas-base: #f3f6f3;
+  --canvas-base: var(--brand-canvas);
   --canvas-elevated: #ffffff;
   --surface-data: #fafcfa;
   --surface-action: #ffffff;
@@ -20,15 +34,15 @@
   --surface-subtle: #f5f8f5;
 
   /* B) TEXTO */
-  --text-primary: #0b1910;
+  --text-primary: var(--brand-ink);
   --text-secondary: #526358;
   --text-tertiary: #78897e;
   --text-inverse: #ffffff;
-  --text-accent: #125434;
+  --text-accent: var(--brand-primary);
 
   /* C) BORDAS / DIVISORES */
-  --border-soft: #dbe4dd;
-  --border-strong: #c2d2c6;
+  --border-soft: var(--brand-neutral);
+  --border-strong: #CBD2CC;
   --border-accent: #157945;
   --divider-subtle: rgba(200, 215, 204, 0.45);
 
@@ -39,7 +53,7 @@
   --semantic-info: #2a6988;
 
   /* E) TERRITÓRIO / DOMÍNIO */
-  --territory-green: #157945;
+  --territory-green: var(--brand-primary);
   --territory-green-soft: #e1f3e8;
   --territory-earth: #7a6045;
   --territory-earth-soft: #f4eee7;
@@ -82,7 +96,7 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-tertiary);
   --color-primary: var(--text-accent);
-  --color-primary-hover: #0d4228;
+  --color-primary-hover: #0B3D26;
   --color-primary-subtle: var(--territory-green-soft);
   --color-primary-glow: rgba(18, 84, 52, 0.14);
   --color-accent: #659776;
@@ -98,9 +112,11 @@
   --data-green: var(--semantic-success);
   --data-blue: var(--territory-water);
   --data-violet: #6b52a5;
-  --data-amber: var(--semantic-warning);
+  --data-amber: var(--brand-amber);
   --data-rose: #b5465d;
   --color-focus: #287a55;
+  --font-display: 'Poppins', 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-interface: 'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -138,7 +154,7 @@ body {
     radial-gradient(at 50% 95%, rgba(222, 237, 227, 0.32) 0px, transparent 55%),
     var(--canvas-base);
   background-attachment: fixed;
-  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-interface);
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'tnum';
   font-size: 0.9375rem;
   line-height: 1.5;
@@ -148,8 +164,8 @@ button, input, textarea, select { font: inherit; }
 button, a, select { -webkit-tap-highlight-color: transparent; }
 a { color: inherit; }
 h1, h2, h3, p { margin-top: 0; }
-h1 { margin-bottom: var(--space-2); font-size: clamp(1.6rem, 2.3vw, 2.15rem); line-height: 1.18; letter-spacing: -0.038em; font-weight: 780; }
-h2 { margin-bottom: var(--space-2); font-size: 1.05rem; line-height: 1.35; letter-spacing: -0.02em; font-weight: 680; }
+h1 { margin-bottom: var(--space-2); font-family: var(--font-display); font-size: clamp(1.6rem, 2.3vw, 2.15rem); line-height: 1.18; letter-spacing: -0.038em; font-weight: 780; }
+h2 { margin-bottom: var(--space-2); font-family: var(--font-display); font-size: 1.05rem; line-height: 1.35; letter-spacing: -0.02em; font-weight: 680; }
 p { color: var(--text-secondary); }
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 ::selection { color: var(--text-primary); background: var(--territory-green-soft); }
