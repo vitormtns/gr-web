@@ -52,4 +52,14 @@ describe('Home operacional acessível', () => {
     expect(region?.getAttribute('aria-pressed')).toBe('true');
     expect(element.querySelector('.attention-section')?.textContent).toContain('Planejado');
   });
+  it('renderiza o background global ambiental com aria-hidden e estrutura de camadas', () => {
+    const bg = element.querySelector('.home-page__background');
+    const overlay = element.querySelector('.home-page__background-overlay');
+    const content = element.querySelector('.home-page__content');
+    expect(bg).not.toBeNull();
+    expect(bg?.getAttribute('aria-hidden')).toBe('true');
+    expect(overlay).not.toBeNull();
+    expect(overlay?.getAttribute('aria-hidden')).toBe('true');
+    expect(content).not.toBeNull();
+  });
 });
