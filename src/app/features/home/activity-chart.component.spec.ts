@@ -5,14 +5,15 @@ import { ActivityBucket } from './dashboard.models';
 const bucket = (date: string, movements: number): ActivityBucket => ({ date, births: 0, deaths: 0, sales: 0, movements, weights: 0, healthTreatments: 0, breedings: 0, calvings: 0 });
 
 describe('leitura da série de atividade', () => {
-  it('mantém buckets zerados no caminho sem inventar datas', () => {
+  it('adapta a apresentação para períodos vazios, esparsos e populados', () => {
     const chart = new ActivityChartComponent();
     chart.buckets = [bucket('2026-09-13', 0), bucket('2026-09-14', 4), bucket('2026-09-15', 0)];
-    expect(chart.path('movements')).toBe('M0.00,180.00 L400.00,25.00 L800.00,180.00');
-    expect(chart.noActivity()).toBe(false);
+    expect(chart.mode()).toBe('sparse');
+    expect(chart.events()).toEqual([{ date: '2026-09-14', label: 'Movimentações', value: 4, color: '#326b86' }]);
     chart.buckets = [bucket('2026-09-14', 0), bucket('2026-09-15', 0)];
-    expect(chart.noActivity()).toBe(true);
-    expect(chart.path('movements')).toContain('L800.00,180.00');
+    expect(chart.mode()).toBe('empty');
+    chart.buckets = Array.from({ length: 5 }, (_, index) => bucket(`2026-09-${String(index + 10).padStart(2, '0')}`, 1));
+    expect(chart.mode()).toBe('pulse');
   });
   it('permite percorrer o gráfico por teclado e alternar séries', () => {
     const chart = new ActivityChartComponent();

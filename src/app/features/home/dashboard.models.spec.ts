@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mapQueueItem, mapTerritory, periodIsValid } from './dashboard.models';
+import type { AttentionSummary } from './dashboard.models';
 
 describe('contratos do dashboard', () => {
   it('valida os quatro períodos e o limite inclusivo do backend', () => {
@@ -21,5 +22,14 @@ describe('contratos do dashboard', () => {
     const first = mapQueueItem({ source: 'MANUAL', kind: 'WEIGHING', operationalDate: '2026-09-15', stableId: '1', summary: 'Pesar lote', animal: null, plannerItemId: 'p', pendingWorkType: null, pregnancyId: null, status: 'OPEN' });
     const second = mapQueueItem({ source: 'DERIVED', kind: 'CALVING', operationalDate: '2026-09-16', stableId: '2', summary: 'Parto próximo', animal: null, plannerItemId: null, pendingWorkType: null, pregnancyId: 'g', status: null });
     expect([first, second].map(item => item.source)).toEqual(['MANUAL', 'DERIVED']);
+  });
+  it('aceita contagens de brucelose no resumo de atenção sem opcionais', () => {
+    const summary: AttentionSummary = { vaccinationDue: 24, dewormingDue: 4, weighingDue: 18, calvingUpcoming: 3, calvingOverdue: 1, plannerOpen: 7, plannerOverdue: 2, brucellosisDue: 3, brucellosisWindowMissed: 2 };
+    expect(summary.brucellosisDue).toBe(3);
+    expect(summary.brucellosisWindowMissed).toBe(2);
+    expect(summary.vaccinationDue).toBe(24);
+    const zeroed: AttentionSummary = { vaccinationDue: 0, dewormingDue: 0, weighingDue: 0, calvingUpcoming: 0, calvingOverdue: 0, plannerOpen: 0, plannerOverdue: 0, brucellosisDue: 0, brucellosisWindowMissed: 0 };
+    expect(zeroed.brucellosisDue).toBe(0);
+    expect(zeroed.brucellosisWindowMissed).toBe(0);
   });
 });

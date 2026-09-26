@@ -11,14 +11,14 @@ import { ButtonComponent, InputComponent } from '../../design-system/primitives/
   imports:[ReactiveFormsModule,InputComponent,ButtonComponent,AlertComponent],
   template:`<main>
     <section class="territory" aria-hidden="true">
-      <div class="brand"><span class="brand-mark"><i></i></span><strong>BovNex</strong></div>
+      <div class="brand"><span class="brand-mark"><i></i></span><strong>eBov</strong></div>
       <div class="coordinates">19°55′S · 43°56′W</div>
       <div class="contours contour-a"></div><div class="contours contour-b"></div><div class="route-line"></div><span class="point point-a"></span><span class="point point-b"></span>
       <div class="territory-copy"><span>Território vivo</span><h2>Clareza para cada decisão no campo.</h2><p>Organizações, fazendas e operações conectadas em um só lugar.</p></div>
     </section>
     <section class="access">
       <div class="form-wrap">
-        <div class="mobile-brand"><span class="brand-mark"><i></i></span><strong>BovNex</strong></div>
+        <div class="mobile-brand"><span class="brand-mark"><i></i></span><strong>eBov</strong></div>
         <div class="heading"><h1>Acesse sua operação</h1><p>Use as credenciais vinculadas à sua organização.</p></div>
         @if(notice()){<gr-alert tone="warning" title="Atenção"><p>{{notice()}}</p></gr-alert>}
         @if(error()){<gr-alert tone="error" title="Não foi possível entrar"><p>{{error()}}</p></gr-alert>}
