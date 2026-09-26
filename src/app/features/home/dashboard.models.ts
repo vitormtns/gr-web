@@ -21,9 +21,9 @@ export interface DashboardInsights {
   plannerExecution: { type: 'PLANNER_EXECUTION'; completed: number; cancelled: number; currentlyOpen: number; overdueOpen: number };
   herdActivity: { type: 'HERD_ACTIVITY'; births: number; deaths: number; sales: number; movements: number; transfersIn: number; transfersOut: number; from: string; to: string };
 }
-export interface DashboardOverview { period: ResolvedPeriod; herdSnapshot: HerdSnapshot; periodActivity: ActivityTotals; attention: { vaccinationDue: number; dewormingDue: number; weighingDue: number; calvingUpcoming: number; calvingOverdue: number; openPlannerItems: number; overduePlannerItems: number }; insights: DashboardInsights }
+export interface DashboardOverview { period: ResolvedPeriod; herdSnapshot: HerdSnapshot; periodActivity: ActivityTotals; attention: { vaccinationDue: number; dewormingDue: number; weighingDue: number; calvingUpcoming: number; calvingOverdue: number; openPlannerItems: number; overduePlannerItems: number; brucellosisDue: number; brucellosisWindowMissed: number }; insights: DashboardInsights }
 export interface DashboardActivity { period: ResolvedPeriod; totals: ActivityTotals; series: ActivityBucket[] }
-export interface AttentionSummary { vaccinationDue: number; dewormingDue: number; weighingDue: number; calvingUpcoming: number; calvingOverdue: number; plannerOpen: number; plannerOverdue: number }
+export interface AttentionSummary { vaccinationDue: number; dewormingDue: number; weighingDue: number; calvingUpcoming: number; calvingOverdue: number; plannerOpen: number; plannerOverdue: number; brucellosisDue: number; brucellosisWindowMissed: number }
 export interface AnimalReference { id: string; identification: string; name: string | null }
 export type AgendaSource = 'MANUAL' | 'DERIVED';
 export interface AttentionDto { source: AgendaSource; kind: string; operationalDate: string; stableId: string; summary: string; animal: AnimalReference | null; plannerItemId: string | null; pendingWorkType: string | null; pregnancyId: string | null; status: string | null }

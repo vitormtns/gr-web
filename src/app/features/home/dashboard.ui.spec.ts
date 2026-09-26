@@ -105,6 +105,13 @@ describe('Home operacional acessível', () => {
     expect(element.querySelector('.header-brand-mark')).not.toBeNull();
     expect(element.querySelector('.summary-line')?.textContent).toContain('428');
   });
+  it('soma brucelose no total de situações em atenção sem alterar o sinal de saúde', () => {
+    expect(element.querySelector('.summary-line')?.textContent).toContain('62 situações em atenção');
+    const health = element.querySelector('.signal.health')?.textContent ?? '';
+    expect(health).toContain('Vacinas');
+    expect(health).toContain('Vermífugos');
+    expect(health).not.toContain('Brucelose');
+  });
   it('apresenta leitura operacional em superfície de marca com insight real', () => {
     const surface = element.querySelector('gr-branded-insight-surface');
     expect(surface?.textContent).toContain('Localização pendente no rebanho');

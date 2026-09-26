@@ -308,7 +308,7 @@ export class HomePageComponent {
   }
   attentionTotal(): number {
     const value = this.store.overview().value?.attention;
-    return value ? value.vaccinationDue + value.dewormingDue + value.weighingDue + value.calvingUpcoming + value.calvingOverdue + value.openPlannerItems : 0;
+    return value ? value.vaccinationDue + value.dewormingDue + value.weighingDue + value.calvingUpcoming + value.calvingOverdue + value.openPlannerItems + value.brucellosisDue + value.brucellosisWindowMissed : 0;
   }
   retryContext(): void { void this.context.retry().catch(() => {}); }
   formatNumber(value: number): string { return new Intl.NumberFormat('pt-BR').format(value); }
