@@ -3,16 +3,17 @@ import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feed
 import { DashboardStore } from './dashboard.store';
 import {
   URGENCY_LEVEL_RANK,
+  URGENCY_SECONDARY_LIMIT,
   buildOperationalUrgencies,
   domainIconOf,
   formatUrgencyLabel,
-  groupUrgenciesByDomain,
-  pluralizePt,
-  urgencyHorizonLabel,
+  overdueSignalLabel,
+  selectUrgencySpotlight,
+  urgencyDomainEyebrow,
+  pluralizePt as pluralizePtFn,
   type OperationalUrgency,
   type UrgencyDetailFact,
   type UrgencyDomain,
-  type UrgencyDomainGroup,
 } from './operational-urgency';
 import { OperationalUrgencyObjectComponent } from './operational-urgency-object.component';
 
@@ -55,14 +56,14 @@ import { OperationalUrgencyObjectComponent } from './operational-urgency-object.
           [level]="top.level"
           [icon]="domainIconOf(top.domain)"
           iconSize="lg"
-          [eyebrow]="urgencyHorizonLabel(top.level)"
-          [headline]="countdownLabel(top)"
-          [title]="top.title"
+          [eyebrow]="domainEyebrow(top)"
+          [headline]="top.title"
+          [title]="''"
           [context]="top.context"
           [date]="top.date"
           [dateLabel]="formatIsoDateBr(top.date)"
-          [badgeText]="top.status ? statusLabelOf(top.status) : ''"
-          [badgeTone]="statusToneOf(top.status)"
+          [badgeText]="urgencyBadge(top)"
+          [badgeTone]="urgencyBadgeTone(top)"
           [facts]="heroFacts(top)"
           [items]="[]"
           [ctaRoute]="urgencyCta(top.domain).route"
@@ -72,27 +73,27 @@ import { OperationalUrgencyObjectComponent } from './operational-urgency-object.
         />
       }
       <div class="urgency-groups">
-        @for (group of urgencyGroups(); track group.domain) {
+        @for (item of secondaryItems(); track item.id) {
           <app-urgency-object
             variant="group"
-            [objectId]="'group:' + group.domain"
-            [level]="group.items[0].level"
-            [icon]="domainIconOf(group.domain)"
+            [objectId]="item.id"
+            [level]="item.level"
+            [icon]="domainIconOf(item.domain)"
             iconSize="md"
-            [eyebrow]="group.title"
-            [headline]="group.items.length + ' ' + groupNoun(group)"
-            [title]="nearestLabel(group)"
-            [context]="''"
-            [date]="group.items[0].date"
-            [dateLabel]="formatIsoDateBr(group.items[0].date)"
-            [badgeText]="''"
-            [badgeTone]="'neutral'"
-            [facts]="[]"
-            [items]="groupMemberRows(group)"
-            [ctaRoute]="urgencyCta(group.domain).route"
-            [ctaLabel]="urgencyCta(group.domain).label"
-            [expanded]="expandedId() === 'group:' + group.domain"
-            (toggled)="toggleUrgency('group:' + group.domain)"
+            [eyebrow]="domainEyebrow(item)"
+            [headline]="item.title"
+            [title]="''"
+            [context]="item.context"
+            [date]="item.date"
+            [dateLabel]="formatIsoDateBr(item.date)"
+            [badgeText]="urgencyBadge(item)"
+            [badgeTone]="urgencyBadgeTone(item)"
+            [facts]="secondaryFacts(item)"
+            [items]="[]"
+            [ctaRoute]="urgencyCta(item.domain).route"
+            [ctaLabel]="urgencyCta(item.domain).label"
+            [expanded]="expandedId() === item.id"
+            (toggled)="toggleUrgency(item.id)"
           />
         }
         @if (plannerOverdue() > 0) {
@@ -211,6 +212,13 @@ import { OperationalUrgencyObjectComponent } from './operational-urgency-object.
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Foco da operação — prioritization, urgency, immediate action.
+ * Renders one featured event plus up to URGENCY_SECONDARY_LIMIT distinct
+ * secondary events. Calendar/day-by-day lives in the Agenda; the remaining
+ * queue lives in Atenção operacional (see HomeActionsComponent, which filters
+ * this board's promoted ids out of its preview without touching the store).
+ */
 export class OperationalUrgencyBoardComponent {
   readonly expandedId = signal<string | null>(null);
 
@@ -218,7 +226,6 @@ export class OperationalUrgencyBoardComponent {
     effect(() => {
       const valid = new Set<string>();
       for (const item of this.pool()) valid.add(item.id);
-      for (const group of this.urgencyGroups()) valid.add(`group:${group.domain}`);
       if (this.plannerOverdue() > 0) valid.add('planner-overdue');
       const current = this.expandedId();
       if (current && !valid.has(current)) this.expandedId.set(null);
@@ -247,15 +254,26 @@ export class OperationalUrgencyBoardComponent {
     }),
   );
 
-  readonly hero = computed<OperationalUrgency | null>(() => {
-    const [top] = this.pool();
-    return top && URGENCY_LEVEL_RANK[top.level] <= URGENCY_LEVEL_RANK.imminent ? top : null;
+  readonly spotlight = computed(() => {
+    const pool = this.pool();
+    const [top] = pool;
+    if (top && URGENCY_LEVEL_RANK[top.level] <= URGENCY_LEVEL_RANK.imminent) {
+      return selectUrgencySpotlight(pool, URGENCY_SECONDARY_LIMIT);
+    }
+    return { featured: null as OperationalUrgency | null, secondary: pool.slice(0, URGENCY_SECONDARY_LIMIT + 1) };
   });
 
-  readonly urgencyGroups = computed<UrgencyDomainGroup[]>(() => {
-    const [top] = this.pool();
-    const rest = top && URGENCY_LEVEL_RANK[top.level] <= URGENCY_LEVEL_RANK.imminent ? this.pool().slice(1) : this.pool();
-    return groupUrgenciesByDomain(rest).slice(0, 3);
+  readonly hero = computed<OperationalUrgency | null>(() => this.spotlight().featured);
+
+  readonly secondaryItems = computed<OperationalUrgency[]>(() => this.spotlight().secondary);
+
+  /** Stable ids promoted to Foco; used to filter the Atenção preview. */
+  readonly promotedIds = computed<ReadonlySet<string>>(() => {
+    const ids = new Set<string>();
+    const top = this.hero();
+    if (top) ids.add(top.id);
+    for (const item of this.secondaryItems()) ids.add(item.id);
+    return ids;
   });
 
   readonly plannerOverdue = computed<number>(
@@ -280,22 +298,25 @@ export class OperationalUrgencyBoardComponent {
   }
 
   heroFacts(item: OperationalUrgency): UrgencyDetailFact[] {
-    const facts: UrgencyDetailFact[] = [];
-    if (item.context) facts.push({ label: 'Entidade', value: item.context });
-    facts.push({ label: 'Previsão', value: this.formatIsoDateBr(item.date) });
-    facts.push({ label: 'Prazo', value: this.countdownLabel(item) });
-    if (item.status) facts.push({ label: 'Situação', value: this.statusLabelOf(item.status) });
-    return facts;
+    return this.detailFacts(item);
   }
 
-  groupMemberRows(group: UrgencyDomainGroup): { id: string; title: string; context: string; date: string; dateLabel: string }[] {
-    return group.items.map(item => ({
-      id: item.id,
-      title: item.title,
-      context: item.context,
-      date: item.date,
-      dateLabel: this.formatIsoDateBr(item.date),
-    }));
+  secondaryFacts(item: OperationalUrgency): UrgencyDetailFact[] {
+    return this.detailFacts(item);
+  }
+
+  /**
+   * Expanded content adds only context not already visible collapsed
+   * (collapsed already shows domain, title, entity, urgency badge, date).
+   */
+  private detailFacts(item: OperationalUrgency): UrgencyDetailFact[] {
+    const facts: UrgencyDetailFact[] = [{ label: 'Data prevista', value: this.formatIsoDateBr(item.date) }];
+    if (!overdueSignalLabel(item.daysUntil)) {
+      facts.push({ label: 'Prazo', value: this.temporalLabel(item) });
+    }
+    if (item.status) facts.push({ label: 'Situação', value: this.statusLabelOf(item.status) });
+    facts.push({ label: 'Origem', value: this.sourceLabel(item.source) });
+    return facts;
   }
 
   urgencyCta(domain: UrgencyDomain | 'other'): { route: string; label: string } {
@@ -305,25 +326,27 @@ export class OperationalUrgencyBoardComponent {
     return { route: '/rebanho/agenda', label: 'Ver agenda' };
   }
 
-  countdownLabel(item: OperationalUrgency): string {
+  temporalLabel(item: OperationalUrgency): string {
     return formatUrgencyLabel(item.daysUntil) ?? this.formatIsoDateBr(item.date);
   }
 
-  nearestLabel(group: UrgencyDomainGroup): string {
-    const [nearest] = group.items;
-    return formatUrgencyLabel(nearest.daysUntil) ?? this.formatIsoDateBr(nearest.date);
+  domainEyebrow(item: OperationalUrgency): string {
+    return urgencyDomainEyebrow(item.domain === 'traceability' ? 'other' : item.domain);
   }
 
-  groupNoun(group: UrgencyDomainGroup): string {
-    if (group.domain === 'reproduction' && group.items.every(item => item.kind === 'CALVING')) {
-      return pluralizePt(group.items.length, 'parto previsto', 'partos previstos');
-    }
-    return pluralizePt(group.items.length, 'pendência', 'pendências');
+  /** Collapsed urgency signal: overdue countdown wins, otherwise temporal label, otherwise backend status. */
+  urgencyBadge(item: OperationalUrgency): string {
+    return overdueSignalLabel(item.daysUntil) ?? this.temporalLabel(item) ?? (item.status ? this.statusLabelOf(item.status) : '');
   }
 
-  urgencyHorizonLabel = urgencyHorizonLabel;
-  pluralizePt = pluralizePt;
-  domainIconOf = domainIconOf;
+  urgencyBadgeTone(item: OperationalUrgency): 'danger' | 'attention' | 'success' | 'neutral' {
+    if (item.daysUntil < 0) return 'danger';
+    return this.statusToneOf(item.status);
+  }
+
+  sourceLabel(source: OperationalUrgency['source']): string {
+    return source === 'MANUAL' ? 'Planejado' : 'Identificado pelos dados';
+  }
 
   formatIsoDateBr(value: string): string {
     if (!value) return '—';
@@ -333,6 +356,11 @@ export class OperationalUrgencyBoardComponent {
 
   formatNumber(value: number): string {
     return new Intl.NumberFormat('pt-BR').format(value);
+  }
+
+  domainIconOf = domainIconOf;
+  pluralizePt(count: number, one: string, many: string): string {
+    return pluralizePtFn(count, one, many);
   }
 
   statusToneOf(status: string | null): 'danger' | 'attention' | 'success' | 'neutral' {

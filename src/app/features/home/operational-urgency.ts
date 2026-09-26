@@ -13,12 +13,6 @@ export interface OperationalUrgency extends QueueItem {
   domain: UrgencyDomain;
 }
 
-export interface UrgencyDomainGroup {
-  domain: Exclude<UrgencyDomain, 'traceability'> | 'other';
-  title: string;
-  items: OperationalUrgency[];
-}
-
 export interface UrgencyDetailFact {
   label: string;
   value: string;
@@ -35,7 +29,7 @@ export const URGENCY_LEVEL_RANK: Record<OperationalUrgencyLevel, number> = {
   future: 5,
 };
 
-const DOMAIN_TITLES: Record<UrgencyDomainGroup['domain'], string> = {
+const DOMAIN_TITLES: Record<Exclude<UrgencyDomain, 'traceability'> | 'other', string> = {
   health: 'Saúde',
   weight: 'Pesagem',
   reproduction: 'Reprodução',
@@ -92,7 +86,7 @@ export function pluralizePt(count: number, one: string, many: string): string {
 export function formatUrgencyLabel(daysUntil: number): string | null {
   if (daysUntil < 0) {
     const overdue = Math.abs(daysUntil);
-    return overdue === 1 ? 'há 1 dia' : `há ${overdue} dias`;
+    return overdue === 1 ? 'Atraso de 1 dia' : `Atraso de ${overdue} dias`;
   }
   if (daysUntil === 0) return 'hoje';
   if (daysUntil === 1) return 'amanhã';
@@ -100,11 +94,15 @@ export function formatUrgencyLabel(daysUntil: number): string | null {
   return null;
 }
 
-export function urgencyHorizonLabel(level: OperationalUrgencyLevel): string {
-  if (level === 'overdue' || level === 'today') return 'Agora';
-  if (level === 'imminent' || level === 'week') return 'Próximos 7 dias';
-  if (level === 'month') return 'Este mês';
-  return 'À frente';
+/**
+ * Urgency signal for badges/secondary lines in pt-BR.
+ * Neutral wording ("Atraso de N dias") avoids gender agreement hacks;
+ * callers uppercase via CSS when a badge treatment is needed.
+ */
+export function overdueSignalLabel(daysUntil: number): string | null {
+  if (daysUntil >= 0) return null;
+  const overdue = Math.abs(daysUntil);
+  return overdue === 1 ? 'Atraso de 1 dia' : `Atraso de ${overdue} dias`;
 }
 
 export function domainOfKind(kind: string): UrgencyDomain {
@@ -141,6 +139,29 @@ export function domainIconOf(domain: UrgencyDomain | 'other'): DomainIconName {
 }
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
+
+/** Maximum secondary objects shown beside the featured item on the Home. */
+export const URGENCY_SECONDARY_LIMIT = 2;
+
+export interface UrgencySpotlight {
+  featured: OperationalUrgency | null;
+  secondary: OperationalUrgency[];
+}
+
+/**
+ * Splits the sorted pool into one featured item plus unique secondary items.
+ * The featured item is excluded from the secondary list by stable id, so the
+ * same event is never rendered twice in the Foco da operação board.
+ */
+export function selectUrgencySpotlight(
+  sortedPool: OperationalUrgency[],
+  maxSecondary: number = URGENCY_SECONDARY_LIMIT,
+): UrgencySpotlight {
+  const [featured = null] = sortedPool;
+  if (!featured) return { featured: null, secondary: [] };
+  const secondary = sortedPool.filter(item => item.id !== featured.id).slice(0, Math.max(0, maxSecondary));
+  return { featured, secondary };
+}
 
 function rankUrgency(item: OperationalUrgency): [number, string, string, string] {
   return [URGENCY_LEVEL_RANK[item.level], item.date, item.domain, item.id];
@@ -182,20 +203,14 @@ export function buildOperationalUrgencies(input: {
     const daysUntil = raw.status === 'OVERDUE' ? Math.min(computed, -1) : computed;
     pool.push({ ...entry, daysUntil, level: classifyUrgency(daysUntil), domain: domainOfKind(entry.kind) });
   }
-  return pool
+  const sorted = pool
     .map(item => ({ item, rank: rankUrgency(item) }))
     .sort((left, right) => compareUrgencyRank(left.rank, right.rank))
     .map(({ item }) => item);
+  return sorted;
 }
 
-/** Groups sorted urgencies by domain, most urgent domain first. */
-export function groupUrgenciesByDomain(items: OperationalUrgency[]): UrgencyDomainGroup[] {
-  const groups = new Map<UrgencyDomainGroup['domain'], OperationalUrgency[]>();
-  for (const item of items) {
-    const key = (item.domain === 'traceability' ? 'other' : item.domain) as UrgencyDomainGroup['domain'];
-    const group = groups.get(key);
-    if (group) group.push(item);
-    else groups.set(key, [item]);
-  }
-  return [...groups.entries()].map(([domain, grouped]) => ({ domain, title: DOMAIN_TITLES[domain], items: grouped }));
+/** Domain eyebrow for the featured/secondary objects (e.g. "Pesagem"). */
+export function urgencyDomainEyebrow(domain: UrgencyDomain | 'other'): string {
+  return DOMAIN_TITLES[domain === 'traceability' ? 'other' : domain];
 }

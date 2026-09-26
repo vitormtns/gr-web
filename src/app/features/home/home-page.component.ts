@@ -88,9 +88,9 @@ import { HomeActionsComponent } from './home-actions.component';
         </div>
       }
 
-      <app-urgency-board />
+      <app-urgency-board #urgencyBoard />
 
-      <app-home-actions />
+      <app-home-actions [promotedIds]="urgencyBoard.promotedIds()" />
 
       @if(editorialInsight(); as insight){
         <gr-branded-insight-surface

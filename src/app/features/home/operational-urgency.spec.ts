@@ -4,9 +4,9 @@ import {
   classifyUrgency,
   daysBetweenOperationalDates,
   formatUrgencyLabel,
-  groupUrgenciesByDomain,
   parseOperationalDay,
   pluralizePt,
+  selectUrgencySpotlight,
 } from './operational-urgency';
 import type { AgendaDto, AttentionDto } from './dashboard.models';
 
@@ -74,8 +74,8 @@ describe('operational urgency pura', () => {
   });
 
   it('formata rótulos temporais em pt-BR com plural correto', () => {
-    expect(formatUrgencyLabel(-2)).toBe('há 2 dias');
-    expect(formatUrgencyLabel(-1)).toBe('há 1 dia');
+    expect(formatUrgencyLabel(-2)).toBe('Atraso de 2 dias');
+    expect(formatUrgencyLabel(-1)).toBe('Atraso de 1 dia');
     expect(formatUrgencyLabel(0)).toBe('hoje');
     expect(formatUrgencyLabel(1)).toBe('amanhã');
     expect(formatUrgencyLabel(2)).toBe('em 2 dias');
@@ -127,7 +127,7 @@ describe('operational urgency pura', () => {
     expect(pool.map(item => item.id)).toEqual(['x']);
   });
 
-  it('agrega partos da semana e do mês a partir de datas reais', () => {
+  it('preserva partos da semana e do mês como eventos distintos', () => {
     const pool = buildOperationalUrgencies({
       attention: [],
       agenda: [
@@ -137,22 +137,34 @@ describe('operational urgency pura', () => {
       ],
       referenceDate: REF,
     });
-    const groups = groupUrgenciesByDomain(pool);
-    expect(groups.length).toBe(1);
-    expect(groups[0].domain).toBe('reproduction');
-    expect(groups[0].items.length).toBe(3);
-    expect(groups[0].items.map(item => item.level)).toEqual(['today', 'imminent', 'month']);
+    expect(pool.map(item => item.id)).toEqual(['p1', 'p2', 'p3']);
+    expect(pool.map(item => item.domain)).toEqual(['reproduction', 'reproduction', 'reproduction']);
+    expect(pool.map(item => item.level)).toEqual(['today', 'imminent', 'month']);
   });
 
   it('retorna vazio sem urgências e ignora datas inválidas', () => {
     expect(buildOperationalUrgencies({ attention: [], agenda: [], referenceDate: REF })).toEqual([]);
-    expect(groupUrgenciesByDomain([])).toEqual([]);
     const pool = buildOperationalUrgencies({
       attention: [attention({ stableId: 'bad', operationalDate: 'sem-data' })],
       agenda: [],
       referenceDate: REF,
     });
     expect(pool).toEqual([]);
+  });
+
+  it('destaca só um evento e preserva animais distintos com o mesmo título', () => {
+    const pool = buildOperationalUrgencies({
+      attention: [
+        attention({ stableId: 'animal-1', kind: 'WEIGHING', summary: 'Pesagem pendente' }),
+        attention({ stableId: 'animal-2', kind: 'WEIGHING', summary: 'Pesagem pendente' }),
+      ],
+      agenda: [],
+      referenceDate: REF,
+    });
+    const spotlight = selectUrgencySpotlight(pool);
+    expect(pool.map(item => item.id)).toEqual(['animal-1', 'animal-2']);
+    expect(spotlight.featured?.id).toBe('animal-1');
+    expect(spotlight.secondary.map(item => item.id)).toEqual(['animal-2']);
   });
 
   it('rejeita datas impossíveis do calendário e preserva duplicada viva', () => {

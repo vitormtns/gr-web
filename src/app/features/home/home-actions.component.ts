@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideDynamicIcon } from '@lucide/angular';
 import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
@@ -113,15 +113,15 @@ const ISO_DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
           <h2 id="attention-title">Atenção operacional</h2>
         </div>
         @if(store.attention().status==='ready' && store.attention().value; as attention){
-          <span class="attention-count" [class.empty]="!attention.preview.length">
-            {{attention.preview.length}}
+          <span class="attention-count" [class.empty]="!visibleAttentionItems().length">
+            {{visibleAttentionItems().length}}
           </span>
         }
       </div>
       @if(store.attention().status==='ready' && store.attention().value; as attention){
-        @if(attention.preview.length){
+        @if(visibleAttentionItems().length){
           <div class="queue" role="list">
-            @for(item of attention.preview; track item.stableId){
+            @for(item of visibleAttentionItems(); track item.stableId){
               @let entry = queue(item);
               <div class="queue-entry" role="listitem" [class.critical]="entry.status==='OVERDUE'" [class.due-today]="isDueToday(entry)" [class.open]="openItem()===entry.id">
                 <button type="button" class="queue-button" [attr.aria-expanded]="openItem()===entry.id" (click)="toggleItem(entry.id)">
@@ -147,13 +147,23 @@ const ISO_DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
             }
           </div>
         } @else {
-          <div class="attention-clear">
-            <span aria-hidden="true">✓</span>
-            <div>
-              <strong>Operação em dia</strong>
-              <p>Nenhuma pendência identificada para esta fazenda.</p>
+          @if (promotedIds().size > 0) {
+            <div class="attention-clear attention-clear--filtered">
+              <span aria-hidden="true">✓</span>
+              <div>
+                <strong>Sem outras pendências</strong>
+                <p>As situações prioritárias estão no foco da operação.</p>
+              </div>
             </div>
-          </div>
+          } @else {
+            <div class="attention-clear">
+              <span aria-hidden="true">✓</span>
+              <div>
+                <strong>Operação em dia</strong>
+                <p>Nenhuma pendência identificada para esta fazenda.</p>
+              </div>
+            </div>
+          }
         }
       } @else if(store.attention().status==='error'){
         <gr-error-state title="Não foi possível carregar as pendências" [description]="errorText(store.attention().error?.message)" [reference]="reference(store.attention().error?.requestId)" (retry)="store.retry('attention')" />
@@ -395,6 +405,20 @@ const ISO_DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
       font-size: 0.6875rem;
       color: var(--text-secondary);
     }
+    .attention-clear--filtered {
+      color: var(--text-secondary);
+      min-height: 3.5rem;
+    }
+    .attention-clear--filtered > span {
+      background: var(--surface-subtle);
+      color: var(--text-tertiary);
+    }
+    .attention-clear--filtered strong {
+      color: var(--text-primary);
+    }
+    .attention-clear--filtered p {
+      color: var(--text-secondary);
+    }
     .section-link, .inline-link {
       display: inline-flex;
       align-items: center;
@@ -620,10 +644,23 @@ const ISO_DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 export class HomeActionsComponent {
   readonly openItem = signal<string | null>(null);
   readonly selectedAgendaDate = signal<string | null>(null);
+
+  /** Stable IDs of items already promoted to Foco da operação — excluded from this preview. */
+  readonly promotedIds = input<ReadonlySet<string>>(new Set());
+
   queue = mapQueueItem;
   constructor(readonly store: DashboardStore) {}
   toggleItem(id: string): void { this.openItem.set(this.openItem() === id ? null : id); }
-  hasAttentionItems(): boolean { return (this.store.attention().value?.preview.length ?? 0) > 0; }
+  hasAttentionItems(): boolean {
+    return this.visibleAttentionItems().length > 0;
+  }
+
+  readonly visibleAttentionItems = computed(() => {
+    const preview = this.store.attention().value?.preview ?? [];
+    const promoted = this.promotedIds();
+    if (promoted.size === 0) return preview;
+    return preview.filter(item => !promoted.has(item.stableId));
+  });
   selectAgendaDate(isoDate: string): void { this.selectedAgendaDate.set(isoDate); }
   parseIsoDay(value: string): { year: number; month: number; day: number } | null {
     const match = ISO_DAY_PATTERN.exec(value);
