@@ -11,6 +11,7 @@ export const routes: Routes = [
   ...(ngDevMode ? [{ path: 'dev/design-system', loadComponent: () => import('./features/design-system/design-system-page.component').then((m) => m.DesignSystemPageComponent) } satisfies Routes[number]] : []),
   ...(ngDevMode ? [{ path: 'dev/dashboard', loadChildren: () => import('./features/home/dashboard-showcase.routes').then((m) => m.dashboardShowcaseRoutes) } satisfies Routes[number]] : []),
   ...(ngDevMode ? [{ path: 'dev/herd', loadComponent: () => import('./features/herd/herd-showcase.component').then((m) => m.HerdShowcaseComponent) } satisfies Routes[number]] : []),
+  ...(ngDevMode ? [{ path: 'dev/paridade', loadComponent: () => import('./features/herd/parity-showcase.component').then(m => m.ParityShowcaseComponent) } satisfies Routes[number]] : []),
   {
     path: '',
     loadComponent: () => import('./layout/app-shell.component').then((m) => m.AppShellComponent),
@@ -20,6 +21,9 @@ export const routes: Routes = [
       { path: 'visao-geral', loadComponent: () => import('./features/home/home-page.component').then((m) => m.HomePageComponent) },
       { path: 'rebanho/animais', data: { title: 'Animais' }, loadComponent: () => import('./features/herd/animal-list-page.component').then((m) => m.AnimalListPageComponent) },
       { path: 'rebanho/animais/novo', data: { title: 'Cadastrar animal' }, canDeactivate: [unsavedAnimalGuard], loadComponent: () => import('./features/herd/animal-create-page.component').then((m) => m.AnimalCreatePageComponent) },
+      { path: 'rebanho/animais/importar', data: { title: 'Importar animais', permission: 'mutateHerd' }, canActivate: [permissionGuard], loadComponent: () => import('./features/herd/animal-import-page.component').then(m => m.AnimalImportPageComponent) },
+      { path: 'rebanho/grupos', data: { title: 'Grupos' }, loadComponent: () => import('./features/herd/groups-page.component').then(m => m.GroupsPageComponent) },
+      { path: 'relatorios/quadros', data: { title: 'Quadros gerenciais' }, loadComponent: () => import('./features/reports/herd-statements-page.component').then(m => m.HerdStatementsPageComponent) },
       { path: 'rebanho/animais/:animalId', data: { title: 'Perfil do animal' }, loadComponent: () => import('./features/herd/animal-profile-page.component').then((m) => m.AnimalProfilePageComponent) },
       { path: 'rebanho/movimentacoes', data: { title: 'Movimentações' }, loadComponent: () => import('./features/herd/movements-page.component').then((m) => m.MovementsPageComponent) },
       { path: 'rebanho/saude', data: { title: 'Saúde' }, loadComponent: () => import('./features/herd/health-page.component').then(m => m.HealthPageComponent) },
