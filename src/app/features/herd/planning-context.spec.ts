@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Observable, of, Subject } from 'rxjs';
+import { Observable, of, Subject, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { ContextStore } from '../../core/context/context.store';
 import { ToastService } from '../../design-system/feedback/feedback';
@@ -78,6 +78,15 @@ async function setup(component: typeof AgendaPageComponent | typeof HealthPageCo
   return { context, api };
 }
 describe('Grupo e isolamento da agenda', () => {
+  it('não apresenta ausência de pendências quando a consulta falha', async () => {
+    const { api } = await setup(AgendaPageComponent);
+    api.pendingWork.mockImplementation(() => throwError(() => new Error('Indisponível')));
+    const fixture = TestBed.createComponent(AgendaPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar as pendências');
+    expect(fixture.nativeElement.textContent).not.toContain('Nenhuma pendência');
+  });
   it('preserva groupId ao corrigir uma atividade e respeita expectedVersion', async () => {
     const { api } = await setup(AgendaPageComponent);
     const fixture = TestBed.createComponent(AgendaPageComponent);

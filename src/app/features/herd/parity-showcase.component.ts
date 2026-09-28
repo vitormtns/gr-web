@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
 import { ContextStore } from '../../core/context/context.store';
+import { PermissionService } from '../../core/permissions/permission.service';
 import { GroupsPageComponent } from './groups-page.component';
 import { AnimalImportPageComponent } from './animal-import-page.component';
 import { AnimalManagementComponent } from './animal-management.component';
@@ -11,6 +12,7 @@ import { AgendaPageComponent } from './agenda-page.component';
 import { HerdApi } from './herd-api.service';
 import { ParityApi } from './parity-api.service';
 import { Animal } from './herd.models';
+import { PlannerItem } from './herd-operations.models';
 import {
   BreedingBatchCommand,
   CreateGroup,
@@ -55,6 +57,23 @@ const demoGroups: HerdGroup[] = [
     version: 1,
   },
 ];
+let demoPlanner: PlannerItem = {
+  id: 'task1',
+  operationId: 'demo-operation',
+  title: 'Avaliar condição corporal das matrizes',
+  type: 'GENERAL',
+  scheduledFor: '2026-10-02',
+  status: 'OPEN',
+  groupId: demoGroups[0].id,
+  animalId: null,
+  notes: null,
+  version: 2,
+  createdAt: '2026-09-27T12:00:00Z',
+  updatedAt: '2026-09-27T12:00:00Z',
+  completedAt: null,
+  cancelledAt: null,
+  replay: false,
+};
 const demoApi = {
   animals: () =>
     of({
@@ -186,20 +205,18 @@ const demoApi = {
     }),
   agenda: () => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
   pendingWork: () => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+  plannerItem: () => of(demoPlanner),
+  createPlanner: (body: Partial<PlannerItem>) =>
+    of((demoPlanner = { ...demoPlanner, ...body, status: 'OPEN' })),
+  correctPlanner: (_id: string, body: Partial<PlannerItem>) =>
+    of((demoPlanner = { ...demoPlanner, ...body, version: demoPlanner.version + 1 })),
+  completePlanner: () =>
+    of((demoPlanner = { ...demoPlanner, status: 'COMPLETED', version: demoPlanner.version + 1 })),
+  cancelPlanner: () =>
+    of((demoPlanner = { ...demoPlanner, status: 'CANCELLED', version: demoPlanner.version + 1 })),
   planner: () =>
     of({
-      items: [
-        {
-          id: 'task1',
-          title: 'Avaliar condição corporal das matrizes',
-          type: 'GENERAL',
-          scheduledFor: '2026-10-02',
-          status: 'OPEN',
-          groupId: demoGroups[0].id,
-          animalId: null,
-          version: 2,
-        },
-      ],
+      items: [demoPlanner],
       page: 0,
       size: 20,
       totalElements: 1,
@@ -217,6 +234,7 @@ const demoApi = {
     AgendaPageComponent,
   ],
   providers: [
+    PermissionService,
     {
       provide: ContextStore,
       useValue: {
