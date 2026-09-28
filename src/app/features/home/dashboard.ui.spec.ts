@@ -34,6 +34,15 @@ describe('Home operacional acessível', () => {
       expect(buttons[index].getAttribute('aria-pressed')).toBe('true');
     }
   });
+  it.each([1, 2])('usa concordância correta para %i animais sem piquete', (count) => {
+    const store = fixture.componentInstance.store;
+    const state = store.overview();
+    store.overview.set({ ...state, value: { ...state.value!, herdSnapshot: { ...state.value!.herdSnapshot, unlocatedAnimals: count } } });
+    fixture.detectChanges();
+    const description = fixture.componentInstance.editorialInsight()!.description;
+    expect(description).toContain(count === 1 ? 'Existe 1 animal cadastrado' : 'Existem 2 animais cadastrados');
+    expect(description).toContain(count === 1 ? 'Vincule-o' : 'Vincule-os');
+  });
   it('abre datas rotuladas e rejeita intervalo inválido', () => {
     const custom = Array.from(element.querySelectorAll<HTMLButtonElement>('.period-pills button'))[3];
     custom.click(); fixture.detectChanges();

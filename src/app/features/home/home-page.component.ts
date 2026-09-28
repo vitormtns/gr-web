@@ -249,7 +249,9 @@ export class HomePageComponent {
     if (overview.herdSnapshot.unlocatedAnimals > 0) {
       return {
         title: 'Localização pendente no rebanho',
-        description: `Existem ${this.formatNumber(overview.herdSnapshot.unlocatedAnimals)} animais cadastrados sem vinculação a piquetes. Vincule-os para representação no mapa territorial.`,
+        description: overview.herdSnapshot.unlocatedAnimals === 1
+          ? 'Existe 1 animal cadastrado sem vinculação a piquetes. Vincule-o para representação no mapa territorial.'
+          : `Existem ${this.formatNumber(overview.herdSnapshot.unlocatedAnimals)} animais cadastrados sem vinculação a piquetes. Vincule-os para representação no mapa territorial.`,
         tone: 'warning',
       };
     }
