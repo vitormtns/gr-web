@@ -1,3 +1,6 @@
+import { HealthProcedureCode } from '../herd/herd-operations.models';
+import { SaleChannel } from '../herd/parity.models';
+
 export type ReportId = 'herd-position'|'lifecycle'|'movements'|'transfers'|'weights'|'health'|'reproduction'|'planner';
 export type LifecycleEvent = 'CREATED'|'BORN'|'SOLD'|'DECEASED';
 export type TransferDirection = 'IN'|'OUT'|'ALL';
@@ -19,8 +22,8 @@ export interface HerdPositionSummary{totalActiveAnimals:number;totalsByCategory:
 export interface HerdPositionItem{animal:AnimalReference;category:HerdCategory;sex:AnimalSex;birthDate:string|null;paddock:PaddockReference|null}
 export type HerdPositionPage=ReportPage<HerdPositionSummary,HerdPositionItem>;
 
-export interface LifecycleSummary{countsByEventType:Partial<Record<LifecycleEvent,number>>;totalAffectedAnimals:number}
-export interface LifecycleItem{id:string;animal:AnimalReference;event:LifecycleEvent;occurredOn:string;recordedAt:string;notes:string|null}
+export interface LifecycleSummary{countsByEventType:Partial<Record<LifecycleEvent,number>>;totalAffectedAnimals:number;totalSaleAmount:number;averageSaleAmount:number|null;salesWithAmount:number;deathsByReason:Record<string,number>;salesByChannel:Partial<Record<SaleChannel|'UNSPECIFIED',number>>}
+export interface LifecycleItem{id:string;animal:AnimalReference;event:LifecycleEvent;occurredOn:string;recordedAt:string;notes:string|null;deathReason:string|null;saleChannel:SaleChannel|null;saleBuyer:string|null;saleAmount:number|null}
 export type LifecyclePage=ReportPage<LifecycleSummary,LifecycleItem>;
 
 export interface MovementSummary{movementCount:number;distinctAnimalsMoved:number}
@@ -36,7 +39,7 @@ export interface WeightItem{id:string;animal:AnimalReference;occurredOn:string;r
 export type WeightPage=ReportPage<WeightSummary,WeightItem>;
 
 export interface HealthSummary{treatmentsCount:number;animalsTreated:number;countsByTreatmentType:Partial<Record<HealthTreatmentType,number>>}
-export interface HealthItem{id:string;animal:AnimalReference;treatmentType:HealthTreatmentType;occurredOn:string;recordedAt:string;product:string|null;protocol:string|null;nextDueOn:string|null}
+export interface HealthItem{id:string;animal:AnimalReference;treatmentType:HealthTreatmentType;procedureCode:HealthProcedureCode|null;occurredOn:string;recordedAt:string;product:string|null;protocol:string|null;nextDueOn:string|null}
 export type HealthPage=ReportPage<HealthSummary,HealthItem>;
 
 export interface ReproductionSummary{servicesRecorded:number;pregnanciesConfirmed:number;pregnanciesTerminated:number;calvings:number;calvesBorn:number;openPossiblePregnancies:number;openConfirmedPregnancies:number}
@@ -48,7 +51,7 @@ export interface PlannerItem{id:string;type:PlannerType;title:string;notes:strin
 export type PlannerPage=ReportPage<PlannerSummary,PlannerItem>;
 
 export type AnyReportPage=HerdPositionPage|LifecyclePage|MovementPage|TransferPage|WeightPage|HealthPage|ReproductionPage|PlannerPage;
-export interface ReportFilters{report:ReportId;from:string;to:string;animalId:string;category:HerdCategory|'';sex:AnimalSex|'';paddockId:string;event:LifecycleEvent|'';sourcePaddockId:string;destinationPaddockId:string;direction:TransferDirection;treatmentType:HealthTreatmentType|'';motherId:string;serviceType:ReproductionServiceType|'';pregnancyStatus:PregnancyStatus|'';plannerStatus:PlannerStatus|'';plannerType:PlannerType|'';page:number;size:number}
+export interface ReportFilters{report:ReportId;from:string;to:string;animalId:string;category:HerdCategory|'';sex:AnimalSex|'';paddockId:string;event:LifecycleEvent|'';sourcePaddockId:string;destinationPaddockId:string;direction:TransferDirection;treatmentType:HealthTreatmentType|'';procedureCode?:HealthProcedureCode|'';motherId:string;serviceType:ReproductionServiceType|'';pregnancyStatus:PregnancyStatus|'';plannerStatus:PlannerStatus|'';plannerType:PlannerType|'';page:number;size:number}
 
 export const reportDefinitions:{id:ReportId;label:string;group:'Rebanho'|'Operação'|'Cuidado';description:string;period:boolean}[]=[
   {id:'herd-position',label:'Posição do rebanho',group:'Rebanho',description:'Composição ativa e distribuição atual.',period:false},
