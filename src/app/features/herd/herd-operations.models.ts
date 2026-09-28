@@ -1,7 +1,7 @@
 import { Animal, Page } from './herd.models';
 
 export type HealthTreatmentType = 'VACCINATION' | 'DEWORMING';
-export type HealthProcedureCode = 'BRUCELLOSIS';
+export type HealthProcedureCode = 'BRUCELLOSIS' | 'FOOT_AND_MOUTH_DISEASE';
 export type ReproductionServiceType = 'INSEMINATION' | 'NATURAL_SERVICE';
 export type PregnancyStatus = 'POSSIBLE' | 'CONFIRMED' | 'CALVED' | 'TERMINATED';
 export type PregnancyTerminationReason = 'NOT_PREGNANT' | 'PREGNANCY_LOSS' | 'ABORTION' | 'OTHER';
@@ -22,14 +22,14 @@ export interface ReproductionEvent { id: string; mother: AnimalReference; action
 export interface ReproductionReport extends Page<ReproductionEvent> { summary: { servicesRecorded: number; pregnanciesConfirmed: number; pregnanciesTerminated: number; calvings: number; calvesBorn: number; openPossiblePregnancies: number; openConfirmedPregnancies: number } }
 export interface PendingWorkItem { type: PendingWorkType; animalId: string; identification: string; name: string | null; farmId: string; dueOn: string | null; expectedOn: string | null; daysOverdue: number | null; daysUntil: number | null; pregnancyId: string | null; treatmentType: HealthTreatmentType | null; lastPerformedOn: string | null; lastWeightOn: string | null }
 export interface PendingWorkPage extends Page<PendingWorkItem> {}
-export interface PlannerItem { id: string; operationId: string | null; type: PlannerType; title: string; notes: string | null; scheduledFor: string; status: PlannerStatus; animalId: string | null; version: number; createdAt: string; updatedAt: string; completedAt: string | null; cancelledAt: string | null; replay: boolean }
+export interface PlannerItem { id: string; operationId: string | null; type: PlannerType; title: string; notes: string | null; scheduledFor: string; status: PlannerStatus; animalId: string | null; groupId: string | null; version: number; createdAt: string; updatedAt: string; completedAt: string | null; cancelledAt: string | null; replay: boolean }
 export interface PlannerPage extends Page<PlannerItem> {}
 export interface AgendaItem { source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: PlannerStatus | null }
 export interface AgendaPage extends Page<AgendaItem> {}
 export interface CalvingResult { mother: Animal; calf: Animal; pregnancy: Pregnancy | null; replay: boolean }
 
 export const healthLabels: Record<HealthTreatmentType, string> = { VACCINATION: 'Vacinação', DEWORMING: 'Vermifugação' };
-export const procedureLabels: Record<HealthProcedureCode, string> = { BRUCELLOSIS: 'Brucelose' };
+export const procedureLabels: Record<HealthProcedureCode, string> = { BRUCELLOSIS: 'Brucelose', FOOT_AND_MOUTH_DISEASE: 'Aftosa — registro histórico' };
 export const serviceLabels: Record<ReproductionServiceType, string> = { INSEMINATION: 'Inseminação', NATURAL_SERVICE: 'Monta natural' };
 export const pregnancyLabels: Record<PregnancyStatus, string> = { POSSIBLE: 'Em acompanhamento', CONFIRMED: 'Confirmada', CALVED: 'Parto realizado', TERMINATED: 'Encerrada' };
 export const plannerTypeLabels: Record<PlannerType, string> = { GENERAL:'Atividade geral', WEIGHING:'Pesagem', VACCINATION:'Vacinação', DEWORMING:'Vermifugação', BREEDING:'Cobertura', PREGNANCY_CHECK:'Diagnóstico de gestação', CALVING:'Parto', MOVEMENT:'Movimentação' };

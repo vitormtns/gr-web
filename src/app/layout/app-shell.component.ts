@@ -308,6 +308,7 @@ export class AppShellComponent {
     { items: [{ label: 'Visão geral', icon: 'house', route: '/visao-geral' }] },
     { label: 'REBANHO', items: [
       { label: 'Animais', icon: 'beef', route: '/rebanho/animais' },
+      { label: 'Grupos', icon: 'beef', route: '/rebanho/grupos' },
       { label: 'Movimentações', icon: 'land-plot', route: '/rebanho/movimentacoes' },
       { label: 'Saúde', icon: 'heart-pulse', route: '/rebanho/saude' },
       { label: 'Reprodução', icon: 'sprout', route: '/rebanho/reproducao' },

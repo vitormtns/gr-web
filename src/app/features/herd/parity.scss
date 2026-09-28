@@ -1,0 +1,114 @@
+.parity-section {
+  padding: var(--space-5);
+  margin-block: var(--space-4);
+}
+.parity-section h2 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin: 0 0 var(--space-3);
+}
+.parity-section p {
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  font-size: 0.875rem;
+}
+.parity-section label {
+  display: grid;
+  gap: 0.4rem;
+  margin-block: 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.parity-section textarea,
+.parity-section input,
+.parity-section select {
+  width: 100%;
+  box-sizing: border-box;
+}
+.parity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.parity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-4);
+}
+.parity-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+.parity-select label {
+  min-width: 12rem;
+  flex: 1;
+}
+.parity-section code {
+  display: block;
+  overflow: auto;
+  padding: 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+}
+.parity-section table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.parity-section td,
+.parity-section th {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.parity-section th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.parity-section button:focus-visible,
+.parity-section a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+.parity-section .responsive-table {
+  overflow: auto;
+}
+.parity-section .group-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+@media (max-width: 900px) {
+  .parity-section .group-row {
+    flex-wrap: wrap;
+  }
+  .parity-select label {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+fieldset.form-grid {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+.form-grid input[type='checkbox'] {
+  min-height: 0;
+  height: 1rem;
+  width: 1rem;
+  padding: 0;
+  box-shadow: none;
+  vertical-align: middle;
+  accent-color: var(--brand-primary);
+}
+.parity-section .metric-strip {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}

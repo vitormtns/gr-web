@@ -162,7 +162,7 @@ export class MenuComponent {}
 
 @Component({
   selector: 'gr-dialog',
-  template: `<dialog #dialog (cancel)="requestClose($event)"><header><div><ng-content select="[dialog-title]" /></div><button type="button" aria-label="Fechar janela" (click)="closed.emit()">×</button></header><div class="body"><ng-content /></div><footer><ng-content select="[dialog-actions]" /></footer></dialog>`,
+  template: `<dialog #dialog [attr.aria-labelledby]="titleId" (cancel)="requestClose($event)"><header><div [id]="titleId"><ng-content select="[dialog-title]" /></div><button type="button" aria-label="Fechar janela" (click)="closed.emit()">×</button></header><div class="body"><ng-content /></div><footer><ng-content select="[dialog-actions]" /></footer></dialog>`,
   styles: [`
     dialog {
       width: min(34rem, calc(100vw - 2rem));
@@ -223,6 +223,8 @@ export class MenuComponent {}
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DialogComponent implements AfterViewInit, OnChanges {
+  private static nextId = 0;
+  readonly titleId = `gr-dialog-title-${++DialogComponent.nextId}`;
   @Input() open = false;
   @Output() closed = new EventEmitter<void>();
   @ViewChild('dialog') dialog?: ElementRef<HTMLDialogElement>;

@@ -32,7 +32,7 @@ export function reportQuery(f:ReportFilters):string{
   if(f.report==='movements'){add('sourcePaddockId',f.sourcePaddockId);add('destinationPaddockId',f.destinationPaddockId);}
   if(f.report==='transfers'&&f.direction!=='ALL')add('direction',f.direction);
   if(f.report==='weights')add('category',f.category);
-  if(f.report==='health')add('treatmentType',f.treatmentType);
+  if(f.report==='health'){add('treatmentType',f.treatmentType);add('procedureCode',f.procedureCode||'');}
   if(f.report==='reproduction'){add('serviceType',f.serviceType);add('pregnancyStatus',f.pregnancyStatus);}
   if(f.report==='planner'){add('status',f.plannerStatus);add('type',f.plannerType);}
   q.set('page',String(f.page));q.set('size',String(f.size));return q.toString();

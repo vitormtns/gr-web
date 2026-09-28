@@ -4,7 +4,7 @@ import { healthLabels, pendingLabels, plannerTypeLabels, pregnancyLabels, proced
 describe('modelos de operações do rebanho',()=>{
   it('traduz todos os enums contratuais sem depender somente de cor',()=>{
     expect(healthLabels).toEqual({VACCINATION:'Vacinação',DEWORMING:'Vermifugação'});
-    expect(procedureLabels).toEqual({BRUCELLOSIS:'Brucelose'});
+    expect(procedureLabels).toEqual({BRUCELLOSIS:'Brucelose',FOOT_AND_MOUTH_DISEASE:'Aftosa — registro histórico'});
     expect(serviceLabels.NATURAL_SERVICE).toBe('Monta natural');
     expect(pregnancyLabels).toEqual({POSSIBLE:'Em acompanhamento',CONFIRMED:'Confirmada',CALVED:'Parto realizado',TERMINATED:'Encerrada'});
     expect(Object.keys(pendingLabels)).toHaveLength(7);
