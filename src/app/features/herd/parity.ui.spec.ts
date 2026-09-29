@@ -91,6 +91,10 @@ async function setup<T>(
 }
 function mocks() {
   return {
+    animal: vi.fn((_id: string): Observable<Animal> => of(animal)),
+    lifecycleExact: vi.fn((_id: string, _body: string): Observable<Animal> =>
+      of({ ...animal, status: 'SOLD' }),
+    ),
     animals: vi.fn((): Observable<Page<Animal>> =>
       of({ items: [animal], page: 0, size: 20, totalElements: 1, totalPages: 1 }),
     ),
@@ -283,6 +287,7 @@ describe('Gestão contextual do animal', () => {
     component.open('milk');
     component.milkLiters = '12,125';
     component.session = 'MORNING';
+    component.prepare();
     component.submit();
     expect(api.recordMilk).toHaveBeenCalledWith(
       animal.id,
@@ -295,9 +300,11 @@ describe('Gestão contextual do animal', () => {
       animal,
     });
     component.open('mother');
+    component.prepare();
     component.submit();
     expect(api.correctMother).not.toHaveBeenCalled();
     component.removeMother = true;
+    component.prepare();
     component.submit();
     expect(api.correctMother).toHaveBeenCalledWith(
       animal.id,
@@ -313,9 +320,11 @@ describe('Gestão contextual do animal', () => {
     expect(component.valid()).toBe(false);
     component.notes = 'Observação';
     component.occurredOn = '2019-01-01';
+    component.prepare();
     component.submit();
     expect(api.note).not.toHaveBeenCalled();
     component.occurredOn = component.today;
+    component.prepare();
     component.submit();
     expect(api.note).toHaveBeenCalledWith(
       animal.id,
@@ -341,6 +350,127 @@ describe('Gestão contextual do animal', () => {
     );
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar a produção');
+  });
+  it('consulta a versão atual e mantém o comando revisado nas tentativas', async () => {
+    const { component, api } = await setup(
+      AnimalManagementComponent,
+      'OWNER',
+      (a) => {
+        a.animal.mockReturnValue(of({ ...animal, version: 11 }));
+        a.note.mockReturnValue(
+          throwError(() => new AppError('unavailable', 'Falha', 503, 'FAILED')),
+        );
+      },
+      { animal },
+    );
+    component.open('note');
+    component.notes = 'Observação revisada';
+    component.prepare();
+    expect(api.note).not.toHaveBeenCalled();
+    expect(component.reviewedVersion()).toBe(11);
+    component.submit();
+    const first = api.note.mock.calls[0];
+    component.notes = 'Alteração posterior';
+    component.submit();
+    expect(api.note.mock.calls[1]).toEqual(first);
+    expect(first).toEqual([
+      animal.id,
+      expect.objectContaining({ expectedVersion: 11, notes: 'Observação revisada' }),
+    ]);
+  });
+  it('cancela a consulta de versão e apaga todos os rascunhos na troca de contexto', async () => {
+    const pending = new Subject<Animal>();
+    const { fixture, component, api, context } = await setup(
+      AnimalManagementComponent,
+      'OWNER',
+      (a) => a.animal.mockReturnValue(pending),
+      { animal },
+    );
+    component.open('sale');
+    component.saleBuyer = 'Comprador fictício';
+    component.saleAmount = '12,34';
+    component.notes = 'Rascunho';
+    component.prepare();
+    expect(pending.observed).toBe(true);
+    context.contextVersion.update((n) => n + 1);
+    fixture.detectChanges();
+    expect(pending.observed).toBe(false);
+    expect(component.action()).toBeNull();
+    expect(component.saleBuyer).toBe('');
+    expect(component.saleAmount).toBe('');
+    expect(component.notes).toBe('');
+    pending.next({ ...animal, version: 18 });
+    expect(component.confirming()).toBe(false);
+    expect(api.lifecycle).not.toHaveBeenCalled();
+  });
+  it('cancela a escrita pendente e impede confirmação simultânea', async () => {
+    const pending = new Subject<any>();
+    const { fixture, component, api, context } = await setup(
+      AnimalManagementComponent,
+      'OWNER',
+      (a) => a.recordMilk.mockReturnValue(pending),
+      { animal },
+    );
+    component.open('milk');
+    component.milkLiters = '1,125';
+    component.prepare();
+    component.submit();
+    component.submit();
+    expect(api.recordMilk).toHaveBeenCalledOnce();
+    expect(pending.observed).toBe(true);
+    context.contextVersion.update((n) => n + 1);
+    fixture.detectChanges();
+    expect(pending.observed).toBe(false);
+    expect(component.milkLiters).toBe('');
+    expect(component.session).toBeNull();
+  });
+  it('preserva todos os dígitos da venda sem conversão para Number', async () => {
+    const { component, api } = await setup(AnimalManagementComponent, 'OWNER', undefined, {
+      animal,
+    });
+    component.open('sale');
+    component.saleAmount = '99999999999999999,99';
+    component.prepare();
+    component.submit();
+    expect(api.lifecycleExact).toHaveBeenCalledWith(
+      animal.id,
+      expect.stringContaining('"saleAmount":99999999999999999.99'),
+    );
+    expect(api.lifecycle).not.toHaveBeenCalled();
+  });
+  it('impede revisão de leite quando a consulta revela baixa posterior', async () => {
+    const { component, api } = await setup(
+      AnimalManagementComponent,
+      'OWNER',
+      (a) => a.animal.mockReturnValue(of({ ...animal, status: 'DECEASED', version: 8 })),
+      { animal },
+    );
+    component.open('milk');
+    component.milkLiters = '1';
+    component.prepare();
+    expect(component.confirming()).toBe(false);
+    expect(component.actionError()).toContain('estado atual');
+    component.submit();
+    expect(api.recordMilk).not.toHaveBeenCalled();
+  });
+  it('oferece nova tentativa de leitura da versão sem efetuar escrita', async () => {
+    const { component, api } = await setup(
+      AnimalManagementComponent,
+      'OWNER',
+      (a) =>
+        a.animal.mockReturnValueOnce(
+          throwError(() => new AppError('unavailable', 'Indisponível', 503, 'FAILED')),
+        ),
+      { animal },
+    );
+    component.open('death');
+    component.prepare();
+    expect(component.preparing()).toBe(false);
+    expect(component.confirming()).toBe(false);
+    expect(component.actionError()).toContain('Indisponível');
+    component.prepare();
+    expect(component.confirming()).toBe(true);
+    expect(api.lifecycle).not.toHaveBeenCalled();
   });
 });
 describe('Reprodução em lote', () => {

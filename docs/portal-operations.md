@@ -109,3 +109,9 @@ No teste de lotes, dois animais fictícios foram criados pelo portal, pesados, m
 O indicador de animais sem piquete na Home abre a lista com estado ativo e localização sem piquete. O filtro também permite consultar animais com piquete ou todas as localizações, com contagem e paginação calculadas pelo serviço. A opção com piquete preserva explicitamente `unlocated=false` na consulta e na URL.
 
 A troca de fazenda remove filtros, seleção e parâmetros da URL, cancela a consulta anterior e descarta buscas digitadas que ainda aguardavam o intervalo de atualização. No teste local, a Home abriu 1 animal ativo sem piquete; o filtro inverso retornou 4 animais ativos com piquete. A troca para a Fazenda Sul limpou os filtros e exibiu seu próprio rebanho. A Home foi conferida em 1440 × 900, 1366 × 768 e 1024 × 768, sem rolagem horizontal.
+
+## Registros individuais do animal
+
+Observação, correção do vínculo materno, leite, venda e morte exigem revisão explícita. O portal consulta a versão atual do animal antes de preparar o comando, mantém seus dados e identificador nas novas tentativas e bloqueia confirmações simultâneas. Alterar os dados exige nova revisão. A troca de contexto cancela consultas e escritas e apaga todos os rascunhos, inclusive turno, comprador e vínculo selecionado.
+
+Valores de venda são enviados como números JSON com os dígitos originais, respeitando a precisão de 19 dígitos e até duas casas do contrato. O registro permanece independente do financeiro. A conferência local adicionou uma observação ao animal fictício já baixado, confirmou a versão consultada e reencontrou o texto no histórico; a produção histórica permaneceu em 1,125 L.

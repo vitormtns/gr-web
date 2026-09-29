@@ -142,4 +142,14 @@ describe('Contratos públicos de paridade', () => {
     api.lifecycle('a', 'death', death).subscribe();
     request('animals/a/death', 'POST', death);
   });
+  it('envia o decimal de venda como número JSON exato e mantém o contexto', () => {
+    const body =
+      '{"operationId":"op","expectedVersion":2,"occurredOn":"2026-09-29","notes":null,"saleAmount":99999999999999999.99}';
+    api.lifecycleExact('a', body).subscribe();
+    const req = http.expectOne('/api/v1/herd/animals/a/sale');
+    expect(req.request.body).toBe(body);
+    expect(req.request.headers.get('Content-Type')).toBe('application/json');
+    expect(req.request.context.get(REQUIRES_TENANT_CONTEXT)).toBe(true);
+    req.flush('{}');
+  });
 });
