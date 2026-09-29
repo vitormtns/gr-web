@@ -44,6 +44,22 @@ Pessoas e convites possuem paginações independentes. Convites incluem consulta
 
 Cadastros de organizações e fazendas conservam o UUID em novas tentativas. O serviço reconhece a repetição do comando original sem duplicar cadastro, vínculo ou evento de auditoria. Os testes locais de criação e recuperação encerram organizações e fazendas temporárias pelo arquivamento; seu histórico permanece preservado.
 
+## Operações em lote e custódia do rebanho
+
+A seleção de animais ativos permite registrar pesagens individuais em lote, mover animais entre piquetes e transferir a custódia entre fazendas. Cada lote tem até 100 animais, conserva as versões consultadas e exige revisão antes da confirmação. Uma nova tentativa de confirmação reutiliza o comando e o identificador da operação. Pesagens aceitam até três casas decimais e datas entre o nascimento e o dia atual.
+
+Proprietário, administrador, gestor e operador podem pesar e movimentar animais. A transferência entre fazendas é permitida a proprietário, administrador e gestor. O visualizador consulta os registros sem ações de escrita. A autorização continua sendo validada pelo backend.
+
+Os piquetes de destino são consultados em todas as páginas do catálogo. Na transferência, a consulta usa explicitamente a fazenda escolhida entre as fazendas acessíveis, sem alterar o contexto operacional da tela. O piquete de destino é opcional nesse fluxo.
+
+Em **Movimentações**, as opções **Entre piquetes** e **Entre fazendas** levam aos históricos correspondentes. Movimentos internos têm filtros de período, animal, origem e destino, incluindo piquetes inativos. O histórico de custódia oferece filtros de direção e animal, paginação e consulta individual com horário, responsável, versão e observações. O acesso ao perfil na fazenda de destino confirma a mudança de contexto antes da navegação.
+
+Ao trocar organização ou fazenda, as consultas em andamento são canceladas e a seleção, os formulários, os detalhes e os filtros anteriores são apagados.
+
+O perfil do animal oferece abas de pesagens, saúde, gestações e crias. Pesagens e tratamentos usam a contagem real do backend; gestações preservam situação, confirmação, previsão e desfecho. A consulta de crias tem navegação por páginas de 20 registros, sem inventar uma contagem total que o contrato não fornece. Os vínculos maternos e as crias levam aos perfis relacionados. O histórico auditado pode ser filtrado pelo tipo de evento.
+
+A correção cadastral individual exige revisão antes da confirmação. Movimentação e transferência individuais consultam o catálogo completo; a transferência permite definir o piquete na fazenda de destino. As operações validam a data, bloqueiam envio duplicado e apagam os formulários na troca de contexto. Falhas de consultas operacionais são exibidas; apenas a ausência legítima de vínculo materno é tratada como ausência de registro.
+
 ## Troca de contexto e falhas
 
 Ao trocar organização ou fazenda, essas áreas cancelam consultas, invalidam respostas antigas e limpam cadastros abertos, seleções e confirmações. Respostas de escritas anteriores não abrem detalhes nem exibem mensagens na nova fazenda.
@@ -55,3 +71,5 @@ Falhas de carregamento oferecem nova tentativa e não apresentam totais fictíci
 Execute `npm run check` para verificar tipos, testes e build. Os testes focados cobrem contratos HTTP, permissões, presença de campos e versões, revisão e confirmação, repetição de comandos, filtros, paginação, precisão decimal, falhas e troca de contexto.
 
 O smoke usa o shell renderizado e a API conectada exclusivamente ao Supabase local. Cadastros temporários de insumos e piquetes são encerrados pela aplicação após a conferência. No financeiro, lançamentos concluídos permanecem no histórico conforme o contrato; a conferência utiliza valores mínimos, encerra pendências e desativa a categoria de teste.
+
+No teste de lotes, dois animais fictícios foram criados pelo portal, pesados, movimentados, transferidos com piquete de destino e retornados à fazenda de origem. Ambos foram encerrados pelo fluxo de baixa, com motivo e observações que identificam explicitamente o teste local. Esses fatos continuam no histórico, e os animais anteriores foram preservados. Um cadastro fictício também recebeu correção de nome com revisão e confirmação.

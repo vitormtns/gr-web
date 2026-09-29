@@ -13,6 +13,7 @@ export interface MovementItem { id: string; animal: { id: string; identification
 export interface MovementPage extends Page<MovementItem> { summary: { movementCount: number; distinctAnimalsMoved: number } }
 export interface BatchResult { operationId: string; movedCount: number; animals: { id: string; version: number }[]; destinationPaddock: PaddockRef }
 export interface TransferResult { operationId: string; sourceFarm: { id: string; name: string }; destinationFarm: { id: string; name: string }; destinationPaddock: PaddockRef | null; transferredCount: number; animals: { id: string; version: number }[] }
+export interface TransferItem { id: string; operationId: string; animalId: string; sourceFarm: { id: string; name: string }; destinationFarm: { id: string; name: string }; destinationPaddock: PaddockRef | null; occurredOn: string; recordedAt: string; actorUserId: string | null; resultingVersion: number; notes: string | null }
 export interface ViewState<T> { status: 'loading' | 'ready' | 'error'; value: T | null; error: AppError | null }
 export interface TransferOption extends FarmOption {}
 

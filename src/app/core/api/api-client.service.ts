@@ -14,6 +14,14 @@ export class ApiClient {
     });
   }
 
+  /** Consulta uma fazenda de destino sem alterar o contexto operacional do usuário. */
+  getInFarm<T>(path: string, organizationId: string, farmId: string): Observable<T> {
+    if (!path.startsWith('/api/v1/')) throw new Error('A consulta contextual deve usar a API do portal.');
+    return this.http.get<T>(path, {
+      headers: { 'X-Organization-Id': organizationId, 'X-Farm-Id': farmId },
+    });
+  }
+
   requestText(method: 'GET' | 'POST' | 'PATCH', path: string, body: unknown = undefined, requiresContext = false): Observable<string> {
     return this.http.request(method, path, {
       body, responseType: 'text',

@@ -29,6 +29,7 @@ export const routes: Routes = [
       { path: 'relatorios/quadros', data: { title: 'Quadros gerenciais' }, loadComponent: () => import('./features/reports/herd-statements-page.component').then(m => m.HerdStatementsPageComponent) },
       { path: 'rebanho/animais/:animalId', data: { title: 'Perfil do animal' }, loadComponent: () => import('./features/herd/animal-profile-page.component').then((m) => m.AnimalProfilePageComponent) },
       { path: 'rebanho/movimentacoes', data: { title: 'Movimentações' }, loadComponent: () => import('./features/herd/movements-page.component').then((m) => m.MovementsPageComponent) },
+      { path: 'rebanho/transferencias', data: { title: 'Transferências entre fazendas' }, loadComponent: () => import('./features/herd/transfers-page.component').then((m) => m.TransfersPageComponent) },
       { path: 'rebanho/saude', data: { title: 'Saúde' }, loadComponent: () => import('./features/herd/health-page.component').then(m => m.HealthPageComponent) },
       { path: 'rebanho/reproducao', data: { title: 'Reprodução' }, loadComponent: () => import('./features/herd/reproduction-page.component').then(m => m.ReproductionPageComponent) },
       { path: 'rebanho/agenda', data: { title: 'Agenda' }, loadComponent: () => import('./features/herd/agenda-page.component').then(m => m.AgendaPageComponent) },

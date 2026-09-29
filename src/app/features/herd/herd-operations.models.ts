@@ -1,4 +1,5 @@
 import { Animal, Page } from './herd.models';
+import { CountedPage } from './parity.models';
 
 export type HealthTreatmentType = 'VACCINATION' | 'DEWORMING';
 export type HealthProcedureCode = 'BRUCELLOSIS' | 'FOOT_AND_MOUTH_DISEASE';
@@ -13,7 +14,7 @@ export type AgendaSource = 'MANUAL' | 'DERIVED';
 export interface AnimalReference { id: string; identification: string; name: string | null }
 export interface OperationResult { operationId: string; animals: { animalId: string; resultingVersion: number }[]; replayed: boolean }
 export interface WeightMeasurement { id: string; operationId: string; measuredOn: string; weightKg: string; notes: string | null; recordedAt: string }
-export interface WeightPage extends Page<WeightMeasurement> {}
+export interface WeightPage extends CountedPage<WeightMeasurement> {}
 export interface HealthTreatment { id: string; operationId?: string; animal?: AnimalReference; type?: HealthTreatmentType; treatmentType?: HealthTreatmentType; procedureCode?: HealthProcedureCode | null; occurredOn: string; product: string | null; protocol: string | null; nextDueOn: string | null; notes?: string | null; recordedAt: string }
 export interface HealthReport extends Page<HealthTreatment> { summary: { treatmentsCount: number; animalsTreated: number; countsByTreatmentType: Partial<Record<HealthTreatmentType, number>> } }
 export interface Pregnancy { id: string; motherId: string; serviceType: ReproductionServiceType; serviceOn: string; sireReference: string | null; expectedCalvingOn: string | null; status: PregnancyStatus; confirmedOn: string | null; endedOn: string | null; terminationReason: PregnancyTerminationReason | null; calfAnimalId: string | null; version: number }
