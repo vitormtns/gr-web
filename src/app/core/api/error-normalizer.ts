@@ -26,7 +26,11 @@ const safeMessages: Record<ApiErrorKind, string> = {
 };
 
 export function normalizeApiError(error: HttpErrorResponse): AppError {
-  const body = isObject(error.error) ? error.error as BackendErrorBody : {};
+  let payload: unknown = error.error;
+  if (typeof payload === 'string') {
+    try { payload = JSON.parse(payload); } catch { payload = null; }
+  }
+  const body = isObject(payload) ? payload as BackendErrorBody : {};
   const status = error.status;
   const kind = kindByStatus[status] ?? 'unexpected';
   const message = safeMessages[kind];

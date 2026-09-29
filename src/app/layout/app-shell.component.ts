@@ -309,13 +309,14 @@ export class AppShellComponent {
     { label: 'REBANHO', items: [
       { label: 'Animais', icon: 'beef', route: '/rebanho/animais' },
       { label: 'Grupos', icon: 'beef', route: '/rebanho/grupos' },
+      { label: 'Piquetes', icon: 'land-plot', route: '/rebanho/piquetes' },
       { label: 'Movimentações', icon: 'land-plot', route: '/rebanho/movimentacoes' },
       { label: 'Saúde', icon: 'heart-pulse', route: '/rebanho/saude' },
       { label: 'Reprodução', icon: 'sprout', route: '/rebanho/reproducao' },
       { label: 'Agenda', icon: 'calendar-days', route: '/rebanho/agenda' },
     ] },
     { label: 'ANÁLISES', items: [{ label: 'Relatórios', icon: 'chart-no-axes-combined', route: '/relatorios' }] },
-    { label: 'GESTÃO', items: [{ label: 'Administração', icon: 'building-2', route: '/administracao', permission: 'viewAdministration' }] },
+    { label: 'GESTÃO', items: [{ label: 'Insumos', icon: 'boxes', route: '/gestao/insumos' }, { label: 'Financeiro', icon: 'credit-card', route: '/gestao/financeiro' }, { label: 'Administração', icon: 'building-2', route: '/administracao', permission: 'viewAdministration' }] },
   ];
   constructor(
     readonly context: ContextStore,

@@ -77,6 +77,11 @@ describe('AppShellComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const active = fixture.nativeElement.querySelector('a[href="/visao-geral"]') as HTMLAnchorElement;
+    for (const route of ['/gestao/insumos', '/gestao/financeiro', '/rebanho/piquetes']) {
+      const destination = fixture.nativeElement.querySelector(`a[href="${route}"]`) as HTMLAnchorElement;
+      expect(destination?.querySelector('svg')?.innerHTML).toContain('<path');
+      expect(destination?.textContent?.trim()).toBeTruthy();
+    }
     expect(active.getAttribute('aria-current')).toBe('page');
     expect(fixture.nativeElement.querySelector('.account-trigger strong')?.textContent).toBe('Vítor Martins');
     pending.set(true);

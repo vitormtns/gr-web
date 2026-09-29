@@ -14,6 +14,14 @@ export class ApiClient {
     });
   }
 
+  requestText(method: 'GET' | 'POST' | 'PATCH', path: string, body: unknown = undefined, requiresContext = false): Observable<string> {
+    return this.http.request(method, path, {
+      body, responseType: 'text',
+      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+      context: new HttpContext().set(REQUIRES_TENANT_CONTEXT, requiresContext),
+    });
+  }
+
   post<T>(path: string, body: unknown, requiresContext = false): Observable<T> {
     return this.http.post<T>(path, body, {
       context: new HttpContext().set(REQUIRES_TENANT_CONTEXT, requiresContext),
