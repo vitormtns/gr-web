@@ -27,7 +27,7 @@ const item: PlannerItem = {
   scheduledFor: '2026-09-27',
   status: 'OPEN',
   animalId: null,
-  groupId: 'group1',
+  groupId: '22222222-2222-4222-8222-222222222222',
   version: 4,
   createdAt: '2026-09-27T12:00:00Z',
   updatedAt: '2026-09-27T12:00:00Z',
@@ -84,6 +84,8 @@ describe('Grupo e isolamento da agenda', () => {
     const fixture = TestBed.createComponent(AgendaPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.componentInstance.selectTab('pending');
+    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar as pendências');
     expect(fixture.nativeElement.textContent).not.toContain('Nenhuma pendência');
   });
@@ -92,11 +94,13 @@ describe('Grupo e isolamento da agenda', () => {
     const fixture = TestBed.createComponent(AgendaPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    fixture.componentInstance.openEdit(item);
-    fixture.componentInstance.savePlanner();
+    fixture.componentInstance.openItem(item.id, 'edit');
+    fixture.componentInstance.title = 'Avaliar matrizes revisadas';
+    fixture.componentInstance.prepare();
+    fixture.componentInstance.save();
     expect(api.correctPlanner).toHaveBeenCalledWith(
       'task1',
-      expect.objectContaining({ groupId: 'group1', expectedVersion: 4 }),
+      expect.objectContaining({ groupId: item.groupId, expectedVersion: 4 }),
     );
   });
   it('envia filtro de grupo apenas para planner-items', async () => {
@@ -104,16 +108,19 @@ describe('Grupo e isolamento da agenda', () => {
     const fixture = TestBed.createComponent(AgendaPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    fixture.componentInstance.filterGroupId = 'group1';
-    fixture.componentInstance.groupStatus = 'COMPLETED';
-    fixture.componentInstance.groupPage = 2;
-    fixture.componentInstance.loadGroupTasks();
-    expect(api.planner).toHaveBeenLastCalledWith({
-      groupId: 'group1',
-      status: 'COMPLETED',
-      page: 2,
-    });
-    expect(api.agenda).not.toHaveBeenCalledWith(expect.objectContaining({ groupId: 'group1' }));
+    fixture.componentInstance.selectTab('planner');
+    fixture.componentInstance.filterGroupId = item.groupId!;
+    fixture.componentInstance.status = 'COMPLETED';
+    fixture.componentInstance.applyFilters();
+    fixture.componentInstance.changePage(2);
+    expect(api.planner).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        groupId: item.groupId,
+        status: 'COMPLETED',
+        page: 2,
+      }),
+    );
+    expect(api.agenda).not.toHaveBeenCalledWith(expect.objectContaining({ groupId: item.groupId }));
   });
   it('não reabre confirmação da fazenda anterior após troca', async () => {
     const { api, context } = await setup(AgendaPageComponent);
@@ -122,11 +129,12 @@ describe('Grupo e isolamento da agenda', () => {
     const fixture = TestBed.createComponent(AgendaPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    fixture.componentInstance.transition('task1', 'complete');
+    fixture.componentInstance.openItem('task1', 'complete');
     context.contextVersion.update((v) => v + 1);
     fixture.detectChanges();
     response.next(item);
-    expect(fixture.componentInstance.transitionItem()).toBeNull();
+    expect(fixture.componentInstance.editing()).toBeNull();
+    expect(fixture.componentInstance.editorOpen()).toBe(false);
     expect(api.completePlanner).not.toHaveBeenCalled();
   });
 });

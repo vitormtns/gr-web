@@ -360,3 +360,5 @@
   .context-rail { grid-template-columns: 1fr; }
   .metric-loading { grid-template-columns: minmax(0, 1fr); }
 }
+.signal-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; font-size: .75rem; }
+.signal-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }

@@ -60,6 +60,16 @@ O perfil do animal oferece abas de pesagens, saúde, gestações e crias. Pesage
 
 A correção cadastral individual exige revisão antes da confirmação. Movimentação e transferência individuais consultam o catálogo completo; a transferência permite definir o piquete na fazenda de destino. As operações validam a data, bloqueiam envio duplicado e apagam os formulários na troca de contexto. Falhas de consultas operacionais são exibidas; apenas a ausência legítima de vínculo materno é tratada como ausência de registro.
 
+## Agenda e indicadores da Home
+
+A agenda possui consultas independentes para a sequência unificada, pendências derivadas e atividades planejadas. Os filtros e a paginação utilizam o backend. Atividades planejadas incluem registros abertos, concluídos e cancelados; a consulta individual mostra versões e datas de encerramento.
+
+Proprietários, administradores, gestores e operadores planejam, corrigem, concluem e cancelam atividades. O visualizador consulta. A criação e a correção exigem revisão; alterações em atividades existentes consultam sua versão atual. A confirmação conserva o comando em novas tentativas e é cancelada na troca de contexto. Concluir uma atividade não registra automaticamente pesagem, tratamento ou parto.
+
+A Home oferece acesso direto a insumos, financeiro e administração. Os indicadores de pesagens, saúde, reprodução, partos, atividades e movimentações abrem as consultas correspondentes com os filtros do domínio. A consulta de atividades concluídas abre o histórico completo; o período do gráfico permanece identificado separadamente. Falhas no resumo ou no catálogo de piquetes oferecem nova tentativa e não substituem os dados indisponíveis por zero.
+
+O teste local criou duas atividades fictícias pelo portal. A primeira recebeu correção da data e cancelamento; a segunda foi concluída. Ambas permanecem encerradas no histórico, sem pendências de teste abertas.
+
 ## Troca de contexto e falhas
 
 Ao trocar organização ou fazenda, essas áreas cancelam consultas, invalidam respostas antigas e limpam cadastros abertos, seleções e confirmações. Respostas de escritas anteriores não abrem detalhes nem exibem mensagens na nova fazenda.
