@@ -63,5 +63,6 @@ export function animalListQuery(filters: AnimalFilters): string {
   if (filters.search) params.set('search', filters.search);
   if (filters.sex) params.set('sex', filters.sex);
   if (filters.status) params.set('status', filters.status);
+  if (filters.unlocated !== undefined) params.set('unlocated', String(filters.unlocated));
   return params.toString();
 }

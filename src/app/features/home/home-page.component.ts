@@ -217,9 +217,7 @@ import { HomeManagementLinksComponent } from './home-management-links.component'
                   }}</strong>
                   <small class="signal-note"
                     >{{ formatNumber(overview.insights.weighingCoverage.coveredAnimals) }} de
-                    {{
-                      formatNumber(overview.insights.weighingCoverage.totalEligibleAnimals)
-                    }}
+                    {{ formatNumber(overview.insights.weighingCoverage.totalEligibleAnimals) }}
                     animais</small
                   >
                   <i
@@ -423,7 +421,7 @@ export class HomePageComponent {
           : 'consultando piquetes';
     return `${this.formatNumber(animals)} ${animals === 1 ? 'animal ativo' : 'animais ativos'} · ${territory} · ${this.formatNumber(attention)} ${attention === 1 ? 'situação em atenção' : 'situações em atenção'}`;
   });
-  readonly metrics = computed<OperationalMetric[]>(() => {
+  readonly metrics = computed<OperationalMetric[]>((): OperationalMetric[] => {
     const overview = this.store.overview().value;
     if (!overview) return [];
     const paddocks = this.paddockCount();
@@ -460,7 +458,16 @@ export class HomePageComponent {
             : this.formatPercentage(occupancyPercentage),
         destination: { path: '/rebanho/piquetes', label: 'Consultar piquetes' },
       },
-      { kind: 'location', unlocated: this.formatNumber(unlocated), hasPending: unlocated > 0 },
+      {
+        kind: 'location',
+        unlocated: this.formatNumber(unlocated),
+        hasPending: unlocated > 0,
+        destination: {
+          path: '/rebanho/animais',
+          queryParams: { status: 'ACTIVE', unlocated: 'true' },
+          label: 'Consultar animais sem piquete',
+        },
+      },
       {
         kind: 'attention',
         total: this.formatNumber(attention),

@@ -64,6 +64,7 @@ describe('Home operacional acessível', () => {
       ),
     ).map((anchor) => anchor.getAttribute('href') || '');
     expect(hrefs).toContain('/rebanho/animais?status=ACTIVE');
+    expect(hrefs).toContain('/rebanho/animais?status=ACTIVE&unlocated=true');
     expect(hrefs).toContain('/rebanho/piquetes');
     expect(hrefs).toContain('/gestao/insumos');
     expect(hrefs).toContain('/gestao/financeiro');

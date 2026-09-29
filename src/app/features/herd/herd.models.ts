@@ -5,7 +5,7 @@ export type AnimalStatus = 'ACTIVE' | 'SOLD' | 'DECEASED' | 'TRANSFERRED' | 'ARC
 export interface PaddockRef { id: string; name: string; code: string | null; status: 'ACTIVE' | 'INACTIVE'; version: number; occupancy?: number }
 export interface Animal { id: string; identification: string; name: string | null; sex: AnimalSex; birthDate: string | null; status: AnimalStatus; version: number; paddock: PaddockRef | null }
 export interface Page<T> { items: T[]; page: number; size: number; totalElements: number; totalPages: number }
-export interface AnimalFilters { search: string; sex: AnimalSex | ''; status: AnimalStatus | ''; page: number; size: number }
+export interface AnimalFilters { search: string; sex: AnimalSex | ''; status: AnimalStatus | ''; page: number; size: number; unlocated?: boolean }
 export interface FieldChange { before: unknown; after: unknown }
 export interface AnimalEvent { id: string; type: string; occurredOn: string; recordedAt: string; resultingVersion: number; actorUserId: string | null; details: Record<string, unknown> }
 export interface AnimalHistory extends Page<AnimalEvent> {}

@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subject, of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { ContextStore } from '../../core/context/context.store';
@@ -45,12 +45,69 @@ async function setup(role: MembershipRole = 'OWNER') {
       set: { providers: [{ provide: HerdApi, useValue: api }] },
     })
     .compileComponents();
+  const router = TestBed.inject(Router);
+  const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
   const fixture = TestBed.createComponent(AnimalListPageComponent);
   fixture.detectChanges();
   await fixture.whenStable();
-  return { fixture, component: fixture.componentInstance, api, context };
+  return { fixture, component: fixture.componentInstance, api, context, navigate };
 }
 describe('Seleção do rebanho', () => {
+  it('restaura e envia os filtros com e sem piquete, incluindo false', async () => {
+    const { component, api, navigate } = await setup();
+    const params = TestBed.inject(ActivatedRoute).queryParamMap as BehaviorSubject<
+      ReturnType<typeof convertToParamMap>
+    >;
+    params.next(convertToParamMap({ status: 'ACTIVE', unlocated: 'true' }));
+    expect(api.animals).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'ACTIVE', unlocated: true }),
+    );
+    params.next(convertToParamMap({ unlocated: 'false', page: '2' }));
+    expect(api.animals).toHaveBeenLastCalledWith(
+      expect.objectContaining({ unlocated: false, page: 2 }),
+    );
+    expect(component.hasFilters()).toBe(true);
+    component.setLocation('UNLOCATED');
+    expect(navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: expect.objectContaining({ unlocated: 'true', page: null }),
+      }),
+    );
+    component.clearFilters();
+    expect(component.filters().unlocated).toBeUndefined();
+  });
+  it('apaga filtros anteriores e descarta uma busca atrasada na troca de fazenda', async () => {
+    const { component, context, fixture, navigate } = await setup();
+    const params = TestBed.inject(ActivatedRoute).queryParamMap as BehaviorSubject<
+      ReturnType<typeof convertToParamMap>
+    >;
+    params.next(convertToParamMap({ search: 'Antigo', unlocated: 'true', status: 'ACTIVE' }));
+    vi.useFakeTimers();
+    try {
+      component.searchInput.next('Busca atrasada');
+      context.transitionPending.set(true);
+      fixture.detectChanges();
+      navigate.mockClear();
+      vi.advanceTimersByTime(321);
+      expect(component.filters()).toEqual({ search: '', sex: '', status: '', page: 0, size: 20 });
+      expect(navigate).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('mostra consulta em andamento sem apresentar contagem zero fictícia', async () => {
+    const { component, api, fixture } = await setup();
+    api.animals.mockReturnValue(new Subject<Page<Animal>>());
+    component.load();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#herd-count').textContent).toContain(
+      'Consultando animais',
+    );
+    expect(fixture.nativeElement.querySelector('#herd-count').textContent).not.toContain(
+      '0 animais',
+    );
+  });
   it('restaura filtros do histórico e faz uma única leitura por URL', async () => {
     const { component, api } = await setup();
     const route = TestBed.inject(ActivatedRoute);

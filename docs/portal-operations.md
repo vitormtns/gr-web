@@ -103,3 +103,9 @@ Execute `npm run check` para verificar tipos, testes e build. Os testes focados 
 O smoke usa o shell renderizado e a API conectada exclusivamente ao Supabase local. Cadastros temporários de insumos e piquetes são encerrados pela aplicação após a conferência. No financeiro, lançamentos concluídos permanecem no histórico conforme o contrato; a conferência utiliza valores mínimos, encerra pendências e desativa a categoria de teste.
 
 No teste de lotes, dois animais fictícios foram criados pelo portal, pesados, movimentados, transferidos com piquete de destino e retornados à fazenda de origem. Ambos foram encerrados pelo fluxo de baixa, com motivo e observações que identificam explicitamente o teste local. Esses fatos continuam no histórico, e os animais anteriores foram preservados. Um cadastro fictício também recebeu correção de nome com revisão e confirmação.
+
+## Localização do rebanho
+
+O indicador de animais sem piquete na Home abre a lista com estado ativo e localização sem piquete. O filtro também permite consultar animais com piquete ou todas as localizações, com contagem e paginação calculadas pelo serviço. A opção com piquete preserva explicitamente `unlocated=false` na consulta e na URL.
+
+A troca de fazenda remove filtros, seleção e parâmetros da URL, cancela a consulta anterior e descarta buscas digitadas que ainda aguardavam o intervalo de atualização. No teste local, a Home abriu 1 animal ativo sem piquete; o filtro inverso retornou 4 animais ativos com piquete. A troca para a Fazenda Sul limpou os filtros e exibiu seu próprio rebanho. A Home foi conferida em 1440 × 900, 1366 × 768 e 1024 × 768, sem rolagem horizontal.
