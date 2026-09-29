@@ -129,3 +129,9 @@ O teste local importou uma matriz e um macho identificados como fictícios. A ma
 Grupos manuais e por regras são paginados pela API. A criação mostra todos os campos na revisão; edição, associação, remoção e arquivamento consultam a versão atual do grupo antes da confirmação. A seleção de uma referência de idade inválida impede a consulta. Listagem, membros e escritas usam cancelamentos independentes; a troca de fazenda remove grupos selecionados, rascunhos e confirmações.
 
 No smoke local, um grupo manual fictício recebeu um animal vendido, foi consultado, teve a associação removida, foi renomeado e arquivado. Um grupo por regras filtrou fêmeas ativas de 12 a 120 meses com gestação aberta, retornou o resultado do serviço e também foi arquivado. A lista terminou com zero grupos ativos de teste.
+
+## Relatórios e quadros
+
+Os oito relatórios operacionais consultam a API com filtros próprios, contagem, paginação, períodos válidos e estados de carregamento, erro e ausência de resultados. Links de animais usam apenas identificação, nome e ID fornecidos pelo serviço. O ciclo de vida preserva os dígitos originais dos valores comerciais, inclusive no total e na média, antes de exibi-los em reais. A troca de fazenda cancela consultas e remove filtros e resultados da fazenda anterior.
+
+Os cinco quadros gerenciais distinguem posição atual, fatos históricos, fluxos, registros sanitários e leite. A referência, o período e o procedimento são limpos na troca de contexto; consultas anteriores são canceladas. No smoke local, os oito relatórios abriram sem erro e exibiram dados do serviço. O ciclo de vida mostrou a venda fictícia de R$ 0,01; o quadro de leite mostrou 2,25 L no dia, duas fêmeas com registro e média de 1,125 L. O saldo histórico e os fluxos refletem somente os fatos disponíveis no livro de eventos, diferentemente da posição atual dos cinco animais originais.

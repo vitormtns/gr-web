@@ -712,4 +712,22 @@ describe('Quadros gerenciais', () => {
     expect(component.error()?.requestId).toBe('ref-1');
     expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar o quadro');
   });
+  it('cancela o quadro anterior e limpa datas e procedimento na troca de contexto', async () => {
+    const pending = new Subject<AgeSexBalance>();
+    const { component, context, fixture } = await setup(HerdStatementsPageComponent, 'OWNER', (a) =>
+      a.ageSexBalance.mockReturnValue(pending),
+    );
+    expect(pending.observed).toBe(true);
+    component.from = '2020-01-01';
+    component.procedure = 'FOOT_AND_MOUTH_DISEASE';
+    component.kind = 'historical';
+    context.transitionPending.set(true);
+    context.contextVersion.update((n) => n + 1);
+    fixture.detectChanges();
+    expect(pending.observed).toBe(false);
+    expect(component.kind).toBe('current');
+    expect(component.procedure).toBe('BRUCELLOSIS');
+    expect(component.from).toBe(component.today.slice(0, 7) + '-01');
+    expect(component.result()).toBeNull();
+  });
 });

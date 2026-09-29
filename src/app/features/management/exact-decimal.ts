@@ -1,12 +1,28 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-const decimalFields = new Set(['amount', 'quantity', 'sourceBalanceAfter', 'destinationBalanceAfter', 'pendingIncome', 'pendingExpense', 'settledIncome', 'settledExpense', 'netSettled', 'overdueIncome', 'overdueExpense']);
+const decimalFields = new Set([
+  'amount',
+  'quantity',
+  'sourceBalanceAfter',
+  'destinationBalanceAfter',
+  'pendingIncome',
+  'pendingExpense',
+  'settledIncome',
+  'settledExpense',
+  'netSettled',
+  'overdueIncome',
+  'overdueExpense',
+  'saleAmount',
+  'totalSaleAmount',
+  'averageSaleAmount',
+]);
 
 /** O reviver recebe a representação original do número JSON, antes da perda de precisão de Number. */
 export function parseManagementJson<T>(json: string): T {
   return JSON.parse(json, (key: string, value: unknown, context?: { source?: string }) => {
     if (!decimalFields.has(key) || typeof value !== 'number') return value;
-    if (!context?.source) throw new Error('O navegador não permite preservar a precisão dos valores recebidos.');
+    if (!context?.source)
+      throw new Error('O navegador não permite preservar a precisão dos valores recebidos.');
     return context.source;
   }) as T;
 }
