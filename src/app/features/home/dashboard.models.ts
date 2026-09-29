@@ -1,4 +1,5 @@
 import { AppError } from '../../core/api/api.models';
+import type { PendingWorkType } from '../herd/herd-operations.models';
 
 export type DashboardPeriod = 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'CUSTOM';
 export interface PeriodSelection { period: DashboardPeriod; from?: string; to?: string }
@@ -26,14 +27,14 @@ export interface DashboardActivity { period: ResolvedPeriod; totals: ActivityTot
 export interface AttentionSummary { vaccinationDue: number; dewormingDue: number; weighingDue: number; calvingUpcoming: number; calvingOverdue: number; plannerOpen: number; plannerOverdue: number; brucellosisDue: number; brucellosisWindowMissed: number }
 export interface AnimalReference { id: string; identification: string; name: string | null }
 export type AgendaSource = 'MANUAL' | 'DERIVED';
-export interface AttentionDto { source: AgendaSource; kind: string; operationalDate: string; stableId: string; summary: string; animal: AnimalReference | null; plannerItemId: string | null; pendingWorkType: string | null; pregnancyId: string | null; status: string | null }
+export interface AttentionDto { source: AgendaSource; kind: string; operationalDate: string; stableId: string; summary: string; animal: AnimalReference | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: string | null }
 export interface DashboardAttention { referenceDate: string; summary: AttentionSummary; preview: AttentionDto[] }
-export interface AgendaDto { source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: string | null; pregnancyId: string | null; status: string | null }
+export interface AgendaDto { source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: string | null }
 export interface AgendaPage { items: AgendaDto[]; page: number; size: number; totalElements: number; totalPages: number }
 export interface PaddockDto { id: string; name: string; code: string | null; status: 'ACTIVE' | 'INACTIVE'; version: number; occupancy: number }
 export interface PaddockPage { items: PaddockDto[]; page: number; size: number; totalElements: number; totalPages: number }
 export interface TerritoryItem { id: string; name: string; code: string | null; status: string; animals: number }
-export interface QueueItem { id: string; source: AgendaSource; kind: string; title: string; date: string; context: string; status: string | null }
+export interface QueueItem { id: string; source: AgendaSource; kind: string; title: string; date: string; context: string; status: string | null; animalId: string | null; pendingWorkType: PendingWorkType | null; plannerItemId: string | null; pregnancyId: string | null }
 export interface SectionState<T> { status: 'idle' | 'loading' | 'ready' | 'error'; value: T | null; error: AppError | null }
 export const idleSection = <T>(): SectionState<T> => ({ status: 'idle', value: null, error: null });
 
@@ -54,5 +55,7 @@ export function mapTerritory(snapshot: HerdSnapshot, paddocks: PaddockDto[]): Te
 export function mapQueueItem(item: AttentionDto | AgendaDto): QueueItem {
   const animal = 'animal' in item ? item.animal : item.identification ? { identification: item.identification, name: item.name } : null;
   return { id: item.stableId, source: item.source, kind: item.kind, title: item.summary,
-    date: item.operationalDate, context: animal ? [animal.identification, animal.name].filter(Boolean).join(' · ') : '', status: item.status };
+    date: item.operationalDate, context: animal ? [animal.identification, animal.name].filter(Boolean).join(' · ') : '', status: item.status,
+    animalId: 'animal' in item ? item.animal?.id ?? null : item.animalId,
+    pendingWorkType: item.pendingWorkType, plannerItemId: item.plannerItemId, pregnancyId: item.pregnancyId };
 }

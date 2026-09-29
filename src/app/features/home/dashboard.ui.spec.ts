@@ -1,318 +1,53 @@
-import { Component, signal } from '@angular/core';
-import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
-import {
-  provideLucideIcons,
-  LucideBeef,
-  LucideCalendarDays,
-  LucideLandPlot,
-  LucideMapPinOff,
-  LucideTriangleAlert,
-} from '@lucide/angular';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { provideLucideIcons, LucideBeef, LucideCalendarDays, LucideLandPlot, LucideMapPinOff, LucideTriangleAlert } from '@lucide/angular';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { of } from 'rxjs';
 import { dashboardShowcaseProviders } from './dashboard-showcase';
-import { DashboardStore } from './dashboard.store';
-import { HomeActionsComponent } from './home-actions.component';
 import { HomePageComponent } from './home-page.component';
+import { ParityApi } from '../herd/parity-api.service';
+import { HerdApi } from '../herd/herd-api.service';
+import { ContextStore } from '../../core/context/context.store';
+import { HomeHealthSectionComponent } from './home-health-section.component';
 
-@Component({
-  imports: [HomeActionsComponent],
-  providers: [DashboardStore],
-  template: '<app-home-actions [promotedIds]="promoted()" />',
-})
-class ActionsInputHost {
-  readonly promoted = signal<ReadonlySet<string>>(new Set());
-}
-
-describe('Home operacional acessível', () => {
+describe('Home operacional', () => {
   let element: HTMLElement;
   let fixture: ReturnType<typeof TestBed.createComponent<HomePageComponent>>;
+  const pendingWork = vi.fn(() => of({items:[],page:0,size:20,totalElements:0,totalPages:1}));
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [HomePageComponent],
-      providers: [
-        provideRouter([]),
-        provideLucideIcons(
-          LucideBeef,
-          LucideCalendarDays,
-          LucideLandPlot,
-          LucideMapPinOff,
-          LucideTriangleAlert,
-        ),
-        ...dashboardShowcaseProviders,
-      ],
-    });
-    fixture = TestBed.createComponent(HomePageComponent);
-    TestBed.tick();
-    fixture.detectChanges();
-    element = fixture.nativeElement as HTMLElement;
+    HTMLDialogElement.prototype.showModal ??= function () { this.setAttribute('open', ''); };
+    HTMLDialogElement.prototype.close ??= function () { this.removeAttribute('open'); };
+    TestBed.configureTestingModule({imports:[HomePageComponent],providers:[provideRouter([]),provideLucideIcons(LucideBeef,LucideCalendarDays,LucideLandPlot,LucideMapPinOff,LucideTriangleAlert),...dashboardShowcaseProviders,{provide:ParityApi,useValue:{coverage:()=>of({totalActiveAnimals:428,unknownBirthDate:0,withRecordedTreatment:214})}},{provide:HerdApi,useValue:{pendingWork,animals:()=>of({items:[],totalPages:1}),plannerItem:()=>of({}),pregnancy:()=>of({})}}]});
+    fixture=TestBed.createComponent(HomePageComponent);TestBed.tick();fixture.detectChanges();element=fixture.nativeElement;
   });
-  it('seleciona TODAY, 7 dias e 30 dias com estado aria-pressed', () => {
-    const buttons = Array.from(element.querySelectorAll<HTMLButtonElement>('.period-pills button'));
-    expect(buttons[2].getAttribute('aria-pressed')).toBe('true');
-    for (const index of [0, 1, 2]) {
-      buttons[index].click();
-      fixture.detectChanges();
-      expect(buttons[index].getAttribute('aria-pressed')).toBe('true');
-    }
-  });
-  it('leva indicadores e consultas de gestão a destinos reais com filtros de domínio', () => {
-    const hrefs = Array.from(
-      element.querySelectorAll<HTMLAnchorElement>(
-        '.signal a,.management-shortcuts a,gr-metric-deck a',
-      ),
-    ).map((anchor) => anchor.getAttribute('href') || '');
-    expect(hrefs).toContain('/rebanho/animais?status=ACTIVE');
-    expect(hrefs).toContain('/rebanho/animais?status=ACTIVE&unlocated=true');
-    expect(hrefs).toContain('/rebanho/piquetes');
-    expect(hrefs).toContain('/gestao/insumos');
-    expect(hrefs).toContain('/gestao/financeiro');
-    expect(hrefs).toContain('/administracao');
-    expect(hrefs).toContain('/rebanho/agenda?tab=pending&pendingType=WEIGHING_DUE');
-    expect(hrefs).toContain('/rebanho/agenda?tab=pending&pendingType=VACCINATION_DUE');
-    expect(hrefs).toContain('/rebanho/agenda?tab=pending&pendingType=DEWORMING_DUE');
-    expect(hrefs).toContain('/rebanho/agenda?tab=planner&status=OPEN');
-    expect(hrefs).toContain('/rebanho/reproducao?pregnancyStatus=CONFIRMED');
-  });
-  it('não mostra contagem ou ocupação fictícia quando a consulta de piquetes falha', () => {
-    fixture.componentInstance.store.paddocks.set({ status: 'error', value: null, error: null });
-    fixture.detectChanges();
-    const card = element.querySelector('.obj-territory');
-    expect(card?.textContent).toContain('Consulta indisponível');
-    expect(card?.querySelector('[role=progressbar]')).toBeNull();
-    expect(element.textContent).toContain('Não foi possível consultar os piquetes');
-    expect(element.querySelector('.summary-line')?.textContent).toContain('piquetes indisponíveis');
-  });
-  it('falha da visão geral oferece retry em vez de manter esqueleto permanente', () => {
-    fixture.componentInstance.store.overview.set({ status: 'error', value: null, error: null });
-    fixture.detectChanges();
-    expect(element.textContent).toContain('Não foi possível carregar o resumo da fazenda');
-    expect(element.querySelector('.metric-loading')).toBeNull();
-  });
-  it.each([1, 2])('usa concordância correta para %i animais sem piquete', (count) => {
-    const store = fixture.componentInstance.store;
-    const state = store.overview();
-    store.overview.set({
-      ...state,
-      value: {
-        ...state.value!,
-        herdSnapshot: { ...state.value!.herdSnapshot, unlocatedAnimals: count },
-      },
-    });
-    fixture.detectChanges();
-    const description = fixture.componentInstance.editorialInsight()!.description;
-    expect(description).toContain(
-      count === 1 ? 'Existe 1 animal cadastrado' : 'Existem 2 animais cadastrados',
-    );
-    expect(description).toContain(count === 1 ? 'Vincule-o' : 'Vincule-os');
-  });
-  it('abre datas rotuladas e rejeita intervalo inválido', () => {
-    const custom = Array.from(
-      element.querySelectorAll<HTMLButtonElement>('.period-pills button'),
-    )[3];
-    custom.click();
-    fixture.detectChanges();
-    const inputs = element.querySelectorAll<HTMLInputElement>('input[type=date]');
-    expect(inputs.length).toBe(2);
-    expect(inputs[0].closest('label')?.textContent).toContain('De');
-    expect(inputs[1].closest('label')?.textContent).toContain('Até');
-    inputs[0].value = '2026-09-16';
-    inputs[0].dispatchEvent(new Event('input'));
-    inputs[1].value = '2026-09-15';
-    inputs[1].dispatchEvent(new Event('input'));
-    element
-      .querySelector<HTMLFormElement>('form')
-      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    fixture.detectChanges();
-    expect(element.querySelector('[role=alert]')?.textContent).toContain('datas válidas');
-  });
-  it('expande item de atenção por botão e oferece tabela do gráfico', () => {
-    const button = element.querySelector<HTMLButtonElement>('.queue-button');
-    expect(button?.getAttribute('aria-expanded')).toBe('false');
-    button?.click();
-    fixture.detectChanges();
-    expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(element.querySelector('.queue-detail')?.textContent).toContain('Data operacional');
-    expect(element.querySelector('app-activity-chart svg')?.getAttribute('aria-label')).toContain(
-      'Use as setas',
-    );
-    expect(element.querySelector('app-activity-chart table caption')?.textContent).toContain(
-      'Atividade diária',
-    );
-  });
-  it('mapeia métricas reais sem o campo territorial na Home', () => {
-    expect(element.querySelector('app-territory-overview')).toBeNull();
-    expect(element.querySelector('gr-metric-deck')?.textContent).toContain('428');
-    expect(element.querySelector('app-home-actions')).not.toBeNull();
-    // Attention preview now filters out items promoted to Foco da operação
-    expect(element.querySelector('.attention-section')?.textContent).toContain(
-      'Animal sem pesagem recente',
-    );
-    expect(element.querySelector('.attention-section')?.textContent).toContain(
-      'Identificado pelos dados',
-    );
-  });
-  it('renderiza a Home sem background fotográfico, com conteúdo em fundo mineral limpo', () => {
-    expect(element.querySelector('.home-page__background')).toBeNull();
-    expect(element.querySelector('.home-page__background-overlay')).toBeNull();
-    expect(element.querySelector('.home-page__content')).not.toBeNull();
-  });
-  it('apresenta deck operacional com quatro objetos e dados reais do território', () => {
-    const deck = element.querySelector('gr-metric-deck');
-    expect(deck?.querySelectorAll('.object').length).toBe(4);
-    expect(deck?.textContent).toContain('428');
-    const territory = deck?.querySelector('.obj-territory')?.textContent ?? '';
-    expect(territory).toContain('6');
-    expect(territory).toContain('4');
-    const progress = deck?.querySelector('[role="progressbar"]');
-    expect(Number(progress?.getAttribute('aria-valuenow'))).toBeCloseTo(66.67, 1);
-    expect(progress?.getAttribute('aria-valuemin')).toBe('0');
-    expect(progress?.getAttribute('aria-valuemax')).toBe('100');
-  });
-  it('não finge interatividade nos objetos estáticos de métrica', () => {
-    const articles = Array.from(element.querySelectorAll('gr-metric-deck article'));
-    expect(articles.length).toBe(4);
-    for (const article of articles) {
-      expect(article.hasAttribute('tabindex')).toBe(false);
-    }
-  });
-  it('apresenta strip de 7 dias com contagens reais da agenda', () => {
-    const tabs = Array.from(element.querySelectorAll<HTMLButtonElement>('.agenda-day[role="tab"]'));
-    expect(tabs.length).toBe(7);
-    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
-    expect(tabs.filter((tab) => tab.classList.contains('has-events')).length).toBe(4);
-    const panel = element.querySelector('.agenda-schedule');
-    expect(panel?.getAttribute('role')).toBe('tabpanel');
-    expect(panel?.textContent).toContain('Vacinação do lote Norte');
-  });
-  it('troca o cronograma ao selecionar outro dia e mostra vazio sem atividades', () => {
-    const tabs = Array.from(element.querySelectorAll<HTMLButtonElement>('.agenda-day[role="tab"]'));
-    tabs[3].click();
-    fixture.detectChanges();
-    expect(tabs[3].getAttribute('aria-selected')).toBe('true');
-    expect(element.querySelector('.agenda-schedule')?.textContent).toContain(
-      'Nenhuma atividade neste dia',
-    );
-    tabs[1].click();
-    fixture.detectChanges();
-    expect(element.querySelector('.agenda-schedule')?.textContent).toContain('Pesagem pendente');
-  });
-  it('expõe cronograma sem horários inventados e com datetime ISO real', () => {
-    const times = Array.from(element.querySelectorAll('.schedule-copy time'));
-    expect(times.length).toBeGreaterThan(0);
-    for (const time of times) {
-      expect(time.getAttribute('datetime')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(time.textContent).not.toMatch(/\d{2}:\d{2}/);
-    }
-    const links = Array.from(element.querySelectorAll('.agenda-section a[href="/rebanho/agenda"]'));
-    expect(links.length).toBeGreaterThan(0);
-  });
-  it('compõe o cabeçalho editorial com standfirst e marca', () => {
-    expect(element.querySelector('.operation-standfirst')?.textContent).toContain('Panorama atual');
-    expect(element.querySelector('.header-brand-mark')).not.toBeNull();
-    expect(element.querySelector('.summary-line')?.textContent).toContain('428');
-  });
-  it('soma brucelose no total de situações em atenção sem alterar o sinal de saúde', () => {
-    expect(element.querySelector('.summary-line')?.textContent).toContain(
-      '62 situações em atenção',
-    );
-    const health = element.querySelector('.signal.health')?.textContent ?? '';
-    expect(health).toContain('Vacinas');
-    expect(health).toContain('Vermífugos');
-    expect(health).not.toContain('Brucelose');
-  });
-  it('apresenta leitura operacional em superfície de marca com insight real', () => {
-    const surface = element.querySelector('gr-branded-insight-surface');
-    expect(surface?.textContent).toContain('Localização pendente no rebanho');
-  });
-  it('identifica domínio e urgência por item da atenção', () => {
-    // Attention preview now filters out items promoted to Foco da operação
-    // Only 'Animal sem pesagem recente' remains (1 item)
-    expect(element.querySelectorAll('.queue-button gr-domain-icon').length).toBe(1);
-    expect(element.querySelector('.attention-section')?.textContent).toContain(
-      'Animal sem pesagem recente',
-    );
-  });
-  it('expõe ícones de domínio nos sinais sem desfazer o painel', () => {
-    expect(element.querySelectorAll('.context-rail .signal').length).toBe(6);
-    expect(element.querySelectorAll('.context-rail gr-domain-icon').length).toBe(6);
-  });
-  it('mostra ícone de domínio por objeto do deck e por item do cronograma', () => {
-    expect(element.querySelectorAll('gr-metric-deck gr-domain-icon').length).toBe(4);
-    expect(element.querySelectorAll('.schedule-item gr-domain-icon').length).toBe(1);
-  });
-  it('apresenta hierarquia de urgência com o item mais urgente primeiro', () => {
-    const board = element.querySelector('app-urgency-board');
-    expect(board).not.toBeNull();
-    const hero = board?.querySelector('.urgency-object--hero');
-    expect(hero?.getAttribute('data-level')).toBe('today');
-    // Headline is now the event title, not the countdown
-    expect(hero?.querySelector('.urgency-object__headline')?.textContent).toContain(
-      'Vacinação do lote Norte',
-    );
-    // Urgency badge shows the overdue signal
-    expect(hero?.querySelector('.urgency-object__side gr-badge')?.textContent).toContain('hoje');
-    expect(hero?.querySelector('time')?.getAttribute('datetime')).toBe('2026-09-15');
-    expect(board?.querySelector('.urgency-calm')).toBeNull();
-  });
-  it('renderiza item principal e itens secundários únicos sem duplicação', () => {
-    const board = element.querySelector('app-urgency-board');
-    expect(board?.querySelector('.urgency-object--hero')).not.toBeNull();
-    // Secondary items are now individual urgency objects (not domain groups)
-    const secondaryObjects = board?.querySelectorAll('.urgency-object--group');
-    expect(secondaryObjects?.length).toBeGreaterThanOrEqual(1);
-    // Featured item should not appear again in secondary
-    const heroTitle =
-      board?.querySelector('.urgency-object--hero .urgency-object__headline')?.textContent ?? '';
-    const secondaryTitles = Array.from(
-      board?.querySelectorAll('.urgency-object--group .urgency-object__headline') ?? [],
-    ).map((e) => e.textContent ?? '');
-    expect(secondaryTitles).not.toContain(heroTitle.trim());
-    // No legacy group labels
-    expect(board?.textContent).not.toContain('2 pendências');
-    expect(board?.textContent).not.toContain('D+');
-    expect(board?.textContent).not.toContain('T-');
-  });
-  it('expande o objeto de urgência sem navegar e expõe CTA real', () => {
-    const button = element.querySelector<HTMLButtonElement>(
-      'app-urgency-board .urgency-object__summary',
-    );
-    expect(button?.getAttribute('aria-expanded')).toBe('false');
-    button?.click();
-    fixture.detectChanges();
-    expect(button?.getAttribute('aria-expanded')).toBe('true');
-    const panelId = button?.getAttribute('aria-controls');
-    const panel = panelId ? element.querySelector(`#${panelId}`) : null;
-    expect(panel?.getAttribute('role')).toBe('region');
-    expect(
-      element.querySelector('app-urgency-board .urgency-object__cta')?.getAttribute('href'),
-    ).toBe('/rebanho/saude');
-  });
-});
-
-describe('prévia de atenção do Home', () => {
-  it('recalcula os itens visíveis quando os IDs promovidos mudam', () => {
-    TestBed.configureTestingModule({
-      imports: [ActionsInputHost],
-      providers: [
-        provideRouter([]),
-        provideLucideIcons(LucideCalendarDays),
-        ...dashboardShowcaseProviders,
-      ],
-    });
-    const fixture = TestBed.createComponent(ActionsInputHost);
-    TestBed.tick();
-    fixture.detectChanges();
-    const actions = fixture.debugElement.query(By.directive(HomeActionsComponent))
-      .componentInstance as HomeActionsComponent;
-    const initial = actions.visibleAttentionItems();
-    expect(initial.length).toBeGreaterThan(0);
-    const promotedId = initial[0].stableId;
-
-    fixture.componentInstance.promoted.set(new Set([promotedId]));
-    fixture.detectChanges();
-    expect(actions.visibleAttentionItems().map((item) => item.stableId)).not.toContain(promotedId);
-    expect(actions.visibleAttentionItems()).toHaveLength(initial.length - 1);
-  });
+  it('usa Home Operacional como título e mostra a fazenda',()=>{expect(element.querySelector('h1')?.textContent).toContain('Home Operacional');expect(element.querySelector('.operation-standfirst')?.textContent).toContain('Fazenda Santa Helena');});
+  it('preserva os quatro períodos com aria-pressed',()=>{const buttons=Array.from(element.querySelectorAll<HTMLButtonElement>('.period-pills button'));expect(buttons.length).toBe(4);buttons[0].click();fixture.detectChanges();expect(buttons[0].getAttribute('aria-pressed')).toBe('true');});
+  it('abre o formulário de período personalizado',()=>{element.querySelectorAll<HTMLButtonElement>('.period-pills button')[3].click();fixture.detectChanges();expect(element.querySelectorAll('input[type=date]').length).toBe(2);});
+  it('rejeita intervalo personalizado inválido',()=>{element.querySelectorAll<HTMLButtonElement>('.period-pills button')[3].click();fixture.detectChanges();fixture.componentInstance.customFrom.set('2026-09-16');fixture.componentInstance.customTo.set('2026-09-15');element.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit',{cancelable:true}));fixture.detectChanges();expect(element.querySelector('[role=alert]')?.textContent).toContain('datas válidas');});
+  it('mantém acessos de gestão em menu discreto',()=>{expect(Array.from(element.querySelectorAll('.quick-links a')).map(a=>a.getAttribute('href'))).toEqual(['/gestao/insumos','/gestao/financeiro','/administracao']);});
+  it('mostra as cinco áreas operacionais',()=>{for(const selector of ['.home-summary-section','.focus','.agenda-section','.health-section','.indicators-section'])expect(element.querySelector(selector)).not.toBeNull();});
+  it('usa quatro botões sem interativos aninhados no resumo',()=>{const cards=element.querySelectorAll('gr-metric-deck button.object');expect(cards.length).toBe(4);for(const card of cards)expect(card.querySelector('a,button')).toBeNull();});
+  it('mostra rebanho real no resumo',()=>{expect(element.querySelector('.obj-herd')?.textContent).toContain('428');});
+  it('mostra piquetes e ocupação reais',()=>{expect(element.querySelector('.obj-territory')?.textContent).toContain('6');expect(element.querySelector('.obj-territory')?.textContent).toContain('4 ocupados');});
+  it('mostra percentual derivado de localização sem alegar rastreamento online',()=>{expect(element.querySelector('.obj-location')?.textContent).toContain('99,3%');expect(element.querySelector('.obj-location')?.textContent).not.toContain('online');});
+  it('mostra atenção como situações identificadas',()=>{expect(element.querySelector('.obj-attention')?.textContent).toContain('62');expect(element.querySelector('.obj-attention')?.textContent).toContain('situações identificadas');});
+  it('não fabrica piquetes quando a consulta falha',()=>{fixture.componentInstance.store.paddocks.set({status:'error',value:null,error:null});fixture.detectChanges();expect(element.querySelector('.obj-territory')?.textContent).toContain('Consulta indisponível');expect(element.textContent).toContain('Não foi possível consultar os piquetes');});
+  it('oferece nova tentativa quando falha o resumo',()=>{fixture.componentInstance.store.overview.set({status:'error',value:null,error:null});fixture.detectChanges();expect(element.textContent).toContain('Não foi possível carregar o resumo');expect(element.querySelector('.metric-loading')).toBeNull();});
+  it('abre um modal ao selecionar rebanho',()=>{element.querySelector<HTMLButtonElement>('.obj-herd')?.click();fixture.detectChanges();expect(element.querySelector('gr-dialog')).not.toBeNull();expect(element.textContent).toContain('Ver rebanho completo');});
+  it('fecha o modal pelo botão nativo',()=>{element.querySelector<HTMLButtonElement>('.obj-herd')?.click();fixture.detectChanges();element.querySelector<HTMLButtonElement>('gr-dialog button[aria-label="Fechar janela"]')?.click();fixture.detectChanges();expect(element.querySelector('gr-dialog')).toBeNull();});
+  it('fecha o modal ao trocar o contexto',()=>{element.querySelector<HTMLButtonElement>('.obj-herd')?.click();fixture.detectChanges();const context=TestBed.inject(ContextStore);context.contextVersion.set(2);TestBed.tick();fixture.detectChanges();expect(element.querySelector('gr-dialog')).toBeNull();});
+  it('abre detalhe de localização com dados sob demanda',()=>{element.querySelector<HTMLButtonElement>('.obj-location')?.click();fixture.detectChanges();expect(element.textContent).toContain('animais sem piquete');});
+  it('apresenta foco da operação com evento principal',()=>{expect(element.querySelector('.focus .hero')?.textContent).toContain('Vacinação do lote Norte');});
+  it('abre detalhe da prioridade em modal',()=>{element.querySelector<HTMLButtonElement>('.focus .hero')?.click();fixture.detectChanges();expect(element.querySelector('gr-dialog')).not.toBeNull();});
+  it('mostra sete dias na agenda',()=>{expect(element.querySelectorAll('.agenda-section .day').length).toBe(7);});
+  it('abre agenda do dia sem navegar',()=>{element.querySelector<HTMLButtonElement>('.agenda-section .day')?.click();fixture.detectChanges();expect(element.querySelector('gr-dialog')?.textContent).toContain('Agenda do dia');});
+  it('não mostra horário inventado na agenda',()=>{expect(element.querySelector('.agenda-section')?.textContent).not.toMatch(/09:00|11:00|14:00/);});
+  it('mostra números reais na seção sanitária',()=>{expect(element.querySelector('.health-section')?.textContent).toContain('24');expect(element.querySelector('.health-section')?.textContent).toContain('Brucelose');});
+  it('rotula aftosa como registro histórico',()=>{expect(element.querySelector('.coverage')?.textContent).toContain('registro histórico');expect(element.querySelector('.coverage')?.textContent).not.toContain('em dia');});
+  it('mantém os demais cards quando a cobertura está indisponível',()=>{const health=fixture.debugElement.query(By.directive(HomeHealthSectionComponent)).componentInstance as HomeHealthSectionComponent;health.coverageStatus.set('error');fixture.detectChanges();expect(element.querySelector('.coverage')?.textContent).toContain('Consulta indisponível');expect(element.querySelectorAll('.health-card').length).toBe(5);});
+  it('abre pendências de vacinação no modal',()=>{element.querySelector<HTMLButtonElement>('.health-card')?.click();fixture.detectChanges();expect(pendingWork).toHaveBeenCalledWith({type:'VACCINATION_DUE',page:0});});
+  it('mostra seis indicadores do período sem deltas falsos',()=>{expect(element.querySelectorAll('.indicator').length).toBe(6);expect(element.querySelector('.indicators-section')?.textContent).not.toContain('+12%');});
+  it('abre detalhes dos indicadores com gráfico acessível',()=>{element.querySelector<HTMLButtonElement>('.indicator')?.click();fixture.detectChanges();expect(element.querySelector('gr-dialog app-activity-chart')).not.toBeNull();});
+  it('mantém os minigráficos redundantes fora da árvore acessível',()=>{for(const svg of element.querySelectorAll('app-home-mini-series svg'))expect(svg.getAttribute('aria-hidden')).toBe('true');});
 });

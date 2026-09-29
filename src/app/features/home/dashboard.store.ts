@@ -52,7 +52,7 @@ export class DashboardStore {
       case 'overview': this.load('overview', this.overview, this.api.overview(this.period())); break;
       case 'activity': this.load('activity', this.activity, this.api.activity(this.period())); break;
       case 'attention': this.load('attention', this.attention, this.api.attention()); break;
-      case 'agenda': this.load('agenda', this.agenda, this.api.agenda(localDateOnly())); break;
+      case 'agenda': this.loadAgendaWindow(); break;
       case 'paddocks': this.loadPaddocks(); break;
     }
   }
@@ -108,6 +108,33 @@ export class DashboardStore {
           else this.paddocks.set({ status: 'ready', value: collected, error: null });
         },
         error: error => { if (this.current(name, generation, key)) this.paddocks.set({ status: 'error', value: null, error: error instanceof AppError ? error : null }); },
+      }));
+    };
+    nextPage(0);
+  }
+
+  private loadAgendaWindow(): void {
+    const name = 'agenda';
+    this.subscriptions.get(name)?.unsubscribe();
+    const generation = ++this.generations[name];
+    const key = this.activeContext;
+    const from = localDateOnly();
+    const end = new Date(`${from}T12:00:00`);
+    end.setDate(end.getDate() + 6);
+    const to = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+    const collected: AgendaPage['items'] = [];
+    const subscription = new Subscription();
+    this.subscriptions.set(name, subscription);
+    this.agenda.set({ status: 'loading', value: null, error: null });
+    const nextPage = (page: number) => {
+      subscription.add(this.api.agendaPage(from, to, page).subscribe({
+        next: value => {
+          if (!this.current(name, generation, key)) return;
+          collected.push(...value.items);
+          if (page + 1 < value.totalPages) nextPage(page + 1);
+          else this.agenda.set({ status: 'ready', value: { ...value, items: collected, page: 0, size: collected.length }, error: null });
+        },
+        error: error => { if (this.current(name, generation, key)) this.agenda.set({ status: 'error', value: null, error: error instanceof AppError ? error : null }); },
       }));
     };
     nextPage(0);
