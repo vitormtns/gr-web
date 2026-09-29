@@ -30,6 +30,20 @@ O menu **Rebanho → Piquetes** permite buscar cadastros ativos e inativos, revi
 
 A ocupação é calculada pelo serviço e não pela quantidade de animais na página atual. Animais e movimentos possuem paginações independentes. Piquetes ocupados não podem ser desativados. O perfil do animal concentra suas operações individuais.
 
+## Administração
+
+O menu **Gestão → Administração** reúne organizações, visão geral, fazendas, perfil da fazenda atual, pessoas e acessos, e auditoria administrativa.
+
+A lista de organizações inclui todos os ambientes associados por um vínculo ativo, inclusive suspensos ou arquivados. Uma conta autenticada pode cadastrar sua própria organização sem uma fazenda selecionada. Apenas proprietários alteram nome ou situação da organização; a consulta administrativa permite descobrir e reativar um ambiente que saiu do seletor de operação.
+
+Proprietários e administradores cadastram, corrigem, arquivam e reativam fazendas, com consulta individual da versão atual e confirmação. A página **Fazenda atual** usa exclusivamente o contexto operacional autorizado. Os demais papéis consultam os cadastros.
+
+Todos os papéis consultam pessoas e escopos da organização. Proprietários e administradores gerenciam acessos, respeitando a proteção do último proprietário e a restrição de administradores sobre papéis elevados. Para incluir uma conta já cadastrada, o identificador está disponível no menu da própria conta. Para uma nova pessoa, use o convite por e-mail e compartilhe manualmente o link gerado uma única vez. Não há envio automático de e-mail.
+
+Pessoas e convites possuem paginações independentes. Convites incluem consulta de pendentes, aceitos, cancelados e expirados. A auditoria, restrita a proprietários e administradores, filtra evento e fazenda e apresenta data e hora no fuso do navegador, sem JSON bruto.
+
+Cadastros de organizações e fazendas conservam o UUID em novas tentativas. O serviço reconhece a repetição do comando original sem duplicar cadastro, vínculo ou evento de auditoria. Os testes locais de criação e recuperação encerram organizações e fazendas temporárias pelo arquivamento; seu histórico permanece preservado.
+
 ## Troca de contexto e falhas
 
 Ao trocar organização ou fazenda, essas áreas cancelam consultas, invalidam respostas antigas e limpam cadastros abertos, seleções e confirmações. Respostas de escritas anteriores não abrem detalhes nem exibem mensagens na nova fazenda.

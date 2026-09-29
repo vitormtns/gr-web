@@ -1,0 +1,29 @@
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { ContextStore } from '../../core/context/context.store';
+import { PermissionService } from '../../core/permissions/permission.service';
+import { ErrorStateComponent, SkeletonComponent, ToastService } from '../../design-system/feedback/feedback';
+import { DialogComponent } from '../../design-system/surfaces/surfaces';
+import { ContextRequestScope } from '../management/management.shared';
+import { administrationError } from './administration.shared';
+import { AdministrationApi } from './administration-api.service';
+import { AdminFarm, statusLabels } from './administration.models';
+import { AdministrationHeaderComponent } from './administration-header.component';
+
+@Component({selector:'app-current-farm-page',imports:[FormsModule,RouterLink,AdministrationHeaderComponent,ErrorStateComponent,SkeletonComponent,DialogComponent],template:`
+<div class="admin-page page-enter"><app-administration-header/><section class="section-heading"><div><span>FAZENDA ATUAL</span><h2>Perfil da fazenda em operação</h2><p>Este cadastro pertence à fazenda selecionada no contexto principal.</p></div><a class="secondary" routerLink="/administracao/fazendas">Ver todas as fazendas</a></section>
+@if(state()==='loading'){<gr-skeleton/>}@else if(state()==='error'){<gr-error-state title="Não foi possível carregar o perfil" description="Recarregue os dados da fazenda selecionada." (retry)="load()"/>}@else if(farm();as value){<section class="organization-panel"><div><span>CADASTRO</span><h2>{{value.name}}</h2><p>{{statusLabels[value.status]}} · versão {{value.version}}</p></div><dl><div><dt>Organização</dt><dd>{{context.selectedOrganization()?.organizationName}}</dd></div><div><dt>Fazenda</dt><dd>{{value.name}}</dd></div></dl>@if(permissions.canManageFarms()){<button class="secondary" type="button" (click)="openEditor()">Editar nome</button>}@else{<small>Somente proprietários e administradores podem alterar este perfil.</small>}</section>}@else{<section class="empty-inline"><h3>Nenhuma fazenda selecionada</h3><p>Selecione uma fazenda para consultar o perfil.</p></section>}</div>
+<gr-dialog [open]="editor()" (closed)="closeEditor()"><strong dialog-title>Editar perfil da fazenda</strong>@if(review()){<section class="confirmation"><h3>Confirmar alteração</h3><p>O nome da fazenda será <strong>{{name.trim()}}</strong>.</p></section>}@else{<form id="current-farm-form" (ngSubmit)="prepare()"><label><span>Nome da fazenda *</span><input name="name" [(ngModel)]="name" required maxlength="255"/></label><small>A alteração será validada com a versão atual do perfil.</small></form>}@if(formError()){<p class="form-error" role="alert">{{formError()}}</p><button class="secondary" type="button" (click)="reloadProfile()" [disabled]="saving()">Recarregar perfil</button>}<div dialog-actions><button class="secondary" type="button" (click)="closeEditor()" [disabled]="saving()">Cancelar</button>@if(review()){<button class="secondary" type="button" (click)="review.set(false)" [disabled]="saving()">Voltar</button><button class="primary" type="button" (click)="save()" [disabled]="saving()">{{saving()?'Salvando…':'Confirmar alteração'}}</button>}@else{<button class="primary" type="submit" form="current-farm-form">Revisar alteração</button>}</div></gr-dialog>
+`,styleUrl:'./administration.scss',changeDetection:ChangeDetectionStrategy.OnPush})
+export class CurrentFarmPageComponent{
+ private readonly api=inject(AdministrationApi);private readonly scope=new ContextRequestScope(inject(DestroyRef));private readonly toast=inject(ToastService);readonly context=inject(ContextStore);readonly permissions=inject(PermissionService);readonly statusLabels=statusLabels;
+ readonly state=signal<'loading'|'ready'|'error'>('loading');readonly farm=signal<AdminFarm|null>(null);readonly editor=signal(false);readonly review=signal(false);readonly saving=signal(false);readonly formError=signal('');name='';
+ constructor(){effect(()=>{this.context.contextVersion();this.context.selectedFarm();const pending=this.context.transitionPending();untracked(()=>{this.scope.reset();this.farm.set(null);this.editor.set(false);this.review.set(false);this.saving.set(false);this.formError.set('');this.name='';this.state.set('loading');if(!pending)this.load();});});}
+ load(){if(this.context.transitionPending())return;if(!this.context.selectedFarm()){this.state.set('ready');return;}this.state.set('loading');this.scope.run(this.api.currentFarm(),value=>{this.farm.set(value);this.state.set('ready');},()=>this.state.set('error'));}
+ openEditor(){if(!this.permissions.canManageFarms()||this.context.transitionPending()||!this.farm())return;this.name=this.farm()!.name;this.review.set(false);this.formError.set('');this.editor.set(true);}
+ reloadProfile(){if(this.saving())return;this.editor.set(false);this.review.set(false);this.formError.set('');this.load();}
+ closeEditor(){if(!this.saving())this.editor.set(false);}
+ prepare(){if(!this.permissions.canManageFarms()||this.saving())return;if(!this.name.trim()||this.name.trim().length>255){this.formError.set('Informe um nome com até 255 caracteres.');return;}this.formError.set('');this.review.set(true);}
+ save(){const farm=this.farm();if(!farm||!this.review()||this.saving()||!this.permissions.canManageFarms()||this.context.transitionPending())return;this.saving.set(true);this.scope.run(this.api.updateCurrentFarm({name:this.name.trim(),expectedVersion:farm.version}),value=>{this.farm.set(value);this.editor.set(false);this.saving.set(false);this.toast.show('success','Perfil da fazenda atualizado',value.name);void this.context.revalidateAccess();},error=>{this.saving.set(false);this.formError.set(administrationError(error,'Não foi possível atualizar o perfil da fazenda.'));});}
+}

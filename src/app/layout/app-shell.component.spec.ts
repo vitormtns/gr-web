@@ -14,7 +14,7 @@ class EmptyRouteComponent {}
 
 function shellHarness() {
   const status = signal<'authenticated' | 'anonymous'>('authenticated');
-  const context = { clear: vi.fn() };
+  const context = { clear: vi.fn(), user: signal<{userId:string}|null>({userId:'conta-de-teste'}) };
   const auth = { status, signOut: vi.fn(async () => { status.set('anonymous'); }) };
   const router = { navigate: vi.fn().mockResolvedValue(true) };
   const toast = { show: vi.fn() };
@@ -25,10 +25,19 @@ function shellHarness() {
     router as unknown as Router,
     toast as unknown as ToastService,
   ));
-  return { shell, status, context, auth, router };
+  return { shell, status, context, auth, router, toast };
 }
 
 describe('AppShellComponent', () => {
+  it('copia identificador da conta e ignora retorno antigo após encerramento da identidade',async()=>{
+    const original=Object.getOwnPropertyDescriptor(navigator,'clipboard');let finish!:()=>void;const writeText=vi.fn(()=>new Promise<void>(resolve=>finish=resolve));Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText}});
+    try{const{shell,context,toast}=shellHarness();const pending=shell.copyAccountId();expect(writeText).toHaveBeenCalledWith('conta-de-teste');context.user.set(null);finish();await pending;expect(toast.show).not.toHaveBeenCalled();context.user.set({userId:'conta-atual'});writeText.mockImplementation(()=>Promise.resolve());await shell.copyAccountId();expect(writeText).toHaveBeenLastCalledWith('conta-atual');expect(toast.show).toHaveBeenCalledWith('success','Identificador copiado');}finally{if(original)Object.defineProperty(navigator,'clipboard',original);else Reflect.deleteProperty(navigator,'clipboard');}
+  });
+  it('oferece recuperação sem fazenda ativa e renderiza rotas administrativas durante estado vazio ou erro',async()=>{
+    const context={status:signal('empty'),transitionPending:signal(false),organizations:signal([]),farms:signal([]),selectedOrganization:signal(null),selectedFarm:signal(null),user:signal({displayName:'Pessoa de teste',email:null}),role:signal(null),clear:vi.fn()};
+    TestBed.configureTestingModule({imports:[AppShellComponent],providers:[...appConfig.providers.filter(provider=>provider&&typeof provider==='object'&&!('ɵproviders' in provider)),provideRouter([{path:'visao-geral',component:EmptyRouteComponent},{path:'administracao/organizacoes',component:EmptyRouteComponent}]),{provide:ContextStore,useValue:context},{provide:AuthStore,useValue:{status:signal('authenticated'),userEmail:signal('')}},{provide:PermissionService,useValue:{can:()=>false,canManageFarms:()=>false}},{provide:ToastService,useValue:{show:vi.fn(),toasts:signal([])}}]});
+    const fixture=TestBed.createComponent(AppShellComponent),router=TestBed.inject(Router);await router.navigateByUrl('/visao-geral');fixture.detectChanges();await fixture.whenStable();expect(fixture.nativeElement.querySelector('main a[href="/administracao/organizacoes"]')?.textContent).toContain('Gerenciar organizações');expect(fixture.nativeElement.querySelector('main router-outlet')).toBeNull();await router.navigateByUrl('/administracao/organizacoes');fixture.detectChanges();await fixture.whenStable();expect(fixture.nativeElement.querySelector('main router-outlet')).not.toBeNull();context.status.set('error');fixture.detectChanges();expect(fixture.nativeElement.querySelector('main router-outlet')).not.toBeNull();await router.navigateByUrl('/visao-geral');fixture.detectChanges();await fixture.whenStable();expect(fixture.nativeElement.querySelector('main a[href="/administracao/organizacoes"]')?.textContent).toContain('Consultar minhas organizações');
+  });
   it('limpa o contexto e retorna ao login após logout explícito', async () => {
     const harness = shellHarness();
     await harness.shell.logout();
