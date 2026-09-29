@@ -115,3 +115,17 @@ A troca de fazenda remove filtros, seleção e parâmetros da URL, cancela a con
 Observação, correção do vínculo materno, leite, venda e morte exigem revisão explícita. O portal consulta a versão atual do animal antes de preparar o comando, mantém seus dados e identificador nas novas tentativas e bloqueia confirmações simultâneas. Alterar os dados exige nova revisão. A troca de contexto cancela consultas e escritas e apaga todos os rascunhos, inclusive turno, comprador e vínculo selecionado.
 
 Valores de venda são enviados como números JSON com os dígitos originais, respeitando a precisão de 19 dígitos e até duas casas do contrato. O registro permanece independente do financeiro. A conferência local adicionou uma observação ao animal fictício já baixado, confirmou a versão consultada e reencontrou o texto no histórico; a produção histórica permaneceu em 1,125 L.
+
+## Importação e reprodução em lote
+
+A importação oferece prévia com erros por linha, confirmação atômica e repetição com os mesmos identificadores após resposta perdida. A troca de contexto cancela a inscrição HTTP e apaga o CSV e a prévia; o resultado de uma leitura de arquivo anterior também é descartado.
+
+A reprodução em lote consulta individualmente todas as matrizes selecionadas antes da revisão, usando suas versões atuais. A revisão apresenta serviço, data, matrizes, versões, referência do reprodutor, previsão e observações. Seleção, datas e limites de texto são validados antes do envio, e uma nova tentativa conserva o comando revisado. A troca de contexto cancela consultas e escritas e limpa todo o formulário.
+
+O teste local importou uma matriz e um macho identificados como fictícios. A matriz recebeu cobertura em lote e registro de 1,125 L de leite; sua gestação foi encerrada e o cadastro foi baixado pela interface. O macho recebeu venda fictícia de R$ 0,01. Todos os fatos permanecem no histórico, e o financeiro não recebeu lançamento automático.
+
+## Grupos de manejo
+
+Grupos manuais e por regras são paginados pela API. A criação mostra todos os campos na revisão; edição, associação, remoção e arquivamento consultam a versão atual do grupo antes da confirmação. A seleção de uma referência de idade inválida impede a consulta. Listagem, membros e escritas usam cancelamentos independentes; a troca de fazenda remove grupos selecionados, rascunhos e confirmações.
+
+No smoke local, um grupo manual fictício recebeu um animal vendido, foi consultado, teve a associação removida, foi renomeado e arquivado. Um grupo por regras filtrou fêmeas ativas de 12 a 120 meses com gestação aberta, retornou o resultado do serviço e também foi arquivado. A lista terminou com zero grupos ativos de teste.

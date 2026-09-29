@@ -214,8 +214,11 @@ describe('Importação utilizável e atômica', () => {
     component.csv = csv;
     component.preview();
     component.submit();
+    expect(response.observed).toBe(true);
     context.contextVersion.update((x) => x + 1);
     fixture.detectChanges();
+    expect(response.observed).toBe(false);
+    expect(component.csv).toBe('');
     response.next({ animalIds: ['old'], replayed: false });
     expect(component.result()).toBeNull();
     expect(component.review()).toBeNull();
@@ -259,6 +262,8 @@ describe('Grupos de manejo', () => {
     );
     component.select(group);
     component.membership(animal, true);
+    expect(component.membershipReview()?.group.version).toBe(4);
+    component.confirmMembership();
     component.load(1);
     result.next({ ...group, version: 5 });
     result.complete();
@@ -275,6 +280,72 @@ describe('Grupos de manejo', () => {
     component.membersError.set(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar os membros');
+  });
+  it('revisa criação e edição com versão fresca e comando congelado', async () => {
+    const { component, api } = await setup(GroupsPageComponent, 'OWNER', (a) =>
+      a.group.mockReturnValue(of({ ...group, version: 9 })),
+    );
+    component.openCreate();
+    component.name = 'Teste local de grupo';
+    component.reviewEditor();
+    expect(api.createGroup).not.toHaveBeenCalled();
+    expect(component.reviewing()).toBe(true);
+    component.save();
+    expect(api.createGroup).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Teste local de grupo' }),
+    );
+    component.edit(group);
+    component.name = 'Nome revisado';
+    component.reviewEditor();
+    expect(api.group).toHaveBeenCalledWith(group.id);
+    component.save();
+    expect(api.updateGroup).toHaveBeenCalledWith(
+      group.id,
+      expect.objectContaining({ expectedVersion: 9, name: 'Nome revisado' }),
+    );
+  });
+  it('revisa associação e arquivamento com a versão atual do grupo', async () => {
+    const { component, api } = await setup(GroupsPageComponent, 'OWNER', (a) =>
+      a.group.mockReturnValue(of({ ...group, version: 12 })),
+    );
+    component.select(group);
+    component.membership(animal, true);
+    expect(api.membership).not.toHaveBeenCalled();
+    component.confirmMembership();
+    expect(api.membership).toHaveBeenCalledWith(group.id, animal.id, 12, true);
+    component.beginArchive(group);
+    expect(component.archiving()?.version).toBe(12);
+    component.archive();
+    expect(api.archiveGroup).toHaveBeenCalledWith(group.id, 12);
+  });
+  it('cancela consultas e operações de grupo na troca de contexto', async () => {
+    const request = new Subject<HerdGroup>();
+    const { component, api, context, fixture } = await setup(GroupsPageComponent, 'OWNER', (a) =>
+      a.group.mockReturnValue(request),
+    );
+    component.edit(group);
+    component.name = 'Rascunho de outra fazenda';
+    component.reviewEditor();
+    expect(request.observed).toBe(true);
+    context.contextVersion.update((n) => n + 1);
+    fixture.detectChanges();
+    expect(request.observed).toBe(false);
+    expect(component.editorOpen()).toBe(false);
+    expect(component.name).toBe('');
+    expect(component.editing()).toBeNull();
+    expect(component.reviewing()).toBe(false);
+    component.save();
+    expect(api.updateGroup).not.toHaveBeenCalled();
+  });
+  it('rejeita data de referência inválida antes de consultar membros', async () => {
+    const { component, api } = await setup(GroupsPageComponent);
+    component.select(group);
+    api.groupAnimals.mockClear();
+    component.referenceDate = '2026-02-30';
+    component.loadMembers(0);
+    expect(api.groupAnimals).not.toHaveBeenCalled();
+    expect(component.membersError()).toBe(true);
+    expect(component.formError()).toContain('referência de idade válida');
   });
 });
 describe('Gestão contextual do animal', () => {
@@ -515,6 +586,85 @@ describe('Reprodução em lote', () => {
     expect(api.breedBatch.mock.calls[1]).toEqual(first);
     expect(component.result()).toBeNull();
     expect(component.error()).toContain('Nenhuma gestação');
+  });
+  it('consulta todas as versões antes da revisão sem gravar antecipadamente', async () => {
+    const { component, api } = await setup(BreedingBatchComponent, 'OWNER', (a) =>
+      a.animal.mockImplementation((id) => of({ ...animal, id, version: 12 })),
+    );
+    component.start();
+    component.add(animal);
+    component.add({ ...animal, id: 'a2' });
+    component.review();
+    expect(api.animal).toHaveBeenCalledTimes(2);
+    expect(api.breedBatch).not.toHaveBeenCalled();
+    component.submit();
+    expect(api.breedBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mothers: [
+          { id: 'a1', expectedVersion: 12 },
+          { id: 'a2', expectedVersion: 12 },
+        ],
+      }),
+    );
+  });
+  it('cancela consultas e apaga todos os dados do lote na troca de contexto', async () => {
+    const pending = new Subject<Animal>();
+    const { component, api, context, fixture } = await setup(BreedingBatchComponent, 'OWNER', (a) =>
+      a.animal.mockReturnValue(pending),
+    );
+    component.start();
+    component.add(animal);
+    component.notes = 'Rascunho da fazenda anterior';
+    component.sireReference = 'Reprodutor fictício';
+    component.serviceType = 'NATURAL_SERVICE';
+    component.review();
+    expect(pending.observed).toBe(true);
+    context.contextVersion.update((n) => n + 1);
+    fixture.detectChanges();
+    expect(pending.observed).toBe(false);
+    expect(component.notes).toBe('');
+    expect(component.sireReference).toBe('');
+    expect(component.serviceType).toBe('INSEMINATION');
+    expect(component.selected()).toEqual([]);
+    expect(component.confirming()).toBe(false);
+    component.submit();
+    expect(api.breedBatch).not.toHaveBeenCalled();
+  });
+  it('impede escrita simultânea e cancela sua inscrição na troca de contexto', async () => {
+    const pending = new Subject<BreedingBatchResult>();
+    const { component, api, context, fixture } = await setup(BreedingBatchComponent, 'OWNER', (a) =>
+      a.breedBatch.mockReturnValue(pending),
+    );
+    component.start();
+    component.add(animal);
+    component.review();
+    component.submit();
+    component.submit();
+    expect(api.breedBatch).toHaveBeenCalledOnce();
+    context.contextVersion.update((n) => n + 1);
+    fixture.detectChanges();
+    expect(pending.observed).toBe(false);
+    expect(component.result()).toBeNull();
+  });
+  it('rejeita matriz baixada, data anterior ao nascimento e textos fora do contrato', async () => {
+    const { component, api } = await setup(BreedingBatchComponent, 'OWNER', (a) =>
+      a.animal.mockReturnValue(of({ ...animal, status: 'DECEASED' })),
+    );
+    component.start();
+    component.add({ ...animal, sex: 'MALE' });
+    expect(component.selected()).toEqual([]);
+    component.add(animal);
+    component.serviceOn = '2019-01-01';
+    expect(component.valid()).toBe(false);
+    component.serviceOn = component.today;
+    component.notes = 'x'.repeat(1001);
+    expect(component.valid()).toBe(false);
+    component.notes = '';
+    component.review();
+    expect(component.error()).toContain('mudou de estado');
+    expect(component.confirming()).toBe(false);
+    component.submit();
+    expect(api.breedBatch).not.toHaveBeenCalled();
   });
 });
 describe('Quadros gerenciais', () => {
