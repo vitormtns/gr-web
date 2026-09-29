@@ -37,7 +37,7 @@ export class HerdApi {
   treatments(animalId:string,page=0):Observable<CountedPage<import('./herd-operations.models').HealthTreatment>>{return this.api.get(`/api/v1/herd/animals/${encodeURIComponent(animalId)}/health-treatments?page=${page}&size=20`,true)}
   recordHealth(animalId:string,body:object):Observable<OperationResult>{return this.api.post(`/api/v1/herd/animals/${encodeURIComponent(animalId)}/health-treatments`,body,true)}
   recordHealthBatch(body:object):Observable<OperationResult>{return this.api.post('/api/v1/herd/health-treatments/batch',body,true)}
-  reproductionReport(filters:{motherId?:string;serviceType?:string;pregnancyStatus?:string;page?:number}):Observable<ReproductionReport>{return this.api.get(`/api/v1/herd/reports/reproduction?${query(filters)}`,true)}
+  reproductionReport(filters:{motherId?:string;serviceType?:string;pregnancyStatus?:string;from?:string;to?:string;page?:number}):Observable<ReproductionReport>{return this.api.get(`/api/v1/herd/reports/reproduction?${query(filters)}`,true)}
   pregnancies(motherId:string,page=0):Observable<PregnancyPage>{return this.api.get(`/api/v1/herd/animals/${encodeURIComponent(motherId)}/pregnancies?page=${page}&size=20`,true)}
   pregnancy(id:string):Observable<Pregnancy>{return this.api.get(`/api/v1/herd/pregnancies/${encodeURIComponent(id)}`,true)}
   breed(motherId:string,body:object):Observable<Pregnancy>{return this.api.post(`/api/v1/herd/animals/${encodeURIComponent(motherId)}/breedings`,body,true)}

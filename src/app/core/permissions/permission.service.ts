@@ -2,7 +2,7 @@ import { Injectable, computed } from '@angular/core';
 import { ContextStore } from '../context/context.store';
 import { MembershipRole } from '../api/api.models';
 
-export type Permission = 'viewAdministration' | 'manageOrganization' | 'manageUsers' | 'manageFarms' | 'manageHerdGroups' | 'managePaddocks' | 'mutateHerd' | 'transferHerd' | 'sellHerd' | 'mutateInventory' | 'mutateFinance' | 'manageInventoryCatalog' | 'manageFinanceCategories';
+export type Permission = 'viewAdministration' | 'manageOrganization' | 'manageUsers' | 'manageFarms' | 'manageHerdGroups' | 'managePaddocks' | 'mutateHerd' | 'manageReproduction' | 'transferHerd' | 'sellHerd' | 'mutateInventory' | 'mutateFinance' | 'manageInventoryCatalog' | 'manageFinanceCategories';
 
 const permissions: Record<Permission, readonly MembershipRole[]> = {
   viewAdministration: ['OWNER', 'ADMIN', 'MANAGER', 'OPERATOR', 'VIEWER'],
@@ -10,6 +10,7 @@ const permissions: Record<Permission, readonly MembershipRole[]> = {
   manageUsers: ['OWNER', 'ADMIN'],
   manageFarms: ['OWNER', 'ADMIN'],
   mutateHerd: ['OWNER', 'ADMIN', 'MANAGER', 'OPERATOR'],
+  manageReproduction: ['OWNER', 'ADMIN', 'MANAGER'],
   manageHerdGroups: ['OWNER', 'ADMIN', 'MANAGER'],
   managePaddocks: ['OWNER', 'ADMIN', 'MANAGER'],
   transferHerd: ['OWNER', 'ADMIN', 'MANAGER'],
@@ -27,6 +28,7 @@ export class PermissionService {
   readonly canManageOrganization = computed(() => this.can('manageOrganization'));
   readonly canManageFarms = computed(() => this.can('manageFarms'));
   readonly canMutateHerd = computed(() => this.can('mutateHerd'));
+  readonly canManageReproduction = computed(() => this.can('manageReproduction'));
   readonly canManageHerdGroups = computed(() => this.can('manageHerdGroups'));
   readonly canManagePaddocks = computed(() => this.can('managePaddocks'));
   readonly canTransferHerd = computed(() => this.can('transferHerd'));

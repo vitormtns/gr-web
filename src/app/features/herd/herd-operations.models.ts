@@ -27,7 +27,7 @@ export interface PlannerItem { id: string; operationId: string | null; type: Pla
 export interface PlannerPage extends Page<PlannerItem> {}
 export interface AgendaItem { source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: PlannerStatus | null }
 export interface AgendaPage extends Page<AgendaItem> {}
-export interface CalvingResult { mother: Animal; calf: Animal; pregnancy: Pregnancy | null; replay: boolean }
+export interface CalvingResult { calfAnimalId: string; resultingMotherVersion: number; pregnancyId: string | null }
 
 export const healthLabels: Record<HealthTreatmentType, string> = { VACCINATION: 'Vacinação', DEWORMING: 'Vermifugação' };
 export const procedureLabels: Record<HealthProcedureCode, string> = { BRUCELLOSIS: 'Brucelose', FOOT_AND_MOUTH_DISEASE: 'Aftosa — registro histórico' };

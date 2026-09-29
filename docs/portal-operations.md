@@ -70,6 +70,16 @@ A Home oferece acesso direto a insumos, financeiro e administração. Os indicad
 
 O teste local criou duas atividades fictícias pelo portal. A primeira recebeu correção da data e cancelamento; a segunda foi concluída. Ambas permanecem encerradas no histórico, sem pendências de teste abertas.
 
+## Reprodução
+
+A consulta de reprodução filtra situação, tipo de serviço, mãe e período, com paginação e contagens do backend. Os eventos possuem vínculos para a mãe, a cria e os detalhes da gestação. O registro individual de cobertura e de parto utiliza a busca paginada de fêmeas ativas, sem limitar o catálogo aos primeiros 100 animais.
+
+Proprietários, administradores, gestores e operadores registram cobertura e confirmação. Encerramento e parto são restritos a proprietários, administradores e gestores, conforme o contrato do serviço. Visualizadores consultam. As versões atuais da mãe e da gestação são consultadas antes da revisão; após a revisão, o comando fica congelado. Uma nova tentativa reutiliza também o identificador da cria, evitando conflito de idempotência.
+
+As datas são validadas no calendário, e a troca de contexto cancela consultas e operações, apaga o rascunho e descarta respostas anteriores. O resumo não exibe zeros enquanto a consulta está indisponível. A consulta individual da gestação preserva confirmação, previsão, motivo de encerramento, versão e vínculos.
+
+O teste local usou uma matriz fictícia para registrar cobertura, confirmação e encerramento; outra cobertura terminou em parto vinculado, e um segundo parto foi registrado sem gestação prévia. As duas crias foram consultadas pelos vínculos do histórico. Os registros de teste são identificados explicitamente e não alteram os animais anteriores.
+
 ## Troca de contexto e falhas
 
 Ao trocar organização ou fazenda, essas áreas cancelam consultas, invalidam respostas antigas e limpam cadastros abertos, seleções e confirmações. Respostas de escritas anteriores não abrem detalhes nem exibem mensagens na nova fazenda.
