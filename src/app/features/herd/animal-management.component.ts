@@ -110,7 +110,7 @@ type Action = 'mother' | 'note' | 'milk' | 'sale' | 'death' | null;
             <div>
               <span>Leitura da produção</span
               ><strong>{{ trendLabels[summary()?.trend || 'INSUFFICIENT_DATA'] }}</strong
-              ><small>{{ summary()?.recordsLast7Days || 0 }} registros em 7 dias</small>
+              ><small>{{ summary()?.recordsLast7Days || 0 }} {{ summary()?.recordsLast7Days === 1 ? 'registro' : 'registros' }} em 7 dias</small>
             </div>
           </div>
           <p>A tendência é calculada pelo serviço; não representa diagnóstico veterinário.</p>

@@ -33,7 +33,7 @@ export class HerdApi {
   accessibleFarms(organizationId: string): Observable<ItemsResponse<{ farmId: string; farmName: string }>> { return this.api.get(`/api/v1/me/organizations/${encodeURIComponent(organizationId)}/farms`); }
   weights(animalId:string,page=0):Observable<WeightPage>{return this.api.get(`/api/v1/herd/animals/${encodeURIComponent(animalId)}/weights?page=${page}&size=20`,true)}
   recordWeight(animalId:string,body:object):Observable<OperationResult>{return this.api.post(`/api/v1/herd/animals/${encodeURIComponent(animalId)}/weights`,body,true)}
-  healthReport(filters:{treatmentType?:string;procedureCode?:import('./herd-operations.models').HealthProcedureCode;animalId?:string;page?:number}):Observable<HealthReport>{return this.api.get(`/api/v1/herd/reports/health?${query(filters)}`,true)}
+  healthReport(filters:{treatmentType?:string;procedureCode?:import('./herd-operations.models').HealthProcedureCode;animalId?:string;from?:string;to?:string;page?:number}):Observable<HealthReport>{return this.api.get(`/api/v1/herd/reports/health?${query(filters)}`,true)}
   treatments(animalId:string,page=0):Observable<CountedPage<import('./herd-operations.models').HealthTreatment>>{return this.api.get(`/api/v1/herd/animals/${encodeURIComponent(animalId)}/health-treatments?page=${page}&size=20`,true)}
   recordHealth(animalId:string,body:object):Observable<OperationResult>{return this.api.post(`/api/v1/herd/animals/${encodeURIComponent(animalId)}/health-treatments`,body,true)}
   recordHealthBatch(body:object):Observable<OperationResult>{return this.api.post('/api/v1/herd/health-treatments/batch',body,true)}

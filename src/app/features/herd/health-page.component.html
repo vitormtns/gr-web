@@ -1,0 +1,280 @@
+<div class="herd-page operations-page page-enter">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">CUIDADO REALIZADO</span>
+      <h1>Saúde do rebanho</h1>
+      <p>Histórico de vacinações e vermifugações já realizadas.</p>
+    </div>
+    @if (permissions.canMutateHerd()) {
+      <button class="primary-action" type="button" (click)="openCreate()">
+        Registrar tratamento
+      </button>
+    }
+  </header>
+  @if (report(); as result) {
+    <section class="metric-strip" aria-label="Resumo de saúde da consulta">
+      <div>
+        <span>Tratamentos</span><strong>{{ result.summary.treatmentsCount }}</strong>
+      </div>
+      <div>
+        <span>Animais atendidos</span><strong>{{ result.summary.animalsTreated }}</strong>
+      </div>
+      <div>
+        <span>Vacinações</span
+        ><strong>{{ result.summary.countsByTreatmentType.VACCINATION || 0 }}</strong>
+      </div>
+      <div>
+        <span>Vermifugações</span
+        ><strong>{{ result.summary.countsByTreatmentType.DEWORMING || 0 }}</strong>
+      </div>
+    </section>
+  }
+  <section class="section-frame operational-surface">
+    <div class="surface-tools">
+      <div>
+        <span class="section-kicker">HISTÓRICO</span>
+        <h2>Tratamentos realizados</h2>
+      </div>
+    </div>
+    <form class="health-filters" (ngSubmit)="applyFilters()">
+      <label
+        >Tipo<select name="type" [(ngModel)]="type">
+          <option value="">Todos</option>
+          <option value="VACCINATION">Vacinação</option>
+          <option value="DEWORMING">Vermifugação</option>
+        </select></label
+      >
+      <label
+        >Procedimento<select name="procedureFilter" [(ngModel)]="filterProcedure">
+          <option value="">Todos</option>
+          <option value="BRUCELLOSIS">Brucelose</option>
+          <option value="FOOT_AND_MOUTH_DISEASE">Aftosa — registro histórico</option>
+        </select></label
+      >
+      <label
+        >Identificador do animal<input
+          name="animalFilter"
+          [(ngModel)]="animalFilter"
+          placeholder="UUID do animal (opcional)" /></label
+      ><label>De<input name="from" type="date" [(ngModel)]="from" /></label
+      ><label>Até<input name="to" type="date" [(ngModel)]="to" /></label>
+      <button class="secondary-action" type="submit">Aplicar filtros</button
+      ><button class="quiet-button" type="button" (click)="clearFilters()">Limpar filtros</button>
+    </form>
+    @if (filterError()) {
+      <p class="form-error filter-feedback" role="alert">{{ filterError() }}</p>
+    }
+    @if (loading()) {
+      <div class="list-loading"><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>
+    } @else if (error()) {
+      <gr-error-state
+        title="Não foi possível carregar o histórico de saúde"
+        [description]="error()"
+        (retry)="reload()"
+      />
+    } @else if (report(); as result) {
+      <p class="query-count">
+        {{ result.totalElements }}
+        {{ result.totalElements === 1 ? 'registro nesta consulta' : 'registros nesta consulta' }}
+      </p>
+      @if (!result.items.length) {
+        <div class="domain-empty">
+          <strong>Nenhum tratamento encontrado</strong>
+          <p>Revise os filtros ou registre um cuidado realizado.</p>
+        </div>
+      } @else {
+        <div class="responsive-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Animal</th>
+                <th>Tratamento</th>
+                <th>Data</th>
+                <th>Produto</th>
+                <th>Protocolo</th>
+                <th>Próxima aplicação</th>
+                <th>Detalhes</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of result.items; track item.id) {
+                <tr>
+                  <td><app-animal-identity [animal]="animalRef(item.animal!)" /></td>
+                  <td>
+                    <span class="domain-badge">{{ healthLabel(item.treatmentType!) }}</span
+                    ><small>{{
+                      item.procedureCode ? procedureLabels[item.procedureCode] : 'Não especificado'
+                    }}</small>
+                  </td>
+                  <td>{{ date(item.occurredOn) }}</td>
+                  <td>{{ item.product || 'Não informado' }}</td>
+                  <td>{{ item.protocol || 'Não informado' }}</td>
+                  <td>{{ item.nextDueOn ? date(item.nextDueOn) : 'Não definida' }}</td>
+                  <td>
+                    <details>
+                      <summary>Ver detalhes</summary>
+                      <p>Registrado em {{ timestamp(item.recordedAt) }}</p>
+                      <p>Consulte as observações no histórico de saúde do animal.</p>
+                    </details>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <nav class="pagination" aria-label="Paginação do histórico">
+          <button type="button" [disabled]="page === 0" (click)="changePage(page - 1)">
+            Anterior</button
+          ><span>Página {{ page + 1 }} de {{ result.totalPages || 1 }}</span
+          ><button
+            type="button"
+            [disabled]="page + 1 >= result.totalPages"
+            (click)="changePage(page + 1)"
+          >
+            Próxima
+          </button>
+        </nav>
+      }
+    }
+  </section>
+  <gr-dialog [open]="creating()" (closed)="closeCreate()">
+    <span dialog-title>{{
+      reviewing() ? 'Revisar tratamento realizado' : 'Registrar tratamento realizado'
+    }}</span>
+    @if (creating()) {
+      @if (preparing()) {
+        <p role="status">Consultando as versões atuais dos animais…</p>
+        <gr-skeleton />
+      }
+      @if (!reviewing()) {
+        <label class="batch-toggle"
+          ><input
+            type="checkbox"
+            [(ngModel)]="batch"
+            [disabled]="preparing() || saving()"
+            (ngModelChange)="toggleBatch()"
+          /><span>Aplicar o mesmo tratamento a vários animais</span></label
+        >
+        <details class="animal-picker" [open]="batch || !animals().length">
+          <summary>{{ batch ? 'Selecionar animais do lote' : 'Selecionar animal' }}</summary>
+          <app-animal-picker
+            label="Buscar animal ativo"
+            [disabled]="preparing() || saving()"
+            [excluded]="selectedIds()"
+            (chosen)="chooseAnimal($event)"
+          />
+        </details>
+        @if (animals().length) {
+          <ul class="selected-animals" aria-label="Animais selecionados">
+            @for (animal of animals(); track animal.id) {
+              <li>
+                <span>{{ animal.identification }}{{ animal.name ? ' · ' + animal.name : '' }}</span
+                ><button
+                  type="button"
+                  [disabled]="preparing() || saving()"
+                  [attr.aria-label]="'Remover ' + animal.identification"
+                  (click)="removeAnimal(animal.id)"
+                >
+                  Remover
+                </button>
+              </li>
+            }
+          </ul>
+        }
+        <fieldset class="form-grid compact" [disabled]="preparing() || saving()">
+          <label
+            ><span>Tipo</span
+            ><select [(ngModel)]="treatmentType" (ngModelChange)="onTreatmentTypeChange()">
+              <option value="VACCINATION">Vacinação</option>
+              <option value="DEWORMING">Vermifugação</option>
+            </select></label
+          >
+          @if (treatmentType === 'VACCINATION') {
+            <label
+              ><span>Procedimento</span
+              ><select [(ngModel)]="procedureCode">
+                <option [ngValue]="null">Não especificado</option>
+                <option value="BRUCELLOSIS">Brucelose</option>
+                <option value="FOOT_AND_MOUTH_DISEASE">Aftosa — registro histórico</option>
+              </select></label
+            >
+          }
+          <label
+            ><span>Data realizada</span
+            ><input type="date" [(ngModel)]="occurredOn" [max]="today" /></label
+          ><label
+            ><span>Próxima aplicação</span
+            ><input type="date" [(ngModel)]="nextDueOn" [min]="occurredOn" /></label
+          ><label
+            ><span>Produto</span
+            ><input [(ngModel)]="product" maxlength="160" placeholder="Opcional" /></label
+          ><label
+            ><span>Protocolo</span
+            ><input [(ngModel)]="protocol" maxlength="160" placeholder="Opcional" /></label
+          ><label class="wide"
+            ><span>Observações</span
+            ><textarea [(ngModel)]="notes" maxlength="1000" placeholder="Opcional"></textarea>
+          </label>
+        </fieldset>
+      } @else {
+        <section class="health-review" aria-label="Revisão do cuidado realizado">
+          <h3>{{ healthLabel(treatmentType) }} · {{ date(occurredOn) }}</h3>
+          <p>
+            Procedimento:
+            {{
+              treatmentType === 'VACCINATION' && procedureCode
+                ? procedureLabels[procedureCode]
+                : 'Não especificado'
+            }}
+          </p>
+          <p>
+            Produto: {{ product || 'Não informado' }} · Protocolo: {{ protocol || 'Não informado' }}
+          </p>
+          <p>Próxima aplicação: {{ nextDueOn ? date(nextDueOn) : 'Não definida' }}</p>
+          <p>{{ notes || 'Sem observações' }}</p>
+          <ul>
+            @for (animal of animals(); track animal.id) {
+              <li>
+                {{ animal.identification }}{{ animal.name ? ' · ' + animal.name : '' }} · versão
+                {{ animal.version }}
+              </li>
+            }
+          </ul>
+        </section>
+      }
+      <p class="semantic-note">
+        Aftosa classifica um registro histórico; não indica obrigação atual de revacinação. A
+        confirmação registra um cuidado realizado. Atividades planejadas continuam separadas.
+      </p>
+      @if (formError()) {
+        <p class="form-error" role="alert">{{ formError() }}</p>
+      }
+    }
+    <div dialog-actions>
+      <button
+        class="quiet-button"
+        type="button"
+        [disabled]="saving() || preparing()"
+        (click)="closeCreate()"
+      >
+        Cancelar
+      </button>
+      @if (reviewing()) {
+        <button class="secondary-action" type="button" [disabled]="saving()" (click)="editAgain()">
+          Voltar à edição</button
+        ><button class="primary-action" type="button" [disabled]="saving()" (click)="save()">
+          {{ saving() ? 'Registrando…' : 'Confirmar tratamento' }}
+        </button>
+      } @else {
+        <button
+          class="primary-action"
+          type="button"
+          [disabled]="saving() || preparing() || !animals().length"
+          (click)="prepare()"
+        >
+          Revisar tratamento
+        </button>
+      }
+    </div>
+  </gr-dialog>
+</div>

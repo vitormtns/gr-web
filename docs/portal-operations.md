@@ -80,6 +80,16 @@ As datas são validadas no calendário, e a troca de contexto cancela consultas 
 
 O teste local usou uma matriz fictícia para registrar cobertura, confirmação e encerramento; outra cobertura terminou em parto vinculado, e um segundo parto foi registrado sem gestação prévia. As duas crias foram consultadas pelos vínculos do histórico. Os registros de teste são identificados explicitamente e não alteram os animais anteriores.
 
+## Saúde
+
+O histórico de saúde filtra tipo, procedimento, animal e período. A consulta utiliza paginação e contagens do serviço, apresenta produto, protocolo, próxima aplicação e horário de registro, e leva ao perfil do animal para consultar suas observações e demais registros.
+
+Tratamentos individuais e em lote utilizam busca paginada de animais ativos. Lotes admitem até 100 animais, selecionados entre páginas de consulta. As versões atuais são consultadas antes da revisão. A confirmação conserva o comando, impede envios simultâneos e oferece nova tentativa após falhas. A troca de contexto cancela consultas e escritas e apaga seleções e rascunhos; o seletor só é carregado com o formulário aberto.
+
+Proprietários, administradores, gestores e operadores registram cuidados realizados; visualizadores consultam. As datas respeitam o calendário, o nascimento, o dia atual e a ordem da próxima aplicação. Aftosa permanece um registro histórico, sem criar obrigação de revacinação ou prazo automático. O planejamento é independente do registro de um cuidado.
+
+O teste local registrou uma vacinação histórica individual e uma vermifugação em lote nos três animais fictícios da validação reprodutiva. O filtro por matriz retornou seus dois tratamentos. Também foi registrado e consultado 1,125 L de leite na matriz fictícia. A matriz e as duas crias foram encerradas pelo fluxo de baixa do portal, preservando vínculos e históricos e sem alterar os animais anteriores.
+
 ## Troca de contexto e falhas
 
 Ao trocar organização ou fazenda, essas áreas cancelam consultas, invalidam respostas antigas e limpam cadastros abertos, seleções e confirmações. Respostas de escritas anteriores não abrem detalhes nem exibem mensagens na nova fazenda.

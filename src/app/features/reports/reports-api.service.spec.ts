@@ -24,6 +24,11 @@ describe('mapeamento dos relatórios',()=>{
 });
 
 describe('período dos relatórios',()=>{
+  it('rejeita datas inexistentes e aceita o dia bissexto válido',()=>{
+    expect(periodIssue('2026-02-30','2026-03-01')).toBe('Datas inválidas.');
+    expect(periodIssue('2025-02-29','2025-03-01')).toBe('Datas inválidas.');
+    expect(periodIssue('2024-02-29','2024-03-01')).toBe('');
+  });
   it('aceita datas inclusivas e rejeita ordem invertida',()=>{
     expect(periodIssue('2026-09-01','2026-09-17')).toBe('');
     expect(periodIssue('2026-09-18','2026-09-17')).toContain('inicial');

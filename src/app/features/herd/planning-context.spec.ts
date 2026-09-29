@@ -53,6 +53,18 @@ async function setup(component: typeof AgendaPageComponent | typeof HealthPageCo
     correctPlanner: vi.fn(() => of(item)),
     completePlanner: vi.fn(() => of({ ...item, status: 'COMPLETED' })),
     cancelPlanner: vi.fn(() => of({ ...item, status: 'CANCELLED' })),
+    animal: vi.fn((_id: string) =>
+      of({
+        id: 'a1',
+        identification: 'A1',
+        name: null,
+        birthDate: null,
+        sex: 'FEMALE',
+        status: 'ACTIVE',
+        version: 2,
+        paddock: null,
+      }),
+    ),
     healthReport: vi.fn(() =>
       of({
         ...page,
@@ -147,8 +159,13 @@ describe('Saúde e contexto de fazenda', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.componentInstance.openCreate();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(response.observed).toBe(true);
     context.contextVersion.update((v) => v + 1);
     fixture.detectChanges();
+    await fixture.whenStable();
+    expect(response.observed).toBe(false);
     response.next({
       ...page,
       items: [
@@ -194,6 +211,7 @@ describe('Saúde e contexto de fazenda', () => {
     component.animalId = 'a1';
     component.procedureCode = 'FOOT_AND_MOUTH_DISEASE';
     component.nextDueOn = '';
+    component.prepare();
     component.save();
     expect(api.recordHealth).toHaveBeenCalledWith(
       'a1',

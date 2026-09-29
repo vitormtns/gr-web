@@ -240,7 +240,7 @@ type Action = 'correct' | 'move' | 'transfer' | 'weight' | null;
               <h2 id="timeline-title">Histórico do animal</h2>
             </div>
             @if (history(); as result) {
-              <span>{{ result.totalElements }} eventos</span>
+              <span>{{ result.totalElements }} {{ result.totalElements === 1 ? 'evento' : 'eventos' }}</span>
             }
           </header>
           <label class="history-type"
