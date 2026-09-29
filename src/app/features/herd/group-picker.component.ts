@@ -9,7 +9,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ContextRequestScope } from '../management/management.shared';
 import { ContextStore } from '../../core/context/context.store';
 import { ParityApi } from './parity-api.service';
 import { CountedPage, HerdGroup } from './parity.models';
@@ -95,9 +95,10 @@ export class GroupPickerComponent {
   private readonly api = inject(ParityApi);
   private readonly context = inject(ContextStore);
   private readonly destroy = inject(DestroyRef);
-  private generation = 0;
+  private readonly listScope = new ContextRequestScope(this.destroy);
+  private readonly nameScope = new ContextRequestScope(this.destroy);
   readonly page = signal<CountedPage<HerdGroup> | null>(null);
-  readonly loading = signal(true);
+  readonly loading = signal(false);
   readonly error = signal(false);
   readonly name = signal('');
   constructor() {
@@ -105,31 +106,30 @@ export class GroupPickerComponent {
       this.context.contextVersion();
       const pending = this.context.transitionPending();
       const farm = this.context.selectedFarm();
-      this.generation++;
-      this.page.set(null);
-      if (!pending && farm) untracked(() => this.load(0));
+      untracked(() => {
+        this.listScope.reset();
+        this.page.set(null);
+        this.loading.set(pending);
+        this.error.set(false);
+        if (!pending && farm) this.load(0);
+      });
     });
     effect(() => {
       this.context.contextVersion();
       const selected = this.selected();
-      this.name.set(selected ? 'Grupo vinculado' : 'Atividade sem grupo');
-      if (selected && !this.context.transitionPending()) {
-        const g = this.generation;
-        this.api
-          .group(selected)
-          .pipe(takeUntilDestroyed(this.destroy))
-          .subscribe({
-            next: (group) => {
-              if (g === this.generation && selected === this.selected()) this.name.set(group.name);
-            },
-            error: () => {
-              if (g === this.generation && selected === this.selected())
-                this.name.set(
-                  'Grupo vinculado indisponível. Selecione um grupo ativo para alterá-lo.',
-                );
-            },
-          });
-      }
+      const ready = !this.context.transitionPending() && !!this.context.selectedFarm();
+      untracked(() => {
+        this.nameScope.reset();
+        this.name.set(ready && selected ? 'Consultando grupo vinculado…' : 'Atividade sem grupo');
+        if (!ready || !selected) return;
+        this.nameScope.run(
+          this.api.group(selected),
+          (group) => this.name.set(group.name),
+          () => {
+            this.name.set('Grupo vinculado indisponível. Selecione um grupo ativo para alterá-lo.');
+          },
+        );
+      });
     });
   }
   selectedName() {
@@ -139,23 +139,21 @@ export class GroupPickerComponent {
     return Math.ceil((this.page()?.totalElements || 0) / 20);
   }
   load(page: number) {
-    const g = ++this.generation;
+    if (this.context.transitionPending() || !this.context.selectedFarm()) return;
+    this.listScope.reset();
+    this.page.set(null);
     this.loading.set(true);
     this.error.set(false);
-    this.api
-      .groups(page)
-      .pipe(takeUntilDestroyed(this.destroy))
-      .subscribe({
-        next: (result) => {
-          if (g !== this.generation) return;
-          this.page.set(result);
-          this.loading.set(false);
-        },
-        error: () => {
-          if (g !== this.generation) return;
-          this.loading.set(false);
-          this.error.set(true);
-        },
-      });
+    this.listScope.run(
+      this.api.groups(page),
+      (result) => {
+        this.page.set(result);
+        this.loading.set(false);
+      },
+      () => {
+        this.loading.set(false);
+        this.error.set(true);
+      },
+    );
   }
 }
