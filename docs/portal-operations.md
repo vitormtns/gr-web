@@ -141,3 +141,7 @@ Os cinco quadros gerenciais distinguem posição atual, fatos históricos, fluxo
 Uma conta fictícia foi cadastrada no Supabase local e vinculada à organização com acesso apenas à Fazenda Norte. O visualizador consultou a Home e recebeu 403 ao tentar criar grupo; a Fazenda Sul não apareceu em seu seletor, e a tentativa direta de consulta da outra fazenda retornou 404 sem dados. O operador registrou uma observação em animal fictício, não viu criação de grupos e recebeu 403 nessa tentativa. O gestor criou e arquivou um grupo e não recebeu controles de gestão de pessoas.
 
 O administrador viu somente Gerente, Operador e Visualizador como papéis concedíveis; criou um convite local e o cancelou. O proprietário viu os cinco papéis e criou e arquivou um grupo. Ao final, o proprietário original revogou a participação fictícia pela interface; a API da conta revogada retornou zero organizações acessíveis. A conta local de autenticação permanece identificada como fictícia, sem participação operacional.
+
+## Aceite de convite
+
+Um segundo usuário fictício aceitou um convite pela rota pública do portal, autenticado no Supabase local. A API confirmou participação na organização como Operador, restrito à Fazenda Norte; o portal abriu a visão administrativa com esse papel e escopo. O proprietário original removeu esse acesso pela interface após a validação. A API do convidado voltou a apresentar zero organizações acessíveis. O token do convite não foi persistido nas evidências.
