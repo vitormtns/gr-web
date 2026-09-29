@@ -3,7 +3,7 @@ import { authGuard, guestGuard } from './core/guards/auth.guard';
 import { contextGuard } from './core/guards/context.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 
-const unsavedAnimalGuard = (component: { canDeactivate?: () => boolean }) => component.canDeactivate?.() ?? true;
+const unsavedAnimalGuard = (component: { canDeactivate?: () => boolean | Promise<boolean> }) => component.canDeactivate?.() ?? true;
 
 export const routes: Routes = [
   { path: 'entrar', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login-page.component').then((m) => m.LoginPageComponent) },
