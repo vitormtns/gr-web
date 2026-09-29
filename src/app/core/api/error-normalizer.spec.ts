@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { normalizeApiError } from './error-normalizer';
 
 describe('normalizeApiError', () => {
+  it('preserva o envelope de erros em requests de resposta textual sem exibir conteúdo bruto', () => {
+    const error = normalizeApiError(new HttpErrorResponse({ status: 409, error: '{"code":"INVENTORY_INSUFFICIENT_STOCK","requestId":"req-stock","message":"Internal SQL details"}' }));
+    expect(error.code).toBe('INVENTORY_INSUFFICIENT_STOCK'); expect(error.requestId).toBe('req-stock');
+    expect(error.message).not.toContain('SQL');
+    expect(normalizeApiError(new HttpErrorResponse({ status: 503, error: '<html>Falha</html>' })).kind).toBe('unavailable');
+  });
   it.each([
     [400,'validation'],[401,'unauthorized'],[403,'forbidden'],[404,'not-found'],
     [409,'conflict'],[429,'rate-limited'],[500,'unexpected'],[502,'unavailable'],[503,'unavailable'],[0,'unavailable'],

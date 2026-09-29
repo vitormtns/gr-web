@@ -10,7 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ContextRequestScope } from '../management/management.shared';
 import { ContextStore } from '../../core/context/context.store';
 import { HerdApi } from './herd-api.service';
 import { Animal, AnimalSex, AnimalStatus, Page } from './herd.models';
@@ -123,10 +123,9 @@ export class AnimalPickerComponent {
   readonly chosen = output<Animal>();
   private readonly api = inject(HerdApi);
   private readonly context = inject(ContextStore);
-  private readonly destroy = inject(DestroyRef);
-  private generation = 0;
+  private readonly scope = new ContextRequestScope(inject(DestroyRef));
   readonly page = signal<Page<Animal> | null>(null);
-  readonly loading = signal(true);
+  readonly loading = signal(false);
   readonly error = signal(false);
   search = '';
   constructor() {
@@ -136,38 +135,38 @@ export class AnimalPickerComponent {
       const farm = this.context.selectedFarm();
       this.sex();
       this.status();
-      this.generation++;
-      this.page.set(null);
-      this.search = '';
-      if (pending || !farm) return;
-      untracked(() => this.load(0));
+      untracked(() => {
+        this.scope.reset();
+        this.page.set(null);
+        this.search = '';
+        this.loading.set(pending);
+        this.error.set(false);
+        if (!pending && farm) this.load(0);
+      });
     });
   }
   load(page: number) {
     if (this.context.transitionPending() || !this.context.selectedFarm()) return;
-    const g = ++this.generation;
+    this.scope.reset();
+    this.page.set(null);
     this.loading.set(true);
     this.error.set(false);
-    this.api
-      .animals({
+    this.scope.run(
+      this.api.animals({
         search: this.search.trim(),
         sex: this.sex(),
         status: this.status(),
         page,
         size: 20,
-      })
-      .pipe(takeUntilDestroyed(this.destroy))
-      .subscribe({
-        next: (result) => {
-          if (g !== this.generation) return;
-          this.page.set(result);
-          this.loading.set(false);
-        },
-        error: () => {
-          if (g !== this.generation) return;
-          this.loading.set(false);
-          this.error.set(true);
-        },
-      });
+      }),
+      (result) => {
+        this.page.set(result);
+        this.loading.set(false);
+      },
+      () => {
+        this.loading.set(false);
+        this.error.set(true);
+      },
+    );
   }
 }

@@ -1,44 +1,907 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { GroupPickerComponent } from './group-picker.component';
-import { PaginationComponent } from '../../design-system/data-display/data-display';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin } from 'rxjs';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ContextStore } from '../../core/context/context.store';
 import { localDateOnly } from '../../core/date/date-only';
 import { PermissionService } from '../../core/permissions/permission.service';
-import { ErrorStateComponent, SkeletonComponent, ToastService } from '../../design-system/feedback/feedback';
+import { PaginationComponent, TableComponent } from '../../design-system/data-display/data-display';
+import {
+  EmptyStateComponent,
+  ErrorStateComponent,
+  ToastService,
+} from '../../design-system/feedback/feedback';
 import { DialogComponent } from '../../design-system/surfaces/surfaces';
+import {
+  ContextRequestScope,
+  managementError,
+  managementTimestamp,
+} from '../management/management.shared';
+import { AnimalPickerComponent } from './animal-picker.component';
+import { GroupPickerComponent } from './group-picker.component';
 import { HerdApi } from './herd-api.service';
 import { Animal, newUuid } from './herd.models';
-import { AgendaItem, AgendaPage, PendingWorkPage, PlannerItem, PlannerPage, PlannerType, pendingLabels, plannerTypeLabels } from './herd-operations.models';
+import {
+  AgendaPage,
+  PendingWorkPage,
+  PlannerItem,
+  PlannerPage,
+  PlannerType,
+  pendingLabels,
+  plannerTypeLabels,
+} from './herd-operations.models';
 import { formatDate } from './herd.shared';
+import { validImportDate } from './herd-import';
 
-@Component({selector:'app-agenda-page',imports:[GroupPickerComponent,PaginationComponent,FormsModule,ErrorStateComponent,SkeletonComponent,DialogComponent],template:`<div class="herd-page operations-page page-enter">
- <header class="page-header"><div><span class="eyebrow">TEMPO OPERACIONAL</span><h1>Agenda do rebanho</h1><p>Atividades planejadas e necessidades derivadas, juntas sem perder sua origem.</p></div>@if(permissions.canMutateHerd()){<button class="primary-action" type="button" (click)="openCreate()">Planejar atividade</button>}</header>
- <section class="metric-strip" aria-label="Resumo da agenda"><div><span>Na agenda</span><strong>{{agenda()?.totalElements||0}}</strong></div><div><span>Necessitam atenção</span><strong>{{pending()?.totalElements||0}}</strong></div><div><span>Planejadas em aberto</span><strong>{{planner()?.totalElements||0}}</strong></div><div><span>Origem</span><strong>Unificada</strong><small>Planejado + necessário</small></div></section>
- <div class="surface-tools section-frame"><div><span class="section-kicker">FILTROS</span><h2>Janela operacional</h2></div><label>Origem<select [(ngModel)]="source" (ngModelChange)="reload()"><option value="">Todas</option><option value="MANUAL">Planejada</option><option value="DERIVED">Necessidade do rebanho</option></select></label><label>Tipo<select [(ngModel)]="type" (ngModelChange)="reload()"><option value="">Todos</option>@for(t of plannerTypes;track t){<option [value]="t">{{typeLabel(t)}}</option>}</select></label><label>De<input type="date" [(ngModel)]="from" (change)="reload()"/></label><label>Até<input type="date" [(ngModel)]="to" (change)="reload()"/></label></div>
- <div class="work-columns"><section class="section-frame operational-surface"><div class="surface-tools"><div><span class="section-kicker">AGENDA UNIFICADA</span><h2>Próximos marcos</h2></div></div>@if(loading()){<div class="list-loading"><gr-skeleton/><gr-skeleton/><gr-skeleton/></div>}@else if(error()){<gr-error-state title="Não foi possível carregar a agenda" (retry)="reload()"/>}@else if(!agenda()?.items?.length){<div class="domain-empty"><strong>Nenhum item na agenda</strong><p>Não há atividades ou necessidades para os filtros escolhidos.</p></div>}@else{<ol class="agenda-list">@for(item of agenda()!.items;track item.stableId){<li class="agenda-item"><time class="agenda-date" [attr.datetime]="item.operationalDate"><strong>{{day(item.operationalDate)}}</strong><span>{{month(item.operationalDate)}}</span></time><div class="agenda-content"><span class="source-label">{{item.source==='MANUAL'?'Atividade planejada':'Necessidade do rebanho'}}</span><strong>{{item.summary}}</strong>@if(item.identification){<small>{{item.identification}}{{item.name?' · '+item.name:''}}</small>}</div>@if(item.source==='MANUAL'&&item.plannerItemId&&permissions.canMutateHerd()){<div class="item-actions"><button type="button" (click)="editFromAgenda(item)">Reagendar</button><button type="button" (click)="transition(item.plannerItemId,'complete')">Concluir</button><button type="button" (click)="transition(item.plannerItemId,'cancel')">Cancelar</button></div>}@else if(item.source==='DERIVED'&&item.animalId){<a class="secondary-action" [href]="handoff(item)">Registrar fato</a>}</li>}</ol>}</section>
- <aside class="section-frame operational-surface"><div class="surface-tools"><div><span class="section-kicker">ATENÇÃO</span><h2>O que precisa ser feito</h2></div></div>@if(loading()){<gr-skeleton/>}@else if(error()){<gr-error-state title="Não foi possível carregar as pendências" (retry)="reload()"/>}@else if(!pending()?.items?.length){<div class="domain-empty"><strong>Nenhuma pendência</strong><p>O rebanho está sem necessidades derivadas neste contexto.</p></div>}@else{<div class="process-list">@for(item of pending()!.items;track item.type+'-'+item.animalId){<article class="process-card"><div><span class="domain-badge">{{pendingLabel(item.type)}}</span><p><strong>{{item.identification}}</strong>{{item.name?' · '+item.name:''}}</p><small>{{date(item.dueOn||item.expectedOn)}}</small></div><a [href]="'/rebanho/animais/'+item.animalId">Ver animal</a></article>}</div>}</aside></div>
- <section class="section-frame parity-section"><h2>Atividades por grupo</h2><app-group-picker label="Filtrar atividades por grupo" [selected]="filterGroupId" (chosen)="filterGroupId=$event;groupPage=0;loadGroupTasks()"/><label>Situação<select [(ngModel)]="groupStatus" (ngModelChange)="groupPage=0;loadGroupTasks()"><option value="">Todas</option><option value="OPEN">Em aberto</option><option value="COMPLETED">Concluídas</option><option value="CANCELLED">Canceladas</option></select></label>@if(filterGroupId){@if(groupLoading()){<gr-skeleton/>}@else if(groupError()){<gr-error-state title="Não foi possível consultar as atividades do grupo" (retry)="loadGroupTasks()"/>}@else if(!groupTasks()?.items?.length){<p>Nenhuma atividade corresponde ao grupo e à situação selecionados.</p>}@else{<div class="responsive-table"><table><thead><tr><th>Atividade</th><th>Tipo</th><th>Data</th><th>Situação</th><th>Escopo</th><th>Ações</th></tr></thead><tbody>@for(item of groupTasks()?.items||[];track item.id){<tr><td>{{item.title}}</td><td>{{typeLabel(item.type)}}</td><td>{{date(item.scheduledFor)}}</td><td>{{item.status==='OPEN'?'Em aberto':item.status==='COMPLETED'?'Concluída':'Cancelada'}}</td><td>{{item.animalId?'Grupo e animal vinculado':'Grupo de manejo'}}</td><td>@if(item.status==='OPEN'&&permissions.canMutateHerd()){<button class="quiet-button" type="button" (click)="openEdit(item)">Editar</button><button class="quiet-button" type="button" (click)="transition(item.id,'complete')">Concluir</button><button class="quiet-button" type="button" (click)="transition(item.id,'cancel')">Cancelar</button>}</td></tr>}</tbody></table></div><gr-pagination [page]="groupPage" [totalPages]="groupTasks()?.totalPages||0" (pageChange)="groupPage=$event;loadGroupTasks()"/>}}@else{<p>Selecione um grupo para consultar suas atividades. O vínculo define o escopo planejado e não executa manejo automaticamente.</p>}</section>
- <gr-dialog [open]="editorOpen()" (closed)="closeEditor()"><span dialog-title>{{editing()?'Reagendar atividade':'Planejar atividade'}}</span><div class="form-grid compact"><label><span>Tipo</span><select [(ngModel)]="plannerType">@for(t of plannerTypes;track t){<option [value]="t">{{typeLabel(t)}}</option>}</select></label><label><span>Data prevista</span><input type="date" [(ngModel)]="scheduledFor"/></label><label class="wide"><span>Título</span><input [(ngModel)]="title" maxlength="160"/></label><label class="wide"><span>Animal</span><select [(ngModel)]="animalId"><option value="">Atividade da fazenda</option>@for(a of animals();track a.id){<option [value]="a.id">{{a.identification}}{{a.name?' · '+a.name:''}}</option>}</select></label><app-group-picker class="wide" [selected]="groupId" [disabled]="saving()" (chosen)="groupId=$event"/><label class="wide"><span>Observações</span><textarea [(ngModel)]="notes" maxlength="1000" placeholder="Opcional"></textarea></label>@if(formError()){<p class="form-error wide" role="alert">{{formError()}}</p>}</div><p class="semantic-note">Concluir esta atividade registra apenas a intenção como concluída. Pesagens, tratamentos e partos devem ser registrados em seus fluxos próprios.</p><div dialog-actions><button class="quiet-button" type="button" (click)="closeEditor()">Cancelar</button><button class="primary-action" type="button" [disabled]="saving()||!title.trim()||!scheduledFor" (click)="savePlanner()">{{editing()?'Salvar alteração':'Planejar atividade'}}</button></div></gr-dialog>
- <gr-dialog [open]="transitionItem()!==null" (closed)="closeTransition()"><span dialog-title>{{transitionAction()==='complete'?'Marcar atividade como concluída':'Cancelar atividade planejada'}}</span><p>{{transitionAction()==='complete'?'Esta ação não cria um fato de domínio. Registre o manejo realizado no fluxo correspondente.':'A atividade ficará encerrada e não poderá ser reaberta.'}}</p>@if(formError()){<p class="form-error" role="alert">{{formError()}}</p>}<div dialog-actions><button class="quiet-button" type="button" (click)="closeTransition()">Voltar</button><button class="primary-action" type="button" [disabled]="saving()" (click)="confirmTransition()">Confirmar</button></div></gr-dialog>
-</div>`,styleUrls:['./herd-page.scss','./operations-page.component.scss','./parity.scss'],changeDetection:ChangeDetectionStrategy.OnPush})
-export class AgendaPageComponent{
- private readonly route=inject(ActivatedRoute);private readonly api=inject(HerdApi);private readonly context=inject(ContextStore);private readonly destroyRef=inject(DestroyRef);private readonly toast=inject(ToastService);readonly permissions=inject(PermissionService);readonly agenda=signal<AgendaPage|null>(null);readonly pending=signal<PendingWorkPage|null>(null);readonly planner=signal<PlannerPage|null>(null);readonly animals=signal<Animal[]>([]);readonly loading=signal(true);readonly error=signal(false);readonly editorOpen=signal(false);readonly editing=signal<PlannerItem|null>(null);readonly transitionItem=signal<PlannerItem|null>(null);readonly transitionAction=signal<'complete'|'cancel'>('complete');readonly saving=signal(false);readonly formError=signal('');readonly groupTasks=signal<PlannerPage|null>(null);readonly groupLoading=signal(false);readonly groupError=signal(false);filterGroupId=this.route.snapshot.queryParamMap.get('groupId')||'';groupId='';groupStatus='';groupPage=0;private groupGeneration=0;private contextEpoch=0;private generation=0;private operationId='';readonly plannerTypes:PlannerType[]=['GENERAL','WEIGHING','VACCINATION','DEWORMING','BREEDING','PREGNANCY_CHECK','CALVING','MOVEMENT'];source='';type='';from='';to='';plannerType:PlannerType='GENERAL';title='';scheduledFor=localDateOnly();animalId='';notes='';
- constructor(){effect(()=>{this.context.contextVersion();this.contextEpoch++;this.animals.set([]);this.editorOpen.set(false);this.transitionItem.set(null);this.saving.set(false);this.formError.set('');if(this.context.transitionPending()||!this.context.selectedFarm()){this.generation++;this.groupGeneration++;this.groupTasks.set(null);this.animals.set([]);this.editorOpen.set(false);this.transitionItem.set(null);this.agenda.set(null);this.pending.set(null);this.planner.set(null);return}this.reload();this.loadGroupTasks()})}
- reload(){const g=++this.generation;this.loading.set(true);this.error.set(false);forkJoin({agenda:this.api.agenda({source:this.source||undefined,type:this.type||undefined,from:this.from||undefined,to:this.to||undefined}),pending:this.api.pendingWork(),planner:this.api.planner({status:'OPEN'})}).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:r=>{if(g===this.generation){this.agenda.set(r.agenda);this.pending.set(r.pending);this.planner.set(r.planner);this.loading.set(false)}},error:()=>{if(g===this.generation){this.loading.set(false);this.error.set(true)}}})}
- openCreate(){this.operationId=newUuid();this.editing.set(null);this.formError.set('');this.plannerType='GENERAL';this.title='';this.animalId='';this.groupId=this.filterGroupId;this.notes='';this.editorOpen.set(true);this.loadAnimals()}
- editFromAgenda(item:AgendaItem){if(!item.plannerItemId)return;const epoch=this.contextEpoch;this.api.plannerItem(item.plannerItemId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:value=>{if(epoch===this.contextEpoch)this.openEdit(value)},error:()=>{if(epoch===this.contextEpoch)this.toast.show('error','Não foi possível carregar a atividade')}})}
- openEdit(item:PlannerItem){this.operationId=newUuid();this.editing.set(item);this.plannerType=item.type;this.title=item.title;this.scheduledFor=item.scheduledFor;this.animalId=item.animalId||'';this.groupId=item.groupId||'';this.notes=item.notes||'';this.formError.set('');this.editorOpen.set(true);this.loadAnimals()}
- private loadAnimals(){if(this.animals().length)return;const epoch=this.contextEpoch;this.api.animals({search:'',sex:'',status:'ACTIVE',page:0,size:100}).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:r=>{if(epoch===this.contextEpoch)this.animals.set(r.items)}})}
- closeEditor(){if(!this.saving())this.editorOpen.set(false)}
- savePlanner(){const body={operationId:this.operationId,...(this.editing()?{expectedVersion:this.editing()!.version}:{}),type:this.plannerType,title:this.title.trim(),notes:this.notes.trim()||null,scheduledFor:this.scheduledFor,animalId:this.animalId||null,groupId:this.groupId||null};const request=this.editing()?this.api.correctPlanner(this.editing()!.id,body):this.api.createPlanner(body);this.save(request,this.editing()?'Atividade reagendada':'Atividade planejada')}
- transition(id:string,action:'complete'|'cancel'){const epoch=this.contextEpoch;this.api.plannerItem(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:item=>{if(epoch!==this.contextEpoch)return;this.operationId=newUuid();this.transitionItem.set(item);this.transitionAction.set(action);this.formError.set('')},error:()=>{if(epoch===this.contextEpoch)this.toast.show('error','Não foi possível carregar a atividade')}})}
- closeTransition(){if(!this.saving())this.transitionItem.set(null)}
- confirmTransition(){const item=this.transitionItem();if(!item)return;const body={operationId:this.operationId,expectedVersion:item.version};this.save(this.transitionAction()==='complete'?this.api.completePlanner(item.id,body):this.api.cancelPlanner(item.id,body),this.transitionAction()==='complete'?'Atividade marcada como concluída':'Atividade cancelada')}
- private save(request:{subscribe:(observer:{next:(value:unknown)=>void;error:(error:unknown)=>void})=>unknown},message:string){if(!this.permissions.canMutateHerd()||this.saving()||this.context.transitionPending())return;const epoch=this.contextEpoch;this.saving.set(true);request.subscribe({next:()=>{if(epoch!==this.contextEpoch)return;this.saving.set(false);this.editorOpen.set(false);this.transitionItem.set(null);this.toast.show('success',message);this.reload();this.loadGroupTasks()},error:(error:unknown)=>{if(epoch!==this.contextEpoch)return;this.saving.set(false);const e=error as {status?:number;message?:string};this.formError.set(e.status===409?'A atividade foi alterada em outra sessão. Recarregue para reconciliar os dados.':e.message||'Não foi possível concluir a ação.')}})}
- loadGroupTasks(){const g=++this.groupGeneration;this.groupTasks.set(null);if(!this.filterGroupId)return;this.groupLoading.set(true);this.groupError.set(false);this.api.planner({groupId:this.filterGroupId,status:this.groupStatus||undefined,page:this.groupPage}).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:result=>{if(g!==this.groupGeneration)return;this.groupTasks.set(result);this.groupLoading.set(false)},error:()=>{if(g!==this.groupGeneration)return;this.groupError.set(true);this.groupLoading.set(false)}})}
- handoff(item:AgendaItem){return item.animalId?`/rebanho/animais/${item.animalId}`:'/rebanho/animais'};pendingLabel=(v:keyof typeof pendingLabels)=>pendingLabels[v];typeLabel=(v:PlannerType)=>plannerTypeLabels[v];date=formatDate;day=(v:string)=>new Date(v+'T12:00:00Z').toLocaleDateString('pt-BR',{day:'2-digit',timeZone:'UTC'});month=(v:string)=>new Date(v+'T12:00:00Z').toLocaleDateString('pt-BR',{month:'short',timeZone:'UTC'}).replace('.','');
+type AgendaTab = 'agenda' | 'pending' | 'planner';
+type EditorMode = 'create' | 'edit' | 'view' | 'complete' | 'cancel';
+@Component({
+  selector: 'app-agenda-page',
+  imports: [
+    FormsModule,
+    RouterLink,
+    AnimalPickerComponent,
+    GroupPickerComponent,
+    PaginationComponent,
+    TableComponent,
+    EmptyStateComponent,
+    ErrorStateComponent,
+    DialogComponent,
+  ],
+  template: `<div class="herd-page operations-page page-enter">
+    <header class="page-header">
+      <div>
+        <span class="eyebrow">TEMPO OPERACIONAL · {{ context.selectedFarm()?.farmName }}</span>
+        <h1>Agenda do rebanho</h1>
+        <p>Consulte a agenda, acompanhe as pendências e revise as atividades planejadas.</p>
+      </div>
+      @if (permissions.canMutateHerd()) {
+        <button class="primary-action" type="button" (click)="openCreate()">
+          Planejar atividade
+        </button>
+      }
+    </header>
+    <nav class="agenda-tabs" aria-label="Consultas da agenda">
+      <button
+        class="secondary-action"
+        [class.active]="tab() === 'agenda'"
+        [attr.aria-pressed]="tab() === 'agenda'"
+        (click)="selectTab('agenda')"
+      >
+        Agenda unificada</button
+      ><button
+        class="secondary-action"
+        [class.active]="tab() === 'pending'"
+        [attr.aria-pressed]="tab() === 'pending'"
+        (click)="selectTab('pending')"
+      >
+        Pendências</button
+      ><button
+        class="secondary-action"
+        [class.active]="tab() === 'planner'"
+        [attr.aria-pressed]="tab() === 'planner'"
+        (click)="selectTab('planner')"
+      >
+        Atividades planejadas
+      </button>
+    </nav>
+    <form class="agenda-filters section-frame" (ngSubmit)="applyFilters()">
+      @if (tab() === 'agenda') {
+        <label
+          >Origem<select name="source" [(ngModel)]="source">
+            <option value="">Todas</option>
+            <option value="MANUAL">Planejada</option>
+            <option value="DERIVED">Necessidade do rebanho</option>
+          </select></label
+        >
+      }
+      @if (tab() === 'pending') {
+        <label
+          >Tipo de pendência<select name="pendingType" [(ngModel)]="pendingType">
+            <option value="">Todas</option>
+            @for (type of pendingTypes; track type) {
+              <option [value]="type">{{ pendingLabels[type] }}</option>
+            }
+          </select></label
+        >
+      } @else {
+        <label
+          >Tipo de atividade<select name="type" [(ngModel)]="filterType">
+            <option value="">Todos</option>
+            @for (type of plannerTypes; track type) {
+              <option [value]="type">{{ typeLabels[type] }}</option>
+            }
+          </select></label
+        ><label>De<input type="date" name="from" [(ngModel)]="from" /></label
+        ><label>Até<input type="date" name="to" [(ngModel)]="to" /></label>
+      }
+      @if (tab() === 'planner') {
+        <label
+          >Situação<select name="status" [(ngModel)]="status">
+            <option value="">Todas</option>
+            <option value="OPEN">Em aberto</option>
+            <option value="COMPLETED">Concluída</option>
+            <option value="CANCELLED">Cancelada</option>
+          </select></label
+        >
+      }
+      <label
+        >Identificador do animal<input
+          name="filterAnimal"
+          [(ngModel)]="filterAnimalId"
+          placeholder="UUID do animal (opcional)" /></label
+      ><button class="secondary-action" type="submit">Aplicar filtros</button
+      ><button class="quiet-button" type="button" (click)="clearFilters()">Limpar filtros</button>
+      @if (tab() === 'planner') {
+        <details class="group-filter picker-disclosure" [open]="!!filterGroupId">
+          <summary>
+            Filtrar atividades por grupo{{ filterGroupId ? ' · filtro ativo' : '' }}
+          </summary>
+          <app-group-picker
+            label="Filtrar atividades por grupo"
+            [selected]="filterGroupId"
+            (chosen)="chooseGroupFilter($event)"
+          />
+        </details>
+      }
+    </form>
+    @if (error()) {
+      <gr-error-state
+        level="page"
+        [title]="
+          tab() === 'pending'
+            ? 'Não foi possível carregar as pendências'
+            : tab() === 'planner'
+              ? 'Não foi possível carregar as atividades planejadas'
+              : 'Não foi possível carregar a agenda'
+        "
+        [description]="error()"
+        (retry)="load()"
+      />
+    } @else if (!loading() && !itemCount()) {
+      <div class="empty-frame">
+        <gr-empty-state
+          [title]="
+            hasFilters()
+              ? 'Nenhum registro corresponde aos filtros'
+              : tab() === 'pending'
+                ? 'Nenhuma pendência identificada'
+                : tab() === 'planner'
+                  ? 'Nenhuma atividade planejada'
+                  : 'Nenhum item na agenda'
+          "
+          description="Revise os filtros ou consulte outra área da agenda."
+        />
+      </div>
+    } @else {
+      <section class="section-frame agenda-results">
+        @if (total() !== null) {
+          <p class="record-count">
+            {{ total() }} {{ total() === 1 ? 'registro' : 'registros' }} nesta consulta
+          </p>
+        }
+        @if (tab() === 'agenda') {
+          <gr-table [loading]="loading()"
+            ><thead>
+              <tr>
+                <th>Data</th>
+                <th>Origem</th>
+                <th>Atividade</th>
+                <th>Animal</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of agenda()?.items || []; track item.stableId) {
+                <tr>
+                  <td>{{ date(item.operationalDate) }}</td>
+                  <td>{{ item.source === 'MANUAL' ? 'Planejada' : 'Necessidade do rebanho' }}</td>
+                  <td>{{ item.summary }}</td>
+                  <td>
+                    @if (item.animalId) {
+                      <a [routerLink]="['/rebanho/animais', item.animalId]">{{
+                        item.identification || 'Ver animal'
+                      }}</a>
+                    } @else {
+                      Atividade da fazenda
+                    }
+                  </td>
+                  <td>
+                    @if (item.plannerItemId) {
+                      <button
+                        class="quiet-button"
+                        type="button"
+                        (click)="openItem(item.plannerItemId, 'view')"
+                      >
+                        Ver detalhes
+                      </button>
+                      @if (permissions.canMutateHerd() && item.status === 'OPEN') {
+                        <button
+                          class="quiet-button"
+                          type="button"
+                          (click)="openItem(item.plannerItemId, 'edit')"
+                        >
+                          Reagendar</button
+                        ><button
+                          class="quiet-button"
+                          type="button"
+                          (click)="openItem(item.plannerItemId, 'complete')"
+                        >
+                          Concluir</button
+                        ><button
+                          class="quiet-button"
+                          type="button"
+                          (click)="openItem(item.plannerItemId, 'cancel')"
+                        >
+                          Cancelar
+                        </button>
+                      }
+                    } @else if (item.animalId) {
+                      <a class="quiet-button" [routerLink]="['/rebanho/animais', item.animalId]"
+                        >Registrar fato</a
+                      >
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody></gr-table
+          >
+        } @else if (tab() === 'pending') {
+          <gr-table [loading]="loading()"
+            ><thead>
+              <tr>
+                <th>Pendência</th>
+                <th>Animal</th>
+                <th>Data de referência</th>
+                <th>Atraso</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of pending()?.items || []; track item.type + '-' + item.animalId) {
+                <tr>
+                  <td>{{ pendingLabels[item.type] }}</td>
+                  <td>
+                    <strong>{{ item.identification }}</strong
+                    ><small>{{ item.name || 'Sem nome informado' }}</small>
+                  </td>
+                  <td>{{ date(item.dueOn || item.expectedOn) }}</td>
+                  <td>
+                    {{
+                      item.daysOverdue !== null
+                        ? item.daysOverdue + ' dias'
+                        : 'Sem atraso informado'
+                    }}
+                  </td>
+                  <td>
+                    <a [routerLink]="['/rebanho/animais', item.animalId]"
+                      >Ver animal e registrar manejo</a
+                    >
+                  </td>
+                </tr>
+              }
+            </tbody></gr-table
+          >
+        } @else {
+          <gr-table [loading]="loading()"
+            ><thead>
+              <tr>
+                <th>Atividade</th>
+                <th>Tipo</th>
+                <th>Data prevista</th>
+                <th>Situação</th>
+                <th>Escopo</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of planner()?.items || []; track item.id) {
+                <tr>
+                  <td>{{ item.title }}</td>
+                  <td>{{ typeLabels[item.type] }}</td>
+                  <td>{{ date(item.scheduledFor) }}</td>
+                  <td>{{ statusLabels[item.status] }}</td>
+                  <td>
+                    @if (item.animalId) {
+                      <a [routerLink]="['/rebanho/animais', item.animalId]">Ver animal</a>
+                    } @else {
+                      Fazenda
+                    }
+                    @if (item.groupId) {
+                      <a [routerLink]="['/rebanho/grupos', item.groupId]">Ver grupo</a>
+                    }
+                  </td>
+                  <td>
+                    <button class="quiet-button" type="button" (click)="openItem(item.id, 'view')">
+                      Ver detalhes
+                    </button>
+                    @if (item.status === 'OPEN' && permissions.canMutateHerd()) {
+                      <button
+                        class="quiet-button"
+                        type="button"
+                        (click)="openItem(item.id, 'edit')"
+                      >
+                        Editar</button
+                      ><button
+                        class="quiet-button"
+                        type="button"
+                        (click)="openItem(item.id, 'complete')"
+                      >
+                        Concluir</button
+                      ><button
+                        class="quiet-button"
+                        type="button"
+                        (click)="openItem(item.id, 'cancel')"
+                      >
+                        Cancelar
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody></gr-table
+          >
+        }
+        @if (total() !== null) {
+          <gr-pagination
+            [page]="page()"
+            [totalPages]="totalPages()"
+            (pageChange)="changePage($event)"
+          />
+        }
+      </section>
+    }
+    <gr-dialog [open]="editorOpen()" (closed)="closeEditor()"
+      ><span dialog-title>{{ editorTitle() }}</span>
+      @if (editorLoading()) {
+        <p role="status">Carregando a atividade…</p>
+      } @else if (editorError()) {
+        <p class="form-error" role="alert">{{ editorError() }}</p>
+        <button class="secondary-action" (click)="reloadEditor()">Tentar novamente</button>
+      } @else if (mode() === 'view' || mode() === 'complete' || mode() === 'cancel') {
+        @if (editing(); as item) {
+          <dl class="planner-detail">
+            <dt>Atividade</dt>
+            <dd>{{ item.title }}</dd>
+            <dt>Tipo</dt>
+            <dd>{{ typeLabels[item.type] }}</dd>
+            <dt>Data prevista</dt>
+            <dd>{{ date(item.scheduledFor) }}</dd>
+            <dt>Situação</dt>
+            <dd>{{ statusLabels[item.status] }}</dd>
+            <dt>Observações</dt>
+            <dd>{{ item.notes || 'Sem observações' }}</dd>
+            <dt>Criada em</dt>
+            <dd>{{ timestamp(item.createdAt) }}</dd>
+            <dt>Atualizada em</dt>
+            <dd>{{ timestamp(item.updatedAt) }}</dd>
+            @if (item.completedAt) {
+              <dt>Concluída em</dt>
+              <dd>{{ timestamp(item.completedAt) }}</dd>
+            }
+            @if (item.cancelledAt) {
+              <dt>Cancelada em</dt>
+              <dd>{{ timestamp(item.cancelledAt) }}</dd>
+            }
+            <dt>Versão</dt>
+            <dd>{{ item.version }}</dd>
+          </dl>
+        }
+      } @else {
+        <fieldset class="form-grid compact" [disabled]="saving() || review()">
+          <label
+            >Tipo *<select [(ngModel)]="plannerType">
+              @for (type of plannerTypes; track type) {
+                <option [value]="type">{{ typeLabels[type] }}</option>
+              }
+            </select></label
+          ><label>Data prevista *<input type="date" [(ngModel)]="scheduledFor" required /></label
+          ><label class="wide">Título *<input [(ngModel)]="title" maxlength="160" required /></label
+          ><label class="wide"
+            >Observações<textarea [(ngModel)]="notes" maxlength="1000"></textarea>
+          </label>
+        </fieldset>
+        @if (!review()) {
+          <details class="picker-disclosure">
+            <summary>
+              {{
+                animalId ? 'Consultar ou alterar o animal vinculado' : 'Vincular animal (opcional)'
+              }}
+            </summary>
+            <app-animal-picker
+              label="Vincular animal (opcional)"
+              [disabled]="saving()"
+              (chosen)="chooseAnimal($event)"
+            />
+            <p>
+              {{
+                selectedAnimal()
+                  ? selectedAnimal()!.identification
+                  : animalId
+                    ? 'Animal vinculado: ' + animalId
+                    : 'Atividade da fazenda'
+              }}
+            </p>
+            @if (animalId) {
+              <button class="quiet-button" (click)="clearAnimal()">
+                Remover vínculo com animal
+              </button>
+            }
+          </details>
+          <details class="picker-disclosure" [open]="!!groupId">
+            <summary>
+              {{ groupId ? 'Consultar ou alterar o grupo vinculado' : 'Vincular grupo (opcional)' }}
+            </summary>
+            <app-group-picker
+              label="Grupo de manejo (opcional)"
+              [selected]="groupId"
+              [disabled]="saving()"
+              (chosen)="groupId = $event"
+            />
+          </details>
+        } @else {
+          <p>Animal: {{ selectedAnimal()?.identification || animalId || 'Sem vínculo' }}</p>
+          <p>Grupo: {{ groupId || 'Sem vínculo' }}</p>
+          <p>Confira os campos e os vínculos antes de confirmar.</p>
+        }
+      }
+      @if (mode() !== 'view') {
+        <p class="semantic-note">
+          {{
+            mode() === 'cancel'
+              ? 'O cancelamento encerra a atividade e preserva seu histórico.'
+              : 'Planejar ou concluir uma atividade não registra pesagens, tratamentos ou partos. Registre o manejo realizado no fluxo correspondente.'
+          }}
+        </p>
+      }
+      @if (formError()) {
+        <p class="form-error" role="alert">{{ formError() }}</p>
+      }
+      <div dialog-actions>
+        <button class="quiet-button" [disabled]="saving()" (click)="closeEditor()">Fechar</button>
+        @if (!editorLoading() && !editorError() && mode() !== 'view') {
+          @if (mode() === 'complete' || mode() === 'cancel' || review()) {
+            <button class="primary-action" [disabled]="saving()" (click)="save()">
+              {{ saving() ? 'Registrando…' : 'Confirmar' }}
+            </button>
+          } @else {
+            <button class="primary-action" [disabled]="saving()" (click)="prepare()">
+              Revisar atividade
+            </button>
+          }
+        }
+      </div>
+    </gr-dialog>
+  </div>`,
+  styleUrl: './agenda-page.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class AgendaPageComponent {
+  private readonly route = inject(ActivatedRoute);
+  private readonly api = inject(HerdApi);
+  private readonly scope = new ContextRequestScope(inject(DestroyRef));
+  private readonly editorScope = new ContextRequestScope(inject(DestroyRef));
+  private readonly toast = inject(ToastService);
+  readonly context = inject(ContextStore);
+  readonly permissions = inject(PermissionService);
+  readonly tab = signal<AgendaTab>('agenda');
+  readonly page = signal(0);
+  readonly agenda = signal<AgendaPage | null>(null);
+  readonly pending = signal<PendingWorkPage | null>(null);
+  readonly planner = signal<PlannerPage | null>(null);
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly editorOpen = signal(false);
+  readonly editorLoading = signal(false);
+  readonly editorError = signal('');
+  readonly mode = signal<EditorMode>('create');
+  readonly editing = signal<PlannerItem | null>(null);
+  readonly selectedAnimal = signal<Animal | null>(null);
+  readonly saving = signal(false);
+  readonly review = signal(false);
+  readonly formError = signal('');
+  readonly typeLabels = plannerTypeLabels;
+  readonly pendingLabels = pendingLabels;
+  readonly statusLabels = { OPEN: 'Em aberto', COMPLETED: 'Concluída', CANCELLED: 'Cancelada' };
+  readonly plannerTypes = Object.keys(plannerTypeLabels) as PlannerType[];
+  readonly pendingTypes = Object.keys(pendingLabels) as (keyof typeof pendingLabels)[];
+  source = '';
+  filterType = '';
+  pendingType = '';
+  status = '';
+  from = '';
+  to = '';
+  filterAnimalId = '';
+  filterGroupId = '';
+  plannerType: PlannerType = 'GENERAL';
+  title = '';
+  scheduledFor = localDateOnly();
+  animalId = '';
+  groupId = '';
+  notes = '';
+  private operationId = '';
+  private editorId = '';
+  private command: object | null = null;
+  private applied: Record<string, string> = {};
+  date = formatDate;
+  timestamp = managementTimestamp;
+  constructor() {
+    let initial = true;
+    effect(() => {
+      this.context.contextVersion();
+      const pending = this.context.transitionPending();
+      const farm = this.context.selectedFarm();
+      untracked(() => {
+        this.scope.reset();
+        this.resetEditor();
+        this.clearData();
+        this.resetFilters();
+        this.tab.set('agenda');
+        if (initial && !pending && farm) {
+          this.applyRoute();
+          initial = false;
+        }
+        if (!pending && farm) this.applyFilters();
+      });
+    });
+  }
+  private applyRoute() {
+    const q = this.route.snapshot.queryParamMap;
+    const tab = q.get('tab');
+    if (tab === 'pending' || tab === 'planner') this.tab.set(tab);
+    if (q.get('groupId') && validUuid(q.get('groupId')!)) {
+      this.filterGroupId = q.get('groupId')!;
+      this.tab.set('planner');
+    }
+    this.filterAnimalId = validUuid(q.get('animalId') || '') ? q.get('animalId')! : '';
+    this.pendingType = this.pendingTypes.includes(
+      q.get('pendingType') as keyof typeof pendingLabels,
+    )
+      ? q.get('pendingType')!
+      : '';
+    this.filterType = this.plannerTypes.includes(q.get('type') as PlannerType)
+      ? q.get('type')!
+      : '';
+    this.status = ['OPEN', 'COMPLETED', 'CANCELLED'].includes(q.get('status') || '')
+      ? q.get('status')!
+      : '';
+    this.source = ['MANUAL', 'DERIVED'].includes(q.get('source') || '') ? q.get('source')! : '';
+    this.from = validImportDate(q.get('from') || '') ? q.get('from')! : '';
+    this.to = validImportDate(q.get('to') || '') ? q.get('to')! : '';
+  }
+  private resetFilters() {
+    this.source = '';
+    this.filterType = '';
+    this.pendingType = '';
+    this.status = '';
+    this.from = '';
+    this.to = '';
+    this.filterAnimalId = '';
+    this.filterGroupId = '';
+    this.applied = {};
+    this.page.set(0);
+  }
+  selectTab(tab: AgendaTab) {
+    if (this.context.transitionPending()) return;
+    this.tab.set(tab);
+    this.resetFilters();
+    this.applyFilters();
+  }
+  chooseGroupFilter(id: string) {
+    this.filterGroupId = id;
+    this.applyFilters();
+  }
+  clearFilters() {
+    this.resetFilters();
+    this.applyFilters();
+  }
+  applyFilters() {
+    if (
+      (this.filterAnimalId && !validUuid(this.filterAnimalId.trim())) ||
+      (this.filterGroupId && !validUuid(this.filterGroupId)) ||
+      (this.from && !validImportDate(this.from)) ||
+      (this.to && !validImportDate(this.to)) ||
+      (this.from && this.to && this.from > this.to)
+    ) {
+      this.error.set('Revise o período e os identificadores informados.');
+      return;
+    }
+    this.applied = {
+      source: this.source,
+      type: this.tab() === 'pending' ? this.pendingType : this.filterType,
+      status: this.status,
+      from: this.from,
+      to: this.to,
+      animalId: this.filterAnimalId.trim(),
+      groupId: this.filterGroupId,
+    };
+    this.page.set(0);
+    this.load();
+  }
+  hasFilters() {
+    return Object.values(this.applied).some(Boolean);
+  }
+  private clearData() {
+    this.agenda.set(null);
+    this.pending.set(null);
+    this.planner.set(null);
+    this.loading.set(true);
+    this.error.set('');
+  }
+  load() {
+    if (this.context.transitionPending() || !this.context.selectedFarm()) return;
+    this.scope.reset();
+    this.clearData();
+    const f = this.applied;
+    const fail = (failure: unknown) => {
+      this.loading.set(false);
+      this.error.set(
+        managementError(failure, 'Não foi possível carregar os registros. Tente novamente.'),
+      );
+    };
+    if (this.tab() === 'agenda')
+      this.scope.run(
+        this.api.agenda({
+          source: f['source'] || undefined,
+          type: f['type'] || undefined,
+          animalId: f['animalId'] || undefined,
+          from: f['from'] || undefined,
+          to: f['to'] || undefined,
+          page: this.page(),
+        }),
+        (value) => {
+          this.agenda.set(value);
+          this.loading.set(false);
+        },
+        fail,
+      );
+    else if (this.tab() === 'pending')
+      this.scope.run(
+        this.api.pendingWork({
+          type: f['type'] || undefined,
+          animalId: f['animalId'] || undefined,
+          page: this.page(),
+        }),
+        (value) => {
+          this.pending.set(value);
+          this.loading.set(false);
+        },
+        fail,
+      );
+    else
+      this.scope.run(
+        this.api.planner({
+          status: f['status'] || undefined,
+          type: f['type'] || undefined,
+          animalId: f['animalId'] || undefined,
+          groupId: f['groupId'] || undefined,
+          from: f['from'] || undefined,
+          to: f['to'] || undefined,
+          page: this.page(),
+        }),
+        (value) => {
+          this.planner.set(value);
+          this.loading.set(false);
+        },
+        fail,
+      );
+  }
+  total() {
+    return this.tab() === 'agenda'
+      ? (this.agenda()?.totalElements ?? null)
+      : this.tab() === 'pending'
+        ? (this.pending()?.totalElements ?? null)
+        : (this.planner()?.totalElements ?? null);
+  }
+  itemCount() {
+    return this.tab() === 'agenda'
+      ? this.agenda()?.items.length || 0
+      : this.tab() === 'pending'
+        ? this.pending()?.items.length || 0
+        : this.planner()?.items.length || 0;
+  }
+  totalPages() {
+    const data =
+      this.tab() === 'agenda'
+        ? this.agenda()
+        : this.tab() === 'pending'
+          ? this.pending()
+          : this.planner();
+    return data ? Math.ceil(data.totalElements / data.size) : 0;
+  }
+  changePage(page: number) {
+    if (this.loading() || page < 0 || this.context.transitionPending()) return;
+    this.page.set(page);
+    this.load();
+  }
+  private canWrite() {
+    return (
+      this.permissions.canMutateHerd() &&
+      !this.context.transitionPending() &&
+      !!this.context.selectedFarm()
+    );
+  }
+  private resetEditor() {
+    this.editorScope.reset();
+    this.editorOpen.set(false);
+    this.editorLoading.set(false);
+    this.editorError.set('');
+    this.mode.set('create');
+    this.editing.set(null);
+    this.selectedAnimal.set(null);
+    this.saving.set(false);
+    this.review.set(false);
+    this.formError.set('');
+    this.title = '';
+    this.notes = '';
+    this.animalId = '';
+    this.groupId = '';
+    this.plannerType = 'GENERAL';
+    this.scheduledFor = localDateOnly();
+    this.operationId = '';
+    this.editorId = '';
+    this.command = null;
+  }
+  editorTitle() {
+    return {
+      create: 'Planejar atividade',
+      edit: 'Corrigir atividade planejada',
+      view: 'Detalhes da atividade',
+      complete: 'Concluir atividade',
+      cancel: 'Cancelar atividade',
+    }[this.mode()];
+  }
+  openCreate() {
+    if (!this.canWrite() || this.saving()) return;
+    this.resetEditor();
+    this.operationId = newUuid();
+    this.groupId = this.filterGroupId;
+    this.editorOpen.set(true);
+  }
+  openItem(id: string, mode: EditorMode) {
+    if (this.saving() || this.context.transitionPending() || (mode !== 'view' && !this.canWrite()))
+      return;
+    this.resetEditor();
+    this.editorId = id;
+    this.mode.set(mode);
+    this.operationId = newUuid();
+    this.editorOpen.set(true);
+    this.editorLoading.set(true);
+    this.editorScope.run(
+      this.api.plannerItem(id),
+      (item) => {
+        this.editorLoading.set(false);
+        this.editing.set(item);
+        if (mode !== 'view' && item.status !== 'OPEN') {
+          this.editorError.set(
+            'A atividade já foi encerrada. Recarregue a consulta para revisar o histórico.',
+          );
+          return;
+        }
+        this.title = item.title;
+        this.notes = item.notes || '';
+        this.animalId = item.animalId || '';
+        this.groupId = item.groupId || '';
+        this.plannerType = item.type;
+        this.scheduledFor = item.scheduledFor;
+      },
+      (failure) => {
+        this.editorLoading.set(false);
+        this.editorError.set(
+          managementError(failure, 'Não foi possível carregar a atividade. Tente novamente.'),
+        );
+      },
+    );
+  }
+  reloadEditor() {
+    if (this.editorId && !this.saving()) this.openItem(this.editorId, this.mode());
+  }
+  closeEditor() {
+    if (!this.saving()) this.resetEditor();
+  }
+  chooseAnimal(animal: Animal) {
+    if (this.saving() || this.review() || !this.canWrite()) return;
+    this.selectedAnimal.set(animal);
+    this.animalId = animal.id;
+  }
+  clearAnimal() {
+    if (!this.saving() && !this.review()) {
+      this.selectedAnimal.set(null);
+      this.animalId = '';
+    }
+  }
+  prepare() {
+    if (
+      !this.canWrite() ||
+      this.saving() ||
+      this.review() ||
+      !['create', 'edit'].includes(this.mode()) ||
+      this.editorLoading() ||
+      this.editorError()
+    )
+      return;
+    if (
+      !this.title.trim() ||
+      this.title.trim().length > 160 ||
+      this.notes.length > 1000 ||
+      !validImportDate(this.scheduledFor) ||
+      !this.plannerTypes.includes(this.plannerType) ||
+      (this.animalId && !validUuid(this.animalId)) ||
+      (this.groupId && !validUuid(this.groupId))
+    ) {
+      this.formError.set('Revise o título, a data e os vínculos antes de continuar.');
+      return;
+    }
+    this.command = {
+      operationId: this.operationId,
+      ...(this.mode() === 'edit' ? { expectedVersion: this.editing()!.version } : {}),
+      type: this.plannerType,
+      title: this.title.trim(),
+      notes: this.notes.trim() || null,
+      scheduledFor: this.scheduledFor,
+      animalId: this.animalId || null,
+      groupId: this.groupId || null,
+    };
+    this.formError.set('');
+    this.review.set(true);
+  }
+  save() {
+    if (
+      !this.canWrite() ||
+      this.saving() ||
+      this.editorLoading() ||
+      this.editorError() ||
+      this.mode() === 'view'
+    )
+      return;
+    const item = this.editing();
+    let request;
+    if (this.mode() === 'complete' || this.mode() === 'cancel') {
+      if (!item || item.status !== 'OPEN') return;
+      this.command ??= { operationId: this.operationId, expectedVersion: item.version };
+      request =
+        this.mode() === 'complete'
+          ? this.api.completePlanner(item.id, this.command)
+          : this.api.cancelPlanner(item.id, this.command);
+    } else {
+      if (!this.review() || !this.command || (this.mode() === 'edit' && !item)) return;
+      request =
+        this.mode() === 'edit'
+          ? this.api.correctPlanner(item!.id, this.command)
+          : this.api.createPlanner(this.command);
+    }
+    this.saving.set(true);
+    this.formError.set('');
+    this.editorScope.run(
+      request,
+      () => {
+        this.resetEditor();
+        this.toast.show(
+          'success',
+          'Atividade atualizada',
+          'A operação foi registrada no planejamento.',
+        );
+        this.load();
+      },
+      (failure) => {
+        this.saving.set(false);
+        this.formError.set(
+          managementError(
+            failure,
+            'Não foi possível confirmar a operação. Tente novamente com o mesmo comando.',
+          ),
+        );
+      },
+    );
+  }
+}
+function validUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }

@@ -1,5 +1,0 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { EmptyStateComponent } from '../../design-system/feedback/feedback';
-@Component({selector:'app-feature-placeholder',imports:[EmptyStateComponent],template:`<div class="page-enter"><header><span>Área em preparação</span><h1>{{title}}</h1></header><section><gr-empty-state [title]="'Nenhuma informação em '+title.toLowerCase()" description="Esta área ainda não tem informações disponíveis." /></section></div>`,styles:[`header{margin-bottom:var(--space-6)}header span{font-size:.8125rem;font-weight:650;color:var(--color-text-muted)}header h1{margin-top:var(--space-1)}section{border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface)}`],changeDetection:ChangeDetectionStrategy.OnPush})
-export class FeaturePlaceholderComponent{readonly title:string;constructor(route:ActivatedRoute){this.title=route.snapshot.data['title'] as string;}}

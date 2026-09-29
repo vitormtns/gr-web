@@ -79,16 +79,20 @@ interface NavSection { label?: string; items: NavItem[] }
             </span>
             <gr-menu>
               <div class="account-identity"><strong>{{displayName}}</strong><span>{{accountEmail}}</span></div>
+              @if(context.user()?.userId){<div class="account-reference"><small>Identificador da conta</small><code>{{context.user()!.userId}}</code><p>Um administrador pode usar este identificador para vincular seu acesso a outra organização.</p><button type="button" (click)="copyAccountId()">Copiar identificador</button></div>}
               <button type="button" (click)="logout()"><svg lucideIcon="log-out"></svg>Sair</button>
             </gr-menu>
           </gr-popover>
         </div>
       </header>
       <main class="content" [attr.aria-busy]="context.transitionPending()">
-        @if(context.status()==='error'&&!context.transitionPending()){
+        @if(context.status()==='error'&&!context.transitionPending()&&!isAdministrativeRoute){
           <gr-error-state level="page" title="Não foi possível carregar seu contexto de acesso" description="O serviço pode estar temporariamente indisponível. Tente novamente sem recarregar a página." (retry)="retryContext()" />
-        } @else if(context.status()==='empty'&&!context.transitionPending()){
-          <gr-empty-state [title]="context.selectedOrganization()?'Nenhuma fazenda disponível':'Nenhuma organização disponível'" [description]="context.selectedOrganization()?'Seu acesso não inclui uma fazenda ativa nesta organização.':'Peça a um administrador para vincular sua conta a uma organização.'" />
+          <a class="context-recovery-link" routerLink="/administracao/organizacoes">Consultar minhas organizações</a>
+        } @else if(context.status()==='empty'&&!context.transitionPending()&&!isAdministrativeRoute){
+          <gr-empty-state [title]="context.selectedOrganization()?'Nenhuma fazenda disponível':'Nenhuma organização disponível'" [description]="context.selectedOrganization()?'Seu acesso não inclui uma fazenda ativa nesta organização.':'Cadastre sua organização ou aceite um convite para começar.'" />
+          <a class="context-recovery-link" routerLink="/administracao/organizacoes">Gerenciar organizações</a>
+          @if(context.selectedOrganization()&&permissions.canManageFarms()){<a class="context-recovery-link" routerLink="/administracao/fazendas">Cadastrar fazenda</a>}
         } @else {
           <div class="route-content" [class.context-hidden]="context.transitionPending()"><router-outlet /></div>
         }
@@ -250,6 +254,10 @@ interface NavSection { label?: string; items: NavItem[] }
     .account-identity { display: grid; gap: 2px; min-width: 13.5rem; padding: var(--space-2) var(--space-3) var(--space-3); border-bottom: 1px solid var(--color-border); }
     .account-identity strong { font-size: 0.875rem; color: var(--color-text); }
     .account-identity span { overflow: hidden; color: var(--color-text-secondary); font-size: 0.8125rem; text-overflow: ellipsis; }
+    .account-reference { display: grid; gap: var(--space-2); max-width: 19rem; padding: var(--space-3); border-bottom: 1px solid var(--color-border); }
+    .account-reference small, .account-reference p { margin: 0; color: var(--color-text-muted); font-size: .75rem; }
+    .account-reference code { overflow-wrap: anywhere; font-size: .75rem; }
+    .context-recovery-link { display: inline-block; margin: var(--space-3); color: var(--color-primary); font-weight: 650; }
     .content { max-width: var(--content-max); min-height: calc(100dvh - var(--topbar-height)); margin: 0 auto; padding: var(--space-8); }
     .route-content { animation: context-content-in var(--duration-context) var(--ease-emphasized); }
     .route-content.context-hidden { display: none; }
@@ -300,6 +308,7 @@ interface NavSection { label?: string; items: NavItem[] }
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppShellComponent {
+  get isAdministrativeRoute(): boolean { return this.router.url.startsWith('/administracao'); }
   readonly collapsed = signal(false);
   readonly mobileOpen = signal(false);
   readonly brandLogoMissing = signal(false);
@@ -309,13 +318,14 @@ export class AppShellComponent {
     { label: 'REBANHO', items: [
       { label: 'Animais', icon: 'beef', route: '/rebanho/animais' },
       { label: 'Grupos', icon: 'beef', route: '/rebanho/grupos' },
+      { label: 'Piquetes', icon: 'land-plot', route: '/rebanho/piquetes' },
       { label: 'Movimentações', icon: 'land-plot', route: '/rebanho/movimentacoes' },
       { label: 'Saúde', icon: 'heart-pulse', route: '/rebanho/saude' },
       { label: 'Reprodução', icon: 'sprout', route: '/rebanho/reproducao' },
       { label: 'Agenda', icon: 'calendar-days', route: '/rebanho/agenda' },
     ] },
     { label: 'ANÁLISES', items: [{ label: 'Relatórios', icon: 'chart-no-axes-combined', route: '/relatorios' }] },
-    { label: 'GESTÃO', items: [{ label: 'Administração', icon: 'building-2', route: '/administracao', permission: 'viewAdministration' }] },
+    { label: 'GESTÃO', items: [{ label: 'Insumos', icon: 'boxes', route: '/gestao/insumos' }, { label: 'Financeiro', icon: 'credit-card', route: '/gestao/financeiro' }, { label: 'Administração', icon: 'building-2', route: '/administracao', permission: 'viewAdministration' }] },
   ];
   constructor(
     readonly context: ContextStore,
@@ -334,7 +344,18 @@ export class AppShellComponent {
   get displayName(): string { return this.context.user()?.displayName?.trim() || this.accountEmail || 'Usuário'; }
   get accountEmail(): string { return this.context.user()?.email || this.auth.userEmail() || ''; }
   get roleLabel(): string {
+    if (!this.context.role()) return 'Sem papel selecionado';
     return ({ OWNER: 'Proprietário', ADMIN: 'Administrador', MANAGER: 'Gerente', OPERATOR: 'Operador', VIEWER: 'Visualizador' } as Record<string, string>)[this.context.role() || 'VIEWER'] || 'Visualizador';
+  }
+  async copyAccountId(): Promise<void> {
+    const userId = this.context.user()?.userId;
+    if (!userId) return;
+    try {
+      await navigator.clipboard.writeText(userId);
+      if (this.context.user()?.userId === userId) this.toast.show('success', 'Identificador copiado');
+    } catch {
+      if (this.context.user()?.userId === userId) this.toast.show('error', 'Não foi possível copiar', 'Selecione o identificador e copie manualmente.');
+    }
   }
   async changeOrganization(id: string): Promise<void> {
     try { await this.context.selectOrganization(id); }

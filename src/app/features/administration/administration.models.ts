@@ -5,6 +5,8 @@ export type ResourceStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED' | 
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
 
 export interface OrganizationAdmin { id:string;name:string;status:ResourceStatus;version:number }
+export interface AdministrativeOrganization extends OrganizationAdmin { role:MembershipRole;farmScopeMode:FarmScopeMode }
+export interface AdminAuditEvent { id:string;farmId:string|null;actorUserId:string;targetUserId:string|null;eventType:string;details:string;recordedAt:string }
 export interface AdminFarm { id:string;organizationId:string;name:string;status:ResourceStatus;version:number }
 export interface AdminMember { membershipId:string;userId:string;displayName:string|null;email:string|null;role:MembershipRole;status:ResourceStatus;scopeMode:FarmScopeMode;farmIds:string[];version:number;createdAt:string }
 export interface AdminInvitation { id:string;email:string;role:MembershipRole;scopeMode:FarmScopeMode;status:InvitationStatus;expiresAt:string;createdAt:string }
@@ -20,6 +22,7 @@ export const roleDescriptions:Record<MembershipRole,string>={
   VIEWER:'Consulta informações, sem realizar alterações operacionais.',
 };
 export const statusLabels:Record<string,string>={ACTIVE:'Ativa',INACTIVE:'Inativa',SUSPENDED:'Suspensa',ARCHIVED:'Arquivada',REVOKED:'Acesso revogado',PENDING:'Pendente',ACCEPTED:'Aceito',EXPIRED:'Expirado'};
+export const invitationStatusLabels:Record<InvitationStatus,string>={PENDING:'Pendente',ACCEPTED:'Aceito',REVOKED:'Cancelado',EXPIRED:'Expirado'};
 export const roleOptions:MembershipRole[]=['OWNER','ADMIN','MANAGER','OPERATOR','VIEWER'];
 
 export function accessSummary(scope:FarmScopeMode,farmIds:string[],farms:AdminFarm[]):string{

@@ -37,15 +37,17 @@ describe('Cenário local de paridade', () => {
       (e) => e.componentInstance instanceof AgendaPageComponent,
     );
     const agenda: AgendaPageComponent = element.componentInstance;
+    agenda.selectTab('planner');
     const task = agenda.planner()!.items[0];
-    agenda.openEdit(task);
+    agenda.openItem(task.id, 'edit');
     agenda.scheduledFor = '2026-10-03';
-    agenda.savePlanner();
+    agenda.prepare();
+    agenda.save();
     expect(agenda.planner()!.items[0].scheduledFor).toBe('2026-10-03');
     expect(agenda.planner()!.items[0].groupId).toBe(task.groupId);
     expect(agenda.editorOpen()).toBe(false);
-    agenda.transition(task.id, 'complete');
-    agenda.confirmTransition();
+    agenda.openItem(task.id, 'complete');
+    agenda.save();
     expect(agenda.planner()!.items[0].status).toBe('COMPLETED');
   });
 });

@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ContextRequestScope } from '../management/management.shared';
 import { ContextStore } from '../../core/context/context.store';
 import { PermissionService } from '../../core/permissions/permission.service';
 import { AppError } from '../../core/api/api.models';
@@ -146,9 +146,7 @@ import { errorReference } from './herd.shared';
       ><span dialog-title>Confirmar importação</span>
       <p>
         {{ review()?.rows?.length }}
-        {{
-          review()?.rows?.length === 1 ? 'animal será cadastrado' : 'animais serão cadastrados'
-        }}
+        {{ review()?.rows?.length === 1 ? 'animal será cadastrado' : 'animais serão cadastrados' }}
         em {{ context.selectedFarm()?.farmName }}. O lote inteiro será validado e registrado em uma
         única operação.
       </p>
@@ -179,12 +177,14 @@ export class AnimalImportPageComponent {
   csv = '';
   private command: ImportCommand | null = null;
   private generation = 0;
+  private readonly requests = new ContextRequestScope(this.destroy);
   private attempted = false;
   constructor() {
     effect(() => {
       this.context.contextVersion();
       this.context.transitionPending();
       this.generation++;
+      this.requests.reset();
       this.review.set(null);
       this.result.set(null);
       this.confirming.set(false);
@@ -198,7 +198,15 @@ export class AnimalImportPageComponent {
   }
   async readFile(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
+    if (
+      !file ||
+      this.saving() ||
+      this.confirming() ||
+      this.attempted ||
+      this.context.transitionPending() ||
+      !this.permissions.canMutateHerd()
+    )
+      return;
     const g = this.generation;
     if (file.size > 1024 * 1024) {
       this.error.set('Use um CSV de até 1 MB.');
@@ -210,10 +218,18 @@ export class AnimalImportPageComponent {
       this.csv = text;
       this.preview();
     } catch {
+      if (g !== this.generation) return;
       this.error.set('Não foi possível ler o arquivo.');
     }
   }
   preview() {
+    if (
+      !this.permissions.canMutateHerd() ||
+      this.context.transitionPending() ||
+      this.saving() ||
+      this.confirming()
+    )
+      return;
     if (
       this.command &&
       this.review() &&
@@ -258,34 +274,27 @@ export class AnimalImportPageComponent {
       this.context.transitionPending()
     )
       return;
-    const g = this.generation;
     this.attempted = true;
     this.saving.set(true);
     this.error.set('');
-    this.api
-      .importAnimals(this.command)
-      .pipe(takeUntilDestroyed(this.destroy))
-      .subscribe({
-        next: (value) => {
-          if (g !== this.generation) return;
-          this.result.set(value);
-          this.canRestart.set(true);
-          this.saving.set(false);
-          this.confirming.set(false);
-        },
-        error: (value) => {
-          if (g !== this.generation) return;
-          this.saving.set(false);
-          this.confirming.set(false);
-          this.canRestart.set(
-            value instanceof AppError && value.status >= 400 && value.status < 500,
-          );
-          this.error.set(
-            value instanceof AppError
-              ? `${value.message} ${errorReference(value.requestId)}`
-              : 'Não foi possível importar o lote. Tente novamente mantendo a mesma prévia.',
-          );
-        },
-      });
+    this.requests.run(
+      this.api.importAnimals(this.command),
+      (value) => {
+        this.result.set(value);
+        this.canRestart.set(true);
+        this.saving.set(false);
+        this.confirming.set(false);
+      },
+      (value) => {
+        this.saving.set(false);
+        this.confirming.set(false);
+        this.canRestart.set(value instanceof AppError && value.status >= 400 && value.status < 500);
+        this.error.set(
+          value instanceof AppError
+            ? `${value.message} ${errorReference(value.requestId)}`
+            : 'Não foi possível importar o lote. Tente novamente mantendo a mesma prévia.',
+        );
+      },
+    );
   }
 }

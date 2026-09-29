@@ -9,7 +9,9 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable } from 'rxjs';
+import { ContextRequestScope } from '../management/management.shared';
+import { validImportDate } from './herd-import';
 import { AppError } from '../../core/api/api.models';
 import { ContextStore } from '../../core/context/context.store';
 import { PermissionService } from '../../core/permissions/permission.service';
@@ -93,7 +95,7 @@ import { errorReference } from './herd.shared';
               >
               @if (permissions.canManageHerdGroups()) {
                 <button class="quiet-button" type="button" (click)="edit(group)">Editar</button
-                ><button class="quiet-button" type="button" (click)="archiving.set(group)">
+                ><button class="quiet-button" type="button" (click)="beginArchive(group)">
                   Arquivar
                 </button>
               }
@@ -111,9 +113,7 @@ import { errorReference } from './herd.shared';
       <section class="section-frame parity-section">
         <div class="parity-actions">
           <h2>{{ group.name }}</h2>
-          <button class="quiet-button" type="button" (click)="selected.set(null)">
-            Fechar grupo
-          </button>
+          <button class="quiet-button" type="button" (click)="closeGroup()">Fechar grupo</button>
         </div>
         <p>
           {{
@@ -195,71 +195,112 @@ import { errorReference } from './herd.shared';
     }
     <gr-dialog [open]="editorOpen()" (closed)="closeEditor()"
       ><span dialog-title>{{ editing() ? 'Editar grupo' : 'Criar grupo' }}</span>
-      <fieldset [disabled]="saving()" class="form-grid compact">
-        <label class="wide">Nome<input [(ngModel)]="name" maxlength="120" /></label
-        ><label
-          >Associação<select [(ngModel)]="kind" [disabled]="editing() !== null">
-            <option value="MANUAL">Manual</option>
-            <option value="SMART">Por regras</option>
-          </select></label
-        >
-        @if (kind === 'SMART') {
-          <label
-            >Sexo<select [(ngModel)]="rules.sex">
-              <option [ngValue]="null">Todos</option>
-              <option value="FEMALE">Fêmea</option>
-              <option value="MALE">Macho</option>
+      @if (editorOpen() && !reviewing()) {
+        <fieldset [disabled]="saving() || preparing()" class="form-grid compact">
+          <label class="wide">Nome<input [(ngModel)]="name" maxlength="120" /></label
+          ><label
+            >Associação<select [(ngModel)]="kind" [disabled]="editing() !== null">
+              <option value="MANUAL">Manual</option>
+              <option value="SMART">Por regras</option>
             </select></label
-          ><label
-            >Estado<select [(ngModel)]="rules.status">
-              <option [ngValue]="null">Todos</option>
-              @for (status of statuses; track status) {
-                <option [value]="status">{{ statusLabels[status] }}</option>
-              }
-            </select></label
-          ><label
-            >Idade mínima (meses)<input
-              type="number"
-              min="0"
-              step="1"
-              [(ngModel)]="rules.minAgeMonths" /></label
-          ><label
-            >Idade máxima (meses)<input
-              type="number"
-              min="0"
-              step="1"
-              [(ngModel)]="rules.maxAgeMonths" /></label
-          ><label class="wide"
-            ><span
-              ><input type="checkbox" [(ngModel)]="rules.onlyReproductionActive" /> Apenas gestação
-              aberta</span
-            ></label
-          ><label class="wide"
-            ><span
-              ><input type="checkbox" [(ngModel)]="rules.onlyMissingProfile" /> Apenas nascimento ou
-              mãe ausentes</span
-            ></label
           >
-        }
-        @if (formError()) {
-          <p class="form-error wide" role="alert">{{ formError() }}</p>
-        }
-      </fieldset>
+          @if (kind === 'SMART') {
+            <label
+              >Sexo<select [(ngModel)]="rules.sex">
+                <option [ngValue]="null">Todos</option>
+                <option value="FEMALE">Fêmea</option>
+                <option value="MALE">Macho</option>
+              </select></label
+            ><label
+              >Estado<select [(ngModel)]="rules.status">
+                <option [ngValue]="null">Todos</option>
+                @for (status of statuses; track status) {
+                  <option [value]="status">{{ statusLabels[status] }}</option>
+                }
+              </select></label
+            ><label
+              >Idade mínima (meses)<input
+                type="number"
+                min="0"
+                step="1"
+                [(ngModel)]="rules.minAgeMonths" /></label
+            ><label
+              >Idade máxima (meses)<input
+                type="number"
+                min="0"
+                step="1"
+                [(ngModel)]="rules.maxAgeMonths" /></label
+            ><label class="wide"
+              ><span
+                ><input type="checkbox" [(ngModel)]="rules.onlyReproductionActive" /> Apenas
+                gestação aberta</span
+              ></label
+            ><label class="wide"
+              ><span
+                ><input type="checkbox" [(ngModel)]="rules.onlyMissingProfile" /> Apenas nascimento
+                ou mãe ausentes</span
+              ></label
+            >
+          }
+          @if (formError()) {
+            <p class="form-error wide" role="alert">{{ formError() }}</p>
+          }
+        </fieldset>
+      }
+      @if (reviewing()) {
+        <section class="semantic-note">
+          <h3>Revise o grupo</h3>
+          <p>
+            {{ name }} · {{ kind === 'MANUAL' ? 'Associação manual' : 'Associação por regras' }}
+          </p>
+          @if (kind === 'SMART') {
+            <p>
+              Sexo:
+              {{ rules.sex === 'FEMALE' ? 'Fêmea' : rules.sex === 'MALE' ? 'Macho' : 'Todos' }}
+            </p>
+            <p>Estado: {{ rules.status ? statusLabels[rules.status] : 'Todos' }}</p>
+            <p>
+              Idade mínima:
+              {{ rules.minAgeMonths === null ? 'Não informada' : rules.minAgeMonths + ' meses' }}
+            </p>
+            <p>
+              Idade máxima:
+              {{ rules.maxAgeMonths === null ? 'Não informada' : rules.maxAgeMonths + ' meses' }}
+            </p>
+            <p>Apenas gestação aberta: {{ rules.onlyReproductionActive ? 'Sim' : 'Não' }}</p>
+            <p>Apenas nascimento ou mãe ausentes: {{ rules.onlyMissingProfile ? 'Sim' : 'Não' }}</p>
+          }
+          @if (editing()) {
+            <p>Versão consultada: {{ editing()?.version }}</p>
+          }
+        </section>
+      }
+      @if (formError()) {
+        <p class="form-error" role="alert">{{ formError() }}</p>
+      }
       <div dialog-actions>
-        <button class="quiet-button" type="button" [disabled]="saving()" (click)="closeEditor()">
+        <button
+          class="quiet-button"
+          type="button"
+          [disabled]="saving() || preparing()"
+          (click)="closeEditor()"
+        >
           Cancelar</button
         ><button
           class="primary-action"
           type="button"
-          [disabled]="saving() || !valid()"
-          (click)="save()"
+          [disabled]="saving() || preparing() || (!reviewing() && !valid())"
+          (click)="reviewing() ? save() : reviewEditor()"
         >
-          Salvar grupo
+          {{
+            preparing() ? 'Consultando versão…' : reviewing() ? 'Confirmar grupo' : 'Revisar grupo'
+          }}
         </button>
       </div></gr-dialog
     >
     <gr-dialog [open]="archiving() !== null" (closed)="closeArchive()"
       ><span dialog-title>Arquivar grupo</span>
+      <p>Versão consultada: {{ archiving()?.version }}</p>
       <p>
         {{ archiving()?.name }} deixará de estar disponível para novas consultas e atividades. Os
         animais não serão alterados.
@@ -274,6 +315,39 @@ import { errorReference } from './herd.shared';
         </button>
       </div></gr-dialog
     >
+
+    <gr-dialog [open]="membershipReview() !== null" (closed)="closeMembership()">
+      <span dialog-title>Revisar associação ao grupo</span>
+      <p>
+        {{ membershipReview()?.add ? 'Adicionar' : 'Remover' }}
+        {{ membershipReview()?.animal?.identification }}
+        {{ membershipReview()?.add ? 'no grupo' : 'do grupo' }}
+        {{ membershipReview()?.group?.name }}.
+      </p>
+      <p>Versão consultada: {{ membershipReview()?.group?.version }}</p>
+      <p>O estado e o território do animal permanecem independentes da associação ao grupo.</p>
+      @if (formError()) {
+        <p class="form-error" role="alert">{{ formError() }}</p>
+      }
+      <div dialog-actions>
+        <button
+          class="quiet-button"
+          type="button"
+          [disabled]="saving()"
+          (click)="closeMembership()"
+        >
+          Voltar
+        </button>
+        <button
+          class="primary-action"
+          type="button"
+          [disabled]="saving()"
+          (click)="confirmMembership()"
+        >
+          {{ saving() ? 'Registrando…' : 'Confirmar associação' }}
+        </button>
+      </div>
+    </gr-dialog>
   </div>`,
   styleUrls: ['./herd-page.scss', './operations-page.component.scss', './parity.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -304,17 +378,37 @@ export class GroupsPageComponent {
   today = localDateOnly();
   referenceDate = this.today;
   private createId = '';
-  private contextEpoch = 0;
-  private generation = 0;
-  private memberGeneration = 0;
+  private readonly listScope = new ContextRequestScope(this.destroy);
+  private readonly memberScope = new ContextRequestScope(this.destroy);
+  private readonly writeScope = new ContextRequestScope(this.destroy);
+  readonly preparing = signal(false);
+  readonly reviewing = signal(false);
+  readonly membershipReview = signal<{ group: HerdGroup; animal: Animal; add: boolean } | null>(
+    null,
+  );
+  private editorRequest: (() => Observable<HerdGroup>) | null = null;
   constructor() {
     effect(() => {
       this.context.contextVersion();
       const pending = this.context.transitionPending();
       const farm = this.context.selectedFarm();
-      this.contextEpoch++;
-      this.generation++;
-      this.memberGeneration++;
+      this.listScope.reset();
+      this.memberScope.reset();
+      this.writeScope.reset();
+      this.preparing.set(false);
+      this.reviewing.set(false);
+      this.membershipReview.set(null);
+      this.editorRequest = null;
+      this.editing.set(null);
+      this.name = '';
+      this.kind = 'MANUAL';
+      this.rules = emptyGroupRules();
+      this.createId = '';
+      this.today = localDateOnly();
+      this.referenceDate = this.today;
+      this.error.set(null);
+      this.membersError.set(false);
+      this.membersLoading.set(false);
       this.groups.set(null);
       this.selected.set(null);
       this.members.set(null);
@@ -335,33 +429,30 @@ export class GroupsPageComponent {
     return this.members()?.items.map((a) => a.id) || [];
   }
   load(page = 0) {
-    const g = ++this.generation;
+    this.listScope.reset();
+    if (this.context.transitionPending()) return;
     this.loading.set(true);
     this.error.set(null);
-    this.api
-      .groups(page)
-      .pipe(takeUntilDestroyed(this.destroy))
-      .subscribe({
-        next: (value) => {
-          if (g !== this.generation) return;
-          this.groups.set(value);
-          this.loading.set(false);
-        },
-        error: (e) => {
-          if (g !== this.generation) return;
-          this.error.set(
-            e instanceof AppError
-              ? e
-              : new AppError(
-                  'unavailable',
-                  'Não foi possível carregar os grupos.',
-                  503,
-                  'READ_FAILED',
-                ),
-          );
-          this.loading.set(false);
-        },
-      });
+    this.listScope.run(
+      this.api.groups(page),
+      (value) => {
+        this.groups.set(value);
+        this.loading.set(false);
+      },
+      (e) => {
+        this.error.set(
+          e instanceof AppError
+            ? e
+            : new AppError(
+                'unavailable',
+                'Não foi possível carregar os grupos.',
+                503,
+                'READ_FAILED',
+              ),
+        );
+        this.loading.set(false);
+      },
+    );
   }
   select(group: HerdGroup) {
     this.selected.set(group);
@@ -370,28 +461,41 @@ export class GroupsPageComponent {
   }
   loadMembers(page: number) {
     const group = this.selected();
-    if (!group || !this.referenceDate || this.referenceDate > this.today) return;
-    const g = ++this.memberGeneration;
+    this.memberScope.reset();
+    if (!group || this.context.transitionPending()) return;
+    if (!validImportDate(this.referenceDate) || this.referenceDate > this.today) {
+      this.members.set(null);
+      this.membersLoading.set(false);
+      this.membersError.set(true);
+      this.formError.set('Informe uma referência de idade válida até hoje.');
+      return;
+    }
+    this.formError.set('');
     this.membersLoading.set(true);
     this.membersError.set(false);
-    this.api
-      .groupAnimals(group.id, page, this.referenceDate)
-      .pipe(takeUntilDestroyed(this.destroy))
-      .subscribe({
-        next: (value) => {
-          if (g !== this.memberGeneration) return;
-          this.members.set(value);
-          this.membersLoading.set(false);
-        },
-        error: () => {
-          if (g !== this.memberGeneration) return;
-          this.membersError.set(true);
-          this.membersLoading.set(false);
-        },
-      });
+    this.memberScope.run(
+      this.api.groupAnimals(group.id, page, this.referenceDate),
+      (value) => {
+        this.members.set(value);
+        this.membersLoading.set(false);
+      },
+      () => {
+        this.membersError.set(true);
+        this.membersLoading.set(false);
+      },
+    );
   }
   openCreate() {
-    if (!this.permissions.canManageHerdGroups()) return;
+    if (
+      !this.permissions.canManageHerdGroups() ||
+      this.context.transitionPending() ||
+      this.saving() ||
+      this.preparing()
+    )
+      return;
+    this.writeScope.reset();
+    this.reviewing.set(false);
+    this.editorRequest = null;
     this.createId = newUuid();
     this.editing.set(null);
     this.name = '';
@@ -401,7 +505,16 @@ export class GroupsPageComponent {
     this.editorOpen.set(true);
   }
   edit(group: HerdGroup) {
-    if (!this.permissions.canManageHerdGroups()) return;
+    if (
+      !this.permissions.canManageHerdGroups() ||
+      this.context.transitionPending() ||
+      this.saving() ||
+      this.preparing()
+    )
+      return;
+    this.writeScope.reset();
+    this.reviewing.set(false);
+    this.editorRequest = null;
     this.editing.set(group);
     this.name = group.name;
     this.kind = group.kind;
@@ -412,27 +525,49 @@ export class GroupsPageComponent {
   valid() {
     return (
       !!this.name.trim() &&
+      [...this.name.trim()].length <= 120 &&
+      !this.name.includes('\0') &&
       (this.kind === 'MANUAL' ||
         ([this.rules.minAgeMonths, this.rules.maxAgeMonths].every(
-          (x) => x === null || (Number.isInteger(x) && x >= 0),
+          (x) => x === null || (Number.isInteger(x) && x >= 0 && x <= 2147483647),
         ) &&
           (this.rules.minAgeMonths === null ||
             this.rules.maxAgeMonths === null ||
             this.rules.minAgeMonths <= this.rules.maxAgeMonths)))
     );
   }
-  save() {
-    if (!this.valid() || !this.permissions.canManageHerdGroups() || this.saving()) return;
+  reviewEditor() {
+    if (
+      !this.valid() ||
+      !this.permissions.canManageHerdGroups() ||
+      this.saving() ||
+      this.preparing() ||
+      this.context.transitionPending()
+    )
+      return;
     const rules = this.kind === 'MANUAL' ? emptyGroupRules() : { ...this.rules };
+    const name = this.name.trim();
     const current = this.editing();
-    const request = current
-      ? this.api.updateGroup(current.id, {
-          expectedVersion: current.version,
-          name: this.name.trim(),
-          rules,
-        })
-      : this.api.createGroup({ id: this.createId, name: this.name.trim(), kind: this.kind, rules });
-    this.run(request, 'Grupo salvo');
+    if (!current) {
+      const body = { id: this.createId, name, kind: this.kind, rules };
+      this.editorRequest = () => this.api.createGroup(body);
+      this.reviewing.set(true);
+      return;
+    }
+    this.prepareGroup(current.id, (fresh) => {
+      this.editing.set(fresh);
+      this.kind = fresh.kind;
+      const body = { expectedVersion: fresh.version, name, rules };
+      this.editorRequest = () => this.api.updateGroup(fresh.id, body);
+      this.reviewing.set(true);
+    });
+  }
+  save() {
+    if (!this.reviewing() || !this.editorRequest) return;
+    this.run(this.editorRequest(), 'Grupo salvo');
+  }
+  beginArchive(group: HerdGroup) {
+    this.prepareGroup(group.id, (fresh) => this.archiving.set(fresh));
   }
   archive() {
     const group = this.archiving();
@@ -441,9 +576,48 @@ export class GroupsPageComponent {
   membership(animal: Animal, add: boolean) {
     const group = this.selected();
     if (!group || group.kind !== 'MANUAL') return;
+    this.prepareGroup(group.id, (fresh) => {
+      this.selected.set(fresh);
+      this.membershipReview.set({ group: fresh, animal, add });
+    });
+  }
+  confirmMembership() {
+    const review = this.membershipReview();
+    if (!review) return;
     this.run(
-      this.api.membership(group.id, animal.id, group.version, add),
-      add ? 'Animal adicionado ao grupo' : 'Animal removido do grupo',
+      this.api.membership(review.group.id, review.animal.id, review.group.version, review.add),
+      review.add ? 'Animal adicionado ao grupo' : 'Animal removido do grupo',
+    );
+  }
+  private prepareGroup(id: string, ready: (group: HerdGroup) => void) {
+    if (
+      !this.permissions.canManageHerdGroups() ||
+      this.saving() ||
+      this.preparing() ||
+      this.context.transitionPending()
+    )
+      return;
+    this.writeScope.reset();
+    this.preparing.set(true);
+    this.formError.set('');
+    this.writeScope.run(
+      this.api.group(id),
+      (group) => {
+        this.preparing.set(false);
+        if (group.status !== 'ACTIVE') {
+          this.formError.set('O grupo não está ativo. Recarregue a lista.');
+          return;
+        }
+        ready(group);
+      },
+      (e) => {
+        this.preparing.set(false);
+        this.formError.set(
+          e instanceof AppError
+            ? e.message + ' ' + errorReference(e.requestId)
+            : 'Não foi possível consultar o grupo. Tente novamente.',
+        );
+      },
     );
   }
   private run(request: ReturnType<ParityApi['createGroup']>, message: string) {
@@ -453,14 +627,16 @@ export class GroupsPageComponent {
       this.context.transitionPending()
     )
       return;
-    const epoch = this.contextEpoch;
     this.saving.set(true);
     this.formError.set('');
-    request.pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: (value) => {
-        if (epoch !== this.contextEpoch) return;
+    this.writeScope.run(
+      request,
+      (value) => {
         this.saving.set(false);
         this.editorOpen.set(false);
+        this.reviewing.set(false);
+        this.membershipReview.set(null);
+        this.editorRequest = null;
         this.archiving.set(null);
         this.toast.show('success', message);
         if (this.selected()?.id === value.id) {
@@ -472,8 +648,7 @@ export class GroupsPageComponent {
         }
         this.load(this.groups()?.page || 0);
       },
-      error: (e) => {
-        if (epoch !== this.contextEpoch) return;
+      (e) => {
         this.saving.set(false);
         this.formError.set(
           e instanceof AppError
@@ -481,12 +656,37 @@ export class GroupsPageComponent {
             : 'Não foi possível concluir a ação.',
         );
       },
-    });
+    );
   }
   closeEditor() {
-    if (!this.saving()) this.editorOpen.set(false);
+    if (!this.saving() && !this.preparing()) {
+      this.writeScope.reset();
+      this.editorOpen.set(false);
+      this.reviewing.set(false);
+      this.editorRequest = null;
+      this.editing.set(null);
+      this.name = '';
+      this.rules = emptyGroupRules();
+    }
   }
   closeArchive() {
-    if (!this.saving()) this.archiving.set(null);
+    if (!this.saving()) {
+      this.writeScope.reset();
+      this.archiving.set(null);
+    }
+  }
+  closeGroup() {
+    if (this.saving()) return;
+    this.memberScope.reset();
+    this.selected.set(null);
+    this.members.set(null);
+    this.membersError.set(false);
+    this.membersLoading.set(false);
+  }
+  closeMembership() {
+    if (!this.saving()) {
+      this.writeScope.reset();
+      this.membershipReview.set(null);
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { map } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { ApiClient } from '../../core/api/api-client.service';
 import { Animal } from './herd.models';
@@ -45,6 +46,11 @@ export class ParityApi {
   }
   lifecycle(animalId: string, kind: 'sale' | 'death', body: LifecycleCommand) {
     return this.api.post<Animal>(`${root}/animals/${id(animalId)}/${kind}`, body, true);
+  }
+  lifecycleExact(animalId: string, body: string) {
+    return this.api
+      .requestText('POST', `${root}/animals/${id(animalId)}/sale`, body, true)
+      .pipe(map((text) => JSON.parse(text) as Animal));
   }
   groups(page = 0, size = 20) {
     return this.api.get<CountedPage<HerdGroup>>(`${root}/groups?page=${page}&size=${size}`, true);

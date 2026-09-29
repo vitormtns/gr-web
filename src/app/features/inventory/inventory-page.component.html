@@ -1,0 +1,99 @@
+<div class="herd-page management-page page-enter">
+  <header class="page-header">
+    <div><span class="eyebrow">INSUMOS · {{context.selectedFarm()?.farmName}}</span><h1>Estoque e insumos</h1><p>Do cadastro do produto ao saldo de cada depósito, com movimentações rastreáveis.</p></div>
+    @if(permissions.canMutateInventory()){<button type="button" class="primary-action" (click)="openMovement()" [disabled]="loading() || failed()">Registrar movimentação</button>}
+  </header>
+  <nav class="management-tabs" aria-label="Áreas de insumos">
+    <button type="button" class="secondary-action" [attr.aria-pressed]="tab==='stock'" (click)="switchTab('stock');load()">Estoque</button>
+    <button type="button" class="secondary-action" [attr.aria-pressed]="tab==='products'" (click)="switchTab('products')">Produtos</button>
+    <button type="button" class="secondary-action" [attr.aria-pressed]="tab==='locations'" (click)="switchTab('locations')">Depósitos</button>
+    <button type="button" class="secondary-action" [attr.aria-pressed]="tab==='movements'" (click)="switchTab('movements');load()">Movimentações</button>
+  </nav>
+  @if(loading()){<section class="section-frame list-loading" aria-label="Carregando insumos" aria-busy="true"><gr-skeleton/><gr-skeleton/><gr-skeleton/></section>}
+  @else if(failed()){<gr-error-state title="Não foi possível carregar os insumos" description="Tente carregar os dados novamente para consultar ou movimentar o estoque." [reference]="error()?.requestId || ''" (retry)="load()"/>}
+  @else {
+    <section class="metric-strip" aria-label="Resumo dos insumos"><div><span>Produtos ativos na organização</span><strong>{{activeProducts.length}}</strong></div><div><span>Depósitos ativos na fazenda</span><strong>{{activeLocations.length}}</strong></div><div><span>Posições no filtro de estoque</span><strong>{{stock()?.totalElements || 0}}</strong></div><div><span>Movimentos no filtro</span><strong>{{movements()?.totalElements || 0}}</strong></div></section>
+    <section class="section-frame operational-surface">
+      @if(tab==='stock' || tab==='movements'){
+        <form class="filter-grid" (ngSubmit)="filter()">
+          <label>Produto<select name="productFilter" [(ngModel)]="productId"><option value="">Todos</option>@for(p of products();track p.id){<option [value]="p.id">{{p.name}}{{p.status==='INACTIVE'?' · Inativo':''}}</option>}</select></label>
+          <label>Depósito<select name="locationFilter" [(ngModel)]="locationId"><option value="">Todos</option>@for(l of locations();track l.id){<option [value]="l.id">{{l.name}}{{l.status==='INACTIVE'?' · Inativo':''}}</option>}</select></label>
+          @if(tab==='stock'){
+            <label>Buscar produto<input name="stockSearch" type="search" [(ngModel)]="search" maxlength="160" placeholder="Nome ou código"/></label>
+            <label class="check-label"><input name="positiveStock" type="checkbox" [(ngModel)]="onlyPositive"/>Somente com saldo</label>
+          } @else {
+            <label>Tipo<select name="movementFilter" [(ngModel)]="type"><option value="">Todos</option>@for(t of movementTypes;track t){<option [value]="t">{{labels[t]}}</option>}</select></label>
+            <label>De<input name="dateFrom" type="date" [(ngModel)]="from" [max]="today"/></label><label>Até<input name="dateTo" type="date" [(ngModel)]="to" [max]="today"/></label>
+          }
+          <button class="secondary-action" type="submit">Aplicar filtros</button><button class="quiet-button" type="button" (click)="clearFilters()">Limpar filtros</button>
+        </form>
+      } @else {
+        <div class="filter-grid"><label>Buscar {{tab==='products'?'produto':'depósito'}}<input type="search" [(ngModel)]="catalogSearch" (ngModelChange)="catalogPage=0" placeholder="Nome ou código"/></label><label>Situação<select [(ngModel)]="catalogStatus" (ngModelChange)="catalogPage=0"><option value="">Todas</option><option value="ACTIVE">Ativo</option><option value="INACTIVE">Inativo</option></select></label><button class="quiet-button" type="button" (click)="catalogSearch='';catalogStatus='';catalogPage=0">Limpar filtros</button></div>
+      }
+      @if(formError() && !editor()){<p class="error-note" role="alert">{{formError()}}</p>}
+      <div class="dataset-heading"><h2>{{tab==='stock'?'Posição do estoque':tab==='products'?'Catálogo de produtos':tab==='locations'?'Depósitos da fazenda':'Histórico de movimentações'}}</h2>
+        @if(permissions.canManageInventoryCatalog() && tab==='products'){<button type="button" class="primary-action" (click)="openProduct()">Cadastrar produto</button>}
+        @if(permissions.canManageInventoryCatalog() && tab==='locations'){<button type="button" class="primary-action" (click)="openLocation()">Cadastrar depósito</button>}
+      </div>
+      @if(tab==='stock'){
+        @if(!stock()?.items?.length){<div class="domain-empty"><strong>Nenhuma posição de estoque encontrada</strong><p>Revise os filtros ou registre uma entrada para um produto e depósito ativos.</p></div>}
+        @else{<div class="responsive-table"><table><thead><tr><th>Produto</th><th>Depósito</th><th>Saldo</th><th>Consulta</th></tr></thead><tbody>@for(b of stock()!.items;track b.productId+b.locationId){<tr><td>{{b.productName}}</td><td>{{b.locationName}}</td><td>{{b.quantity | grDecimal}} {{units[b.baseUnit]}}</td><td><button type="button" class="quiet-button" (click)="openLocationStock(b.locationId)">Ver depósito</button></td></tr>}</tbody></table></div>}
+        <nav class="pagination" aria-label="Paginação do estoque"><button type="button" [disabled]="page===0" (click)="page=page-1;load()">Anterior</button><span>Página {{page+1}} de {{stock()?.totalPages || 1}}</span><button type="button" [disabled]="page+1 >= (stock()?.totalPages || 1)" (click)="page=page+1;load()">Próxima</button></nav>
+      }
+      @if(tab==='products'){
+        <p class="semantic-note">O catálogo de produtos pertence à organização. A unidade base é definida no cadastro e permanece a mesma nas movimentações.</p>
+        @if(!productRows.length){<div class="domain-empty"><strong>{{catalogSearch || catalogStatus?'Nenhum produto corresponde aos filtros':'Nenhum produto cadastrado'}}</strong><p>{{readonlyCatalog?'Peça a um gestor para cadastrar os produtos utilizados.':'Cadastre os insumos para controlar entradas, saídas e ajustes.'}}</p></div>}
+        @else{<div class="responsive-table"><table><thead><tr><th>Produto</th><th>Código</th><th>Categoria</th><th>Unidade</th><th>Situação</th><th>Ações</th></tr></thead><tbody>@for(p of productRows;track p.id){<tr><td>{{p.name}}</td><td>{{p.code || 'Não informado'}}</td><td>{{p.category || 'Não informada'}}</td><td>{{units[p.baseUnit]}}</td><td>{{p.status==='ACTIVE'?'Ativo':'Inativo'}}</td><td><button type="button" class="quiet-button" (click)="openProduct(p.id)">{{readonlyCatalog?'Ver produto':'Revisar produto'}}</button></td></tr>}</tbody></table></div>}
+      }
+      @if(tab==='locations'){
+        @if(!locationRows.length){<div class="domain-empty"><strong>{{catalogSearch || catalogStatus?'Nenhum depósito corresponde aos filtros':'Nenhum depósito cadastrado'}}</strong><p>{{readonlyCatalog?'Peça a um gestor para cadastrar os locais de estoque.':'Cadastre os depósitos onde os insumos ficam armazenados nesta fazenda.'}}</p></div>}
+        @else{<div class="responsive-table"><table><thead><tr><th>Depósito</th><th>Código</th><th>Situação</th><th>Ações</th></tr></thead><tbody>@for(l of locationRows;track l.id){<tr><td>{{l.name}}</td><td>{{l.code || 'Não informado'}}</td><td>{{l.status==='ACTIVE'?'Ativo':'Inativo'}}</td><td><div class="row-actions"><button type="button" class="quiet-button" (click)="openLocationStock(l.id)">Ver estoque</button><button type="button" class="quiet-button" (click)="openLocation(l.id)">{{readonlyCatalog?'Ver cadastro':'Revisar cadastro'}}</button></div></td></tr>}</tbody></table></div>}
+      }
+      @if(tab==='products' || tab==='locations'){<nav class="pagination" aria-label="Paginação do catálogo"><button type="button" [disabled]="catalogPage===0" (click)="catalogPage=catalogPage-1">Anterior</button><span>Página {{catalogPage+1}} de {{catalogPages}} · {{catalogTotal}} registros</span><button type="button" [disabled]="catalogPage+1>=catalogPages" (click)="catalogPage=catalogPage+1">Próxima</button></nav>}
+      @if(tab==='movements'){
+        @if(!movements()?.items?.length){<div class="domain-empty"><strong>Nenhuma movimentação encontrada</strong><p>Entradas, saídas, consumo e ajustes aparecerão aqui quando registrados. Revise os filtros para ampliar a consulta.</p></div>}
+        @else{<div class="responsive-table"><table><thead><tr><th>Data</th><th>Operação</th><th>Produto</th><th>Quantidade</th><th>Origem</th><th>Destino</th><th>Ações</th></tr></thead><tbody>@for(m of movements()!.items;track m.id){<tr><td>{{date(m.occurredOn)}}</td><td>{{labels[m.type]}}</td><td>{{m.productName}}</td><td>{{m.quantity | grDecimal}} {{units[m.baseUnit]}}</td><td>{{m.sourceLocationName || 'Entrada externa'}}</td><td>{{m.destinationLocationName || 'Saída externa'}}</td><td><button type="button" class="quiet-button" (click)="openMovementDetail(m.id)">Ver movimentação</button></td></tr>}</tbody></table></div>}
+        <nav class="pagination" aria-label="Paginação das movimentações"><button type="button" [disabled]="page===0" (click)="page=page-1;load()">Anterior</button><span>Página {{page+1}} de {{movements()?.totalPages || 1}}</span><button type="button" [disabled]="page+1 >= (movements()?.totalPages || 1)" (click)="page=page+1;load()">Próxima</button></nav>
+      }
+    </section>
+    @if(!permissions.canMutateInventory()){<p class="semantic-note">Seu acesso permite consultar os insumos. As movimentações exigem permissão operacional.</p>}
+  }
+</div>
+<gr-dialog [open]="editor()!==null" (closed)="closeEditor()">
+  <span dialog-title>{{editor()==='movement'?(confirmation()?'Confirmar movimentação':'Registrar movimentação'):editor()==='product'?'Cadastro do produto':'Cadastro do depósito'}}</span>
+  @if(editor()==='product' || editor()==='location'){
+    @if(detailLoading()){<div class="list-loading" aria-label="Carregando cadastro"><gr-skeleton/><gr-skeleton/></div>}
+    <fieldset class="form-grid compact" [disabled]="readonlyCatalog || detailLoading() || saving()"><label class="wide"><span>Nome *</span><input [(ngModel)]="name" maxlength="160" required/></label><label><span>Código</span><input [(ngModel)]="code" maxlength="80"/></label>
+      @if(editor()==='product'){<label><span>Categoria</span><input [(ngModel)]="category" maxlength="120"/></label><label><span>Unidade base *</span><select [(ngModel)]="baseUnit" [disabled]="!!editingProduct()">@for(u of unitOptions;track u){<option [value]="u">{{units[u]}}</option>}</select></label>}
+      @if(editingProduct() || editingLocation()){<label><span>Situação</span><select [(ngModel)]="status"><option value="ACTIVE">Ativo</option><option value="INACTIVE">Inativo</option></select></label>}
+    </fieldset><p class="semantic-note">Cadastros com saldo não podem ser desativados. Consulte o estoque antes de alterar a situação.</p>
+  }
+  @if(editor()==='movement' && !confirmation()){
+    @if(!activeProducts.length || !activeLocations.length){<p class="semantic-note">Cadastre pelo menos um produto e um depósito ativos antes de movimentar o estoque. Um gestor pode fazer isso nas abas Produtos e Depósitos.</p>}
+    <fieldset class="form-grid compact" [disabled]="saving()">
+      <label class="wide"><span>Operação *</span><select [(ngModel)]="moveType">@for(t of movementTypes;track t){<option [value]="t">{{labels[t]}}</option>}</select></label>
+      <label class="wide"><span>Produto *</span><select [(ngModel)]="moveProductId"><option value="">Selecione um produto</option>@for(p of activeProducts;track p.id){<option [value]="p.id">{{p.name}} · {{units[p.baseUnit]}}</option>}</select></label>
+      @if(outgoing){<label class="wide"><span>Depósito de origem *</span><select [(ngModel)]="sourceId"><option value="">Selecione a origem</option>@for(l of activeLocations;track l.id){<option [value]="l.id">{{l.name}}</option>}</select></label>}
+      @if(incoming){<label class="wide"><span>Depósito de destino *</span><select [(ngModel)]="destinationId"><option value="">Selecione o destino</option>@for(l of activeLocations;track l.id){<option [value]="l.id">{{l.name}}</option>}</select></label>}
+      <label><span>Quantidade ({{movementUnit}}) *</span><input inputmode="decimal" [(ngModel)]="quantity" placeholder="Ex.: 12,500" required/><small>Até 6 casas decimais.</small></label><label><span>Data da operação *</span><input type="date" [(ngModel)]="occurredOn" [max]="today" required/></label>
+      <label class="wide"><span>Observações {{moveType==='ADJUSTMENT_IN' || moveType==='ADJUSTMENT_OUT'?'*':''}}</span><textarea [(ngModel)]="notes" maxlength="1000" placeholder="Informe o motivo de ajustes e o uso em saídas por consumo"></textarea></label>
+    </fieldset><p class="semantic-note">A saída reduz o saldo do depósito. Movimentações registradas permanecem no histórico; uma correção de saldo exige uma nova operação justificada.</p>
+  }
+  @if(confirmation();as c){<dl class="details-grid"><div><dt>Operação</dt><dd>{{labels[c.type]}}</dd></div><div><dt>Produto</dt><dd>{{productName(c.productId)}}</dd></div><div><dt>Quantidade</dt><dd>{{c.quantity}} {{movementUnit}}</dd></div><div><dt>Data</dt><dd>{{date(c.occurredOn)}}</dd></div><div><dt>Origem</dt><dd>{{locationName(c.sourceLocationId)}}</dd></div><div><dt>Destino</dt><dd>{{locationName(c.destinationLocationId)}}</dd></div><div class="wide"><dt>Observações</dt><dd>{{c.notes || 'Não informadas'}}</dd></div></dl><p class="semantic-note">Confira produto, quantidade e depósitos. O serviço aplicará a operação completa e atualizará os saldos.</p>}
+  @if(formError()){<p class="form-error" role="alert">{{formError()}}</p>}
+  <div dialog-actions>
+    <button class="quiet-button" type="button" [disabled]="saving()" (click)="closeEditor()">{{readonlyCatalog && editor()!=='movement'?'Fechar':'Cancelar'}}</button>
+    @if(confirmation()){<button class="secondary-action" type="button" [disabled]="saving()" (click)="confirmation.set(null)">Revisar dados</button><button class="primary-action" type="button" [disabled]="saving()" (click)="confirmMovement()">{{saving()?'Registrando…':'Confirmar movimentação'}}</button>}
+    @else if(editor()==='movement'){<button class="primary-action" type="button" [disabled]="saving() || !moveProductId || !quantity || !occurredOn" (click)="reviewMovement()">Revisar movimentação</button>}
+    @else if(!readonlyCatalog){<button class="primary-action" type="button" [disabled]="saving() || detailLoading() || catalogLoadFailed() || !name.trim()" (click)="saveCatalog()">{{saving()?'Salvando…':'Salvar cadastro'}}</button>}
+  </div>
+</gr-dialog>
+<gr-dialog [open]="detailOpen()" (closed)="closeDetail()"><span dialog-title>{{locationDetail()?'Estoque do depósito':'Detalhes da movimentação'}}</span>
+  @if(detailLoading()){<div class="list-loading" aria-busy="true"><gr-skeleton/><gr-skeleton/></div>}
+  @else if(detailError()){<p class="form-error" role="alert">{{detailError()}}</p>}
+  @else if(movementDetail();as m){<dl class="details-grid"><div><dt>Operação</dt><dd>{{labels[m.type]}}</dd></div><div><dt>Produto</dt><dd>{{m.productName}}</dd></div><div><dt>Quantidade</dt><dd>{{m.quantity | grDecimal}} {{units[m.baseUnit]}}</dd></div><div><dt>Data</dt><dd>{{date(m.occurredOn)}}</dd></div><div><dt>Origem</dt><dd>{{m.sourceLocationName || 'Entrada externa'}}</dd></div><div><dt>Destino</dt><dd>{{m.destinationLocationName || 'Saída externa'}}</dd></div><div><dt>Saldo da origem após a operação</dt><dd>{{m.sourceBalanceAfter===null?'Não se aplica':(m.sourceBalanceAfter | grDecimal)}}</dd></div><div><dt>Saldo do destino após a operação</dt><dd>{{m.destinationBalanceAfter===null?'Não se aplica':(m.destinationBalanceAfter | grDecimal)}}</dd></div><div class="wide"><dt>Observações</dt><dd>{{m.notes || 'Não informadas'}}</dd></div><div class="wide"><dt>Registrado em</dt><dd>{{timestamp(m.recordedAt)}}</dd></div><div class="wide"><dt>Identificador do responsável</dt><dd>{{m.actorUserId}}</dd></div></dl>}
+  @else if(locationDetail();as l){<h3>{{l.name}}</h3>@if(!locationBalances()?.items?.length){<p>Nenhum saldo registrado neste depósito.</p>}@else{<div class="responsive-table"><table><thead><tr><th>Produto</th><th>Saldo</th></tr></thead><tbody>@for(b of locationBalances()!.items;track b.productId){<tr><td>{{b.productName}}</td><td>{{b.quantity | grDecimal}} {{units[b.baseUnit]}}</td></tr>}</tbody></table></div>}
+    <nav class="pagination" aria-label="Paginação do estoque do depósito"><button type="button" [disabled]="(locationBalances()?.page || 0)===0" (click)="openLocationStock(l.id,(locationBalances()?.page || 0)-1)">Anterior</button><span>Página {{(locationBalances()?.page || 0)+1}} de {{locationBalances()?.totalPages || 1}}</span><button type="button" [disabled]="(locationBalances()?.page || 0)+1 >= (locationBalances()?.totalPages || 1)" (click)="openLocationStock(l.id,(locationBalances()?.page || 0)+1)">Próxima</button></nav>
+  }
+  <div dialog-actions><button type="button" class="secondary-action" (click)="closeDetail()">Fechar</button></div>
+</gr-dialog>

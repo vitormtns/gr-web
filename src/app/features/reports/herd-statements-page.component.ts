@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ContextRequestScope } from '../management/management.shared';
 import { Observable } from 'rxjs';
 import { AppError } from '../../core/api/api.models';
 import { ContextStore } from '../../core/context/context.store';
@@ -261,7 +261,7 @@ export class HerdStatementsPageComponent {
   readonly context = inject(ContextStore);
   private readonly api = inject(ParityApi);
   private readonly destroy = inject(DestroyRef);
-  private generation = 0;
+  private readonly scope = new ContextRequestScope(this.destroy);
   readonly options: { kind: StatementKind; label: string }[] = [
     { kind: 'current', label: 'Saldo atual' },
     { kind: 'historical', label: 'Saldo histórico' },
@@ -287,13 +287,24 @@ export class HerdStatementsPageComponent {
       this.context.contextVersion();
       const pending = this.context.transitionPending();
       const farm = this.context.selectedFarm();
-      this.generation++;
-      this.result.set(null);
-      if (!pending && farm) untracked(() => this.load());
+      untracked(() => {
+        this.scope.reset();
+        this.result.set(null);
+        this.error.set(null);
+        this.filterError.set('');
+        this.loading.set(true);
+        this.today = localDateOnly();
+        this.referenceDate = this.today;
+        this.from = this.today.slice(0, 7) + '-01';
+        this.to = this.today;
+        this.kind = 'current';
+        this.procedure = 'BRUCELLOSIS';
+        if (!pending && farm) this.load();
+      });
     });
   }
   switchKind(kind: StatementKind) {
-    this.generation++;
+    this.scope.reset();
     this.loading.set(false);
     this.kind = kind;
     this.result.set(null);
@@ -313,54 +324,47 @@ export class HerdStatementsPageComponent {
       return;
     }
     this.filterError.set('');
-    const g = ++this.generation;
+    this.scope.reset();
     this.loading.set(true);
     this.error.set(null);
     switch (this.kind) {
       case 'current':
       case 'historical': {
         const kind = this.kind;
-        this.read(
-          this.api.ageSexBalance(this.referenceDate, kind === 'historical'),
-          (data) => ({ kind, data }),
-          g,
-        );
+        this.read(this.api.ageSexBalance(this.referenceDate, kind === 'historical'), (data) => ({
+          kind,
+          data,
+        }));
         break;
       }
       case 'flows':
-        this.read(
-          this.api.reconciliation(this.from, this.to),
-          (data) => ({ kind: 'flows', data }),
-          g,
-        );
+        this.read(this.api.reconciliation(this.from, this.to), (data) => ({ kind: 'flows', data }));
         break;
       case 'coverage':
-        this.read(
-          this.api.coverage(this.procedure, this.referenceDate),
-          (data) => ({ kind: 'coverage', data }),
-          g,
-        );
+        this.read(this.api.coverage(this.procedure, this.referenceDate), (data) => ({
+          kind: 'coverage',
+          data,
+        }));
         break;
       case 'milk': {
         const referenceDate = this.referenceDate;
-        this.read(
-          this.api.milkOverview(referenceDate),
-          (data) => ({ kind: 'milk', data, referenceDate }),
-          g,
-        );
+        this.read(this.api.milkOverview(referenceDate), (data) => ({
+          kind: 'milk',
+          data,
+          referenceDate,
+        }));
         break;
       }
     }
   }
-  private read<T>(request: Observable<T>, map: (value: T) => Statement, g: number) {
-    request.pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: (data) => {
-        if (g !== this.generation) return;
+  private read<T>(request: Observable<T>, map: (value: T) => Statement) {
+    this.scope.run(
+      request,
+      (data) => {
         this.result.set(map(data));
         this.loading.set(false);
       },
-      error: (e) => {
-        if (g !== this.generation) return;
+      (e) => {
         this.error.set(
           e instanceof AppError
             ? e
@@ -373,7 +377,7 @@ export class HerdStatementsPageComponent {
         );
         this.loading.set(false);
       },
-    });
+    );
   }
   balance() {
     const result = this.result();

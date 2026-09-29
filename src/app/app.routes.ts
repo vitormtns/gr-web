@@ -3,7 +3,7 @@ import { authGuard, guestGuard } from './core/guards/auth.guard';
 import { contextGuard } from './core/guards/context.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 
-const unsavedAnimalGuard = (component: { canDeactivate?: () => boolean }) => component.canDeactivate?.() ?? true;
+const unsavedAnimalGuard = (component: { canDeactivate?: () => boolean | Promise<boolean> }) => component.canDeactivate?.() ?? true;
 
 export const routes: Routes = [
   { path: 'entrar', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login-page.component').then((m) => m.LoginPageComponent) },
@@ -23,16 +23,23 @@ export const routes: Routes = [
       { path: 'rebanho/animais/novo', data: { title: 'Cadastrar animal' }, canDeactivate: [unsavedAnimalGuard], loadComponent: () => import('./features/herd/animal-create-page.component').then((m) => m.AnimalCreatePageComponent) },
       { path: 'rebanho/animais/importar', data: { title: 'Importar animais', permission: 'mutateHerd' }, canActivate: [permissionGuard], loadComponent: () => import('./features/herd/animal-import-page.component').then(m => m.AnimalImportPageComponent) },
       { path: 'rebanho/grupos', data: { title: 'Grupos' }, loadComponent: () => import('./features/herd/groups-page.component').then(m => m.GroupsPageComponent) },
+      { path: 'rebanho/piquetes', data: { title: 'Piquetes' }, loadComponent: () => import('./features/paddocks/paddocks-page.component').then(m => m.PaddocksPageComponent) },
+      { path: 'gestao/insumos', data: { title: 'Insumos' }, loadComponent: () => import('./features/inventory/inventory-page.component').then(m => m.InventoryPageComponent) },
+      { path: 'gestao/financeiro', data: { title: 'Financeiro' }, loadComponent: () => import('./features/finance/finance-page.component').then(m => m.FinancePageComponent) },
       { path: 'relatorios/quadros', data: { title: 'Quadros gerenciais' }, loadComponent: () => import('./features/reports/herd-statements-page.component').then(m => m.HerdStatementsPageComponent) },
       { path: 'rebanho/animais/:animalId', data: { title: 'Perfil do animal' }, loadComponent: () => import('./features/herd/animal-profile-page.component').then((m) => m.AnimalProfilePageComponent) },
       { path: 'rebanho/movimentacoes', data: { title: 'Movimentações' }, loadComponent: () => import('./features/herd/movements-page.component').then((m) => m.MovementsPageComponent) },
+      { path: 'rebanho/transferencias', data: { title: 'Transferências entre fazendas' }, loadComponent: () => import('./features/herd/transfers-page.component').then((m) => m.TransfersPageComponent) },
       { path: 'rebanho/saude', data: { title: 'Saúde' }, loadComponent: () => import('./features/herd/health-page.component').then(m => m.HealthPageComponent) },
       { path: 'rebanho/reproducao', data: { title: 'Reprodução' }, loadComponent: () => import('./features/herd/reproduction-page.component').then(m => m.ReproductionPageComponent) },
       { path: 'rebanho/agenda', data: { title: 'Agenda' }, loadComponent: () => import('./features/herd/agenda-page.component').then(m => m.AgendaPageComponent) },
       { path: 'relatorios', data: { title: 'Relatórios' }, loadComponent: () => import('./features/reports/reports-page.component').then(m => m.ReportsPageComponent) },
       { path: 'administracao', data: { title: 'Administração', permission: 'viewAdministration' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/administration-page.component').then(m => m.AdministrationPageComponent) },
+      { path: 'administracao/organizacoes', data: { title: 'Organizações' }, loadComponent: () => import('./features/administration/organizations-page.component').then(m => m.OrganizationsPageComponent) },
       { path: 'administracao/fazendas', data: { title: 'Fazendas', permission: 'viewAdministration' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/farms-page.component').then(m => m.FarmsPageComponent) },
-      { path: 'administracao/pessoas', data: { title: 'Pessoas e acessos', permission: 'manageUsers' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/people-page.component').then(m => m.PeoplePageComponent) },
+      { path: 'administracao/fazenda-atual', data: { title: 'Fazenda atual', permission: 'viewAdministration' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/current-farm-page.component').then(m => m.CurrentFarmPageComponent) },
+      { path: 'administracao/pessoas', data: { title: 'Pessoas e acessos', permission: 'viewAdministration' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/people-page.component').then(m => m.PeoplePageComponent) },
+      { path: 'administracao/auditoria', data: { title: 'Auditoria', permission: 'manageUsers' }, canActivate: [permissionGuard], loadComponent: () => import('./features/administration/audit-page.component').then(m => m.AuditPageComponent) },
     ],
   },
   { path: '**', loadComponent: () => import('./features/errors/not-found-page.component').then((m) => m.NotFoundPageComponent) },

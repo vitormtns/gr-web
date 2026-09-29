@@ -1,4 +1,5 @@
 import { Animal, Page } from './herd.models';
+import { CountedPage } from './parity.models';
 
 export type HealthTreatmentType = 'VACCINATION' | 'DEWORMING';
 export type HealthProcedureCode = 'BRUCELLOSIS' | 'FOOT_AND_MOUTH_DISEASE';
@@ -13,7 +14,7 @@ export type AgendaSource = 'MANUAL' | 'DERIVED';
 export interface AnimalReference { id: string; identification: string; name: string | null }
 export interface OperationResult { operationId: string; animals: { animalId: string; resultingVersion: number }[]; replayed: boolean }
 export interface WeightMeasurement { id: string; operationId: string; measuredOn: string; weightKg: string; notes: string | null; recordedAt: string }
-export interface WeightPage extends Page<WeightMeasurement> {}
+export interface WeightPage extends CountedPage<WeightMeasurement> {}
 export interface HealthTreatment { id: string; operationId?: string; animal?: AnimalReference; type?: HealthTreatmentType; treatmentType?: HealthTreatmentType; procedureCode?: HealthProcedureCode | null; occurredOn: string; product: string | null; protocol: string | null; nextDueOn: string | null; notes?: string | null; recordedAt: string }
 export interface HealthReport extends Page<HealthTreatment> { summary: { treatmentsCount: number; animalsTreated: number; countsByTreatmentType: Partial<Record<HealthTreatmentType, number>> } }
 export interface Pregnancy { id: string; motherId: string; serviceType: ReproductionServiceType; serviceOn: string; sireReference: string | null; expectedCalvingOn: string | null; status: PregnancyStatus; confirmedOn: string | null; endedOn: string | null; terminationReason: PregnancyTerminationReason | null; calfAnimalId: string | null; version: number }
@@ -26,7 +27,7 @@ export interface PlannerItem { id: string; operationId: string | null; type: Pla
 export interface PlannerPage extends Page<PlannerItem> {}
 export interface AgendaItem { source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: PlannerStatus | null }
 export interface AgendaPage extends Page<AgendaItem> {}
-export interface CalvingResult { mother: Animal; calf: Animal; pregnancy: Pregnancy | null; replay: boolean }
+export interface CalvingResult { calfAnimalId: string; resultingMotherVersion: number; pregnancyId: string | null }
 
 export const healthLabels: Record<HealthTreatmentType, string> = { VACCINATION: 'Vacinação', DEWORMING: 'Vermifugação' };
 export const procedureLabels: Record<HealthProcedureCode, string> = { BRUCELLOSIS: 'Brucelose', FOOT_AND_MOUTH_DISEASE: 'Aftosa — registro histórico' };
