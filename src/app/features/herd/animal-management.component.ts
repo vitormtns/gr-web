@@ -53,38 +53,40 @@ type Action = 'mother' | 'note' | 'milk' | 'sale' | 'death' | null;
     DialogComponent,
   ],
   template: `
-    <section class="section-frame parity-section">
-      <h2>Registro e gestão</h2>
-      <div class="parity-actions">
-        @if (permissions.canMutateHerd()) {
-          <button class="secondary-action" type="button" (click)="open('note')">
-            Adicionar observação</button
-          ><button class="secondary-action" type="button" (click)="open('mother')">
-            Corrigir vínculo materno
-          </button>
-          @if (animal().status === 'ACTIVE') {
-            <button class="secondary-action" type="button" (click)="open('death')">
-              Registrar morte
+    @if (showActions()) {
+      <section class="section-frame parity-section">
+        <h2>Registro e gestão</h2>
+        <div class="parity-actions">
+          @if (permissions.canMutateHerd()) {
+            <button class="secondary-action" type="button" (click)="open('note')">
+              Adicionar observação</button
+            ><button class="secondary-action" type="button" (click)="open('mother')">
+              Corrigir vínculo materno
             </button>
-            @if (animal().sex === 'FEMALE') {
-              <button class="primary-action" type="button" (click)="open('milk')">
-                Registrar leite
+            @if (animal().status === 'ACTIVE') {
+              <button class="secondary-action" type="button" (click)="open('death')">
+                Registrar morte
               </button>
+              @if (animal().sex === 'FEMALE') {
+                <button class="primary-action" type="button" (click)="open('milk')">
+                  Registrar leite
+                </button>
+              }
             }
           }
-        }
-        @if (permissions.canSellHerd() && animal().status === 'ACTIVE') {
-          <button class="secondary-action" type="button" (click)="open('sale')">
-            Registrar venda
-          </button>
-        }
-      </div>
-      <p>
-        Observações e correções entram no histórico auditado do animal. Os fatos de venda e morte
-        preservam seus detalhes.
-      </p>
-    </section>
-    @if (animal().sex === 'FEMALE') {
+          @if (permissions.canSellHerd() && animal().status === 'ACTIVE') {
+            <button class="secondary-action" type="button" (click)="open('sale')">
+              Registrar venda
+            </button>
+          }
+        </div>
+        <p>
+          Observações e correções entram no histórico auditado do animal. Os fatos de venda e morte
+          preservam seus detalhes.
+        </p>
+      </section>
+    }
+    @if (showProduction() && animal().sex === 'FEMALE') {
       <section class="section-frame parity-section">
         <h2>Produção de leite</h2>
         @if (loading()) {
@@ -341,6 +343,8 @@ type Action = 'mother' | 'note' | 'milk' | 'sale' | 'death' | null;
 export class AnimalManagementComponent {
   readonly animal = input.required<Animal>();
   readonly mother = input<Animal | null>(null);
+  readonly showActions = input(true);
+  readonly showProduction = input(true);
   readonly changed = output<void>();
   readonly permissions = inject(PermissionService);
   private readonly context = inject(ContextStore);
@@ -390,8 +394,19 @@ export class AnimalManagementComponent {
         this.loading.set(false);
         this.summary.set(null);
         this.milk.set(null);
-        if (!pending && a.sex === 'FEMALE') this.loadMilk();
+        if (!pending && a.sex === 'FEMALE' && this.showProduction()) this.loadMilk();
       });
+    });
+    effect(() => {
+      if (
+        this.showProduction() &&
+        this.animal().sex === 'FEMALE' &&
+        !this.summary() &&
+        !this.loading() &&
+        !this.readError()
+      ) {
+        untracked(() => this.loadMilk());
+      }
     });
   }
   loadMilk(page = 0) {

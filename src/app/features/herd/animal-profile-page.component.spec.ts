@@ -10,16 +10,23 @@ import { AnimalManagementComponent } from './animal-management.component';
 import { AnimalOperationalHistoryComponent } from './animal-operational-history.component';
 import { AnimalProfilePageComponent } from './animal-profile-page.component';
 import { HerdApi } from './herd-api.service';
-import { Animal, AnimalHistory } from './herd.models';
+import { Animal, AnimalEvent, AnimalHistory } from './herd.models';
+import { HealthTreatment } from './herd-operations.models';
+import { CountedPage } from './parity.models';
 @Component({ selector: 'app-animal-management', template: '' })
 class ManagementStub {
   animal = input.required<Animal>();
   mother = input<Animal | null>();
+  showActions = input(true);
+  showProduction = input(true);
   changed = output<void>();
+  open = vi.fn();
 }
 @Component({ selector: 'app-animal-operational-history', template: '' })
 class HistoryStub {
   animal = input.required<Animal>();
+  activeTab = input<'weights' | 'health' | 'pregnancies' | 'calves' | null>('weights');
+  navigationMode = input<'all' | 'reproduction' | 'none'>('all');
 }
 HTMLDialogElement.prototype.showModal ??= function () {
   this.open = true;
@@ -38,7 +45,7 @@ const animal: Animal = {
   paddock: null,
 };
 const history: AnimalHistory = { items: [], page: 0, size: 50, totalElements: 0, totalPages: 0 };
-async function setup(role: MembershipRole = 'OWNER') {
+async function setup(role: MembershipRole = 'OWNER', section?: string) {
   const api = {
     animal: vi.fn((_id: string): Observable<Animal> => of(animal)),
     history: vi.fn((_id: string, _page?: number, _type?: string): Observable<AnimalHistory> =>
@@ -46,6 +53,9 @@ async function setup(role: MembershipRole = 'OWNER') {
     ),
     weights: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0 })),
     pendingWork: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
+    treatments: vi.fn((): Observable<CountedPage<HealthTreatment>> =>
+      of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+    ),
     pregnancies: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
     mother: vi.fn(() => throwError(() => new AppError('not-found', '', 404, 'NOT_FOUND'))),
     calves: vi.fn(() => of([])),
@@ -74,7 +84,18 @@ async function setup(role: MembershipRole = 'OWNER') {
       provideRouter([]),
       {
         provide: ActivatedRoute,
-        useValue: { snapshot: { paramMap: params.value }, paramMap: params },
+        useValue: {
+          snapshot: {
+            paramMap: params.value,
+            queryParamMap: convertToParamMap({
+              search: 'BR',
+              page: '2',
+              view: 'cards',
+              ...(section ? { section } : {}),
+            }),
+          },
+          paramMap: params,
+        },
       },
       { provide: ContextStore, useValue: context },
       { provide: ToastService, useValue: toast },
@@ -177,5 +198,149 @@ describe('Perfil operacional do animal', () => {
     component.occurredOn = '2024-12-31';
     component.recordWeight();
     expect(component.actionError()).toContain('nascimento');
+  });
+  it('preserva busca, página e visualização no retorno à listagem', async () => {
+    const { component, fixture } = await setup();
+    expect(component.returnQueryParams()).toEqual({ search: 'BR', page: '2', view: 'cards' });
+    expect(fixture.nativeElement.querySelector('.back-link').getAttribute('href')).toContain(
+      'view=cards',
+    );
+  });
+  it('agrupa eventos reais por mês e mostra detalhe contextual', async () => {
+    const { component, api, fixture } = await setup();
+    const event: AnimalEvent = {
+      id: 'evento-1',
+      type: 'WEIGHED',
+      occurredOn: '2026-08-14',
+      recordedAt: '2026-08-14T13:00:00Z',
+      resultingVersion: 3,
+      actorUserId: null,
+      details: { notes: 'Pesagem no curral' },
+    };
+    api.history.mockReturnValueOnce(
+      of({ items: [event], page: 0, size: 50, totalElements: 1, totalPages: 1 }),
+    );
+    component.loadHistory(0);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.timeline-period').textContent).toContain('agosto');
+    expect(fixture.nativeElement.querySelector('.event').textContent).toContain(
+      'Pesagem no curral',
+    );
+    fixture.nativeElement.querySelector('.event-detail').click();
+    fixture.detectChanges();
+    expect(component.selectedEvent()).toEqual(event);
+    expect(fixture.nativeElement.querySelector('.event-dialog').textContent).toContain(
+      'Pesagem no curral',
+    );
+  });
+  it('usa o último tratamento disponível sem prender o restante do perfil à consulta', async () => {
+    const { component, api, fixture, context } = await setup();
+    api.treatments.mockReturnValueOnce(
+      of({
+        items: [
+          {
+            id: 'tratamento-1',
+            occurredOn: '2026-08-10',
+            recordedAt: '2026-08-10T12:00:00Z',
+            type: 'VACCINATION' as const,
+            procedureCode: 'BRUCELLOSIS' as const,
+            product: null,
+            protocol: null,
+            nextDueOn: null,
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalElements: 1,
+        totalPages: 1,
+      }),
+    );
+    component.loadIntelligence();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.side-performance').textContent).toContain(
+      'Brucelose',
+    );
+    context.transitionPending.set(true);
+    fixture.detectChanges();
+    expect(component.latestTreatment()).toBeNull();
+  });
+  it('navega entre seções com ARIA e preserva o parâmetro de retorno da lista', async () => {
+    const { component, fixture } = await setup();
+    const tabs = fixture.nativeElement.querySelectorAll('[role="tab"]');
+    expect(tabs.length).toBe(6);
+    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+    component.selectSection('health');
+    fixture.detectChanges();
+    expect(component.recordTab(animal)).toBe('health');
+    expect(fixture.nativeElement.querySelector('[aria-selected="true"]').textContent).toContain(
+      'Saúde',
+    );
+    expect(component.returnQueryParams()).toEqual({ search: 'BR', page: '2', view: 'cards' });
+    component.selectSection('history');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.timeline')).not.toBeNull();
+  });
+  it('representa domínio, período e ordem dos eventos sem fabricar autor', async () => {
+    const { component, api, fixture } = await setup();
+    const events: AnimalEvent[] = [
+      {
+        id: 'b',
+        type: 'BORN',
+        occurredOn: '2026-09-20',
+        recordedAt: '2026-09-20T12:00:00Z',
+        resultingVersion: 2,
+        actorUserId: null,
+        details: {},
+      },
+      {
+        id: 'w',
+        type: 'WEIGHED',
+        occurredOn: '2026-08-10',
+        recordedAt: '2026-08-10T12:00:00Z',
+        resultingVersion: 1,
+        actorUserId: null,
+        details: {},
+      },
+    ];
+    api.history.mockReturnValueOnce(
+      of({ items: events, page: 0, size: 50, totalElements: 2, totalPages: 1 }),
+    );
+    component.loadHistory(0);
+    fixture.detectChanges();
+    expect(
+      [...fixture.nativeElement.querySelectorAll('.timeline-period')].map((node: HTMLElement) =>
+        node.textContent?.trim(),
+      ),
+    ).toEqual(['setembro de 2026', 'agosto de 2026']);
+    expect(
+      [...fixture.nativeElement.querySelectorAll('.timeline li[data-domain]')].map(
+        (node: HTMLElement) => node.getAttribute('data-domain'),
+      ),
+    ).toEqual(['calving', 'weight']);
+    expect(fixture.nativeElement.querySelector('.event').textContent).not.toContain(
+      'Autor não informado',
+    );
+  });
+  it.each(['OWNER', 'VIEWER'] as MembershipRole[])(
+    'limita os menus do hero para %s',
+    async (role) => {
+      const { fixture } = await setup(role);
+      const actions = fixture.nativeElement.querySelector('.profile-actions').textContent;
+      if (role === 'VIEWER') {
+        expect(actions).not.toContain('Registrar');
+        expect(actions).not.toContain('Mais ações');
+      } else {
+        expect(actions).toContain('Registrar');
+        expect(actions).toContain('Corrigir dados');
+      }
+    },
+  );
+  it('abre deep link de saúde sem consultar a timeline oculta', async () => {
+    const { component, api, fixture } = await setup('OWNER', 'health');
+    expect(component.selectedSection()).toBe('health');
+    expect(api.history).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.timeline')).toBeNull();
+    component.selectSection('overview');
+    expect(api.history).toHaveBeenCalledOnce();
   });
 });

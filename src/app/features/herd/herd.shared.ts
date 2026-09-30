@@ -2,14 +2,17 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { StatusIndicatorComponent } from '../../design-system/data-display/data-display';
 import { Animal, animalTone, sexLabels, statusLabels } from './herd.models';
+import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
 
 @Component({
   selector: 'app-animal-identity',
-  imports: [RouterLink],
+  imports: [RouterLink, DomainIconComponent],
   template: `<div class="identity">
-    <span class="marker" aria-hidden="true"></span>
+    <span class="marker" aria-hidden="true"><gr-domain-icon domain="herd" size="sm" /></span>
     <div>
-      <a [routerLink]="['/rebanho/animais', animal.id]">{{ animal.identification }}</a>
+      <a [routerLink]="['/rebanho/animais', animal.id]" [queryParams]="queryParams">{{
+        animal.identification
+      }}</a>
       @if (animal.name) {
         <small>{{ animal.name }}</small>
       }
@@ -24,11 +27,14 @@ import { Animal, animalTone, sexLabels, statusLabels } from './herd.models';
         min-width: 12rem;
       }
       .marker {
-        width: 0.55rem;
+        width: 2.15rem;
         height: 2.15rem;
-        border-radius: 99px;
-        background: var(--color-primary-subtle);
-        border: 1px solid var(--color-accent);
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        border-radius: 0.58rem;
+        background: #e4f3e9;
+        color: #087249;
       }
       a {
         font-weight: 730;
@@ -49,6 +55,7 @@ import { Animal, animalTone, sexLabels, statusLabels } from './herd.models';
 })
 export class AnimalIdentityComponent {
   @Input({ required: true }) animal!: Pick<Animal, 'id' | 'identification' | 'name'>;
+  @Input() queryParams?: Record<string, string | number | null>;
 }
 
 @Component({
