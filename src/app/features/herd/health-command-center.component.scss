@@ -114,10 +114,6 @@
 .command-summary-card.deworm {
   background: linear-gradient(145deg, #fff, #edf5ff);
 }
-.command-summary-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 18px #022d1b25;
-}
 .card-eyebrow {
   font-size: 0.67rem;
   font-weight: 800;
@@ -205,9 +201,6 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
-}
-.attention-secondary:has(> :only-child) {
-  grid-template-columns: 1fr;
 }
 .attention-secondary button {
   display: flex;
@@ -362,30 +355,6 @@
 }
 .command-reading {
   background: #f6faf8 !important;
-}
-.reading-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-.reading-grid div {
-  display: grid;
-  padding: 0.75rem;
-  border: 1px solid #dcebe2;
-  border-radius: 0.62rem;
-  background: white;
-}
-.reading-grid span {
-  font-size: 0.61rem;
-  font-weight: 800;
-  color: #44725a;
-}
-.reading-grid strong {
-  font: 800 1.55rem var(--font-display);
-}
-.reading-grid small {
-  font-size: 0.72rem;
-  color: #677d6e;
 }
 .command-calm {
   padding: 1.2rem;
@@ -543,9 +512,6 @@ select:focus-visible {
 @media (max-width: 70rem) {
   .command-summary-grid,
   .coverage-grid,
-  .reading-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .agenda-days {
     grid-template-columns: repeat(7, minmax(8rem, 1fr));
   }
@@ -567,7 +533,6 @@ select:focus-visible {
 @media (max-width: 38rem) {
   .command-summary-grid,
   .coverage-grid,
-  .reading-grid,
   .attention-secondary {
     grid-template-columns: 1fr;
   }

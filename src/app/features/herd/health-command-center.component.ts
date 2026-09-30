@@ -44,7 +44,7 @@ import { HealthOperationalStore } from './health-operational.store';
   ],
   providers: [HealthOperationalStore],
   templateUrl: './health-command-center.component.html',
-  styleUrl: './health-command-center.component.scss',
+  styleUrls: ['./health-command-center.component.scss', './health-command-center-polish.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HealthCommandCenterComponent {
@@ -115,6 +115,12 @@ export class HealthCommandCenterComponent {
     return value === null || value === undefined
       ? '—'
       : new Intl.NumberFormat('pt-BR').format(value);
+  }
+  share(value: number, total: number) {
+    return total > 0 ? Math.max(0, Math.min(100, (value / total) * 100)) : 0;
+  }
+  relativeBar(value: number, other: number) {
+    return this.share(value, Math.max(value, other));
   }
   coverageDenominator(total: number, unknown: number) {
     return Math.max(0, total - unknown);

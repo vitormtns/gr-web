@@ -23,12 +23,39 @@
     } @else if (store.attention().value; as attention) {
       <div class="command-summary-grid">
         <button type="button" class="command-summary-card" (click)="openPending.emit()">
-          <span class="card-eyebrow">Pendências sanitárias</span
+          <span class="card-top"
+            ><span class="card-icon"><gr-domain-icon domain="attention" size="sm" /></span
+            ><span class="card-eyebrow">Pendências sanitárias</span></span
           ><strong>{{ count(pendingCount()) }}</strong
           ><small>situações sanitárias</small>
-          <span class="card-foot"
-            >{{ count(attention.summary.brucellosisWindowMissed) }} janelas primárias perdidas</span
+          <span class="distribution" aria-hidden="true">
+            <i
+              class="dist-vaccine"
+              [style.width.%]="share(attention.summary.vaccinationDue, pendingCount() || 0)"
+            ></i>
+            <i
+              class="dist-deworm"
+              [style.width.%]="share(attention.summary.dewormingDue, pendingCount() || 0)"
+            ></i>
+            <i
+              class="dist-bruc"
+              [style.width.%]="share(attention.summary.brucellosisDue, pendingCount() || 0)"
+            ></i>
+            <i
+              class="dist-missed"
+              [style.width.%]="
+                share(attention.summary.brucellosisWindowMissed, pendingCount() || 0)
+              "
+            ></i>
+          </span>
+          <span class="distribution-label"
+            >Vacinação {{ count(attention.summary.vaccinationDue) }} · Vermifugação
+            {{ count(attention.summary.dewormingDue) }} · Brucelose
+            {{
+              count(attention.summary.brucellosisDue + attention.summary.brucellosisWindowMissed)
+            }}</span
           >
+          <span class="card-foot">Ver pendências <span aria-hidden="true">→</span></span>
         </button>
         <button
           type="button"
@@ -42,11 +69,36 @@
             )
           "
         >
-          <span class="card-eyebrow">Brucelose</span
+          <span class="card-top"
+            ><span class="card-icon"><gr-domain-icon domain="health" size="sm" /></span
+            ><span class="card-eyebrow">Brucelose</span></span
           ><strong>{{ count(attention.summary.brucellosisDue) }}</strong
           ><small>na janela</small>
+          <span class="bruc-segments" aria-hidden="true"
+            ><i
+              [style.width.%]="
+                share(
+                  attention.summary.brucellosisDue,
+                  attention.summary.brucellosisDue + attention.summary.brucellosisWindowMissed
+                )
+              "
+            ></i
+            ><i
+              [style.width.%]="
+                share(
+                  attention.summary.brucellosisWindowMissed,
+                  attention.summary.brucellosisDue + attention.summary.brucellosisWindowMissed
+                )
+              "
+            ></i
+          ></span>
           <span class="card-foot"
-            >{{ count(attention.summary.brucellosisWindowMissed) }} janelas primárias perdidas</span
+            >{{ count(attention.summary.brucellosisWindowMissed) }}
+            {{
+              attention.summary.brucellosisWindowMissed === 1
+                ? 'janela primária perdida'
+                : 'janelas primárias perdidas'
+            }}</span
           >
         </button>
         <button
@@ -54,12 +106,35 @@
           class="command-summary-card vaccine"
           (click)="showCategory('VACCINATION_DUE')"
         >
-          <span class="card-eyebrow">Vacinação</span
+          <span class="card-top"
+            ><span class="card-icon"><gr-domain-icon domain="health" size="sm" /></span
+            ><span class="card-eyebrow">Vacinação</span></span
           ><strong>{{ count(attention.summary.vaccinationDue) }}</strong
           ><small>pendências identificadas</small>
+          <span class="paired-bars" aria-hidden="true"
+            ><i
+              [style.width.%]="
+                relativeBar(
+                  attention.summary.vaccinationDue,
+                  historySummary()?.countsByTreatmentType?.VACCINATION || 0
+                )
+              "
+            ></i
+            ><i
+              [style.width.%]="
+                relativeBar(
+                  historySummary()?.countsByTreatmentType?.VACCINATION || 0,
+                  attention.summary.vaccinationDue
+                )
+              "
+            ></i
+          ></span>
           <span class="card-foot"
-            >{{ count(historySummary()?.countsByTreatmentType?.VACCINATION) }} registros na consulta
-            de histórico</span
+            >{{ count(historySummary()?.countsByTreatmentType?.VACCINATION) }}
+            {{
+              historySummary()?.countsByTreatmentType?.VACCINATION === 1 ? 'registro' : 'registros'
+            }}
+            na consulta de histórico</span
           >
         </button>
         <button
@@ -67,12 +142,35 @@
           class="command-summary-card deworm"
           (click)="showCategory('DEWORMING_DUE')"
         >
-          <span class="card-eyebrow">Vermifugação</span
+          <span class="card-top"
+            ><span class="card-icon"><gr-domain-icon domain="health" size="sm" /></span
+            ><span class="card-eyebrow">Vermifugação</span></span
           ><strong>{{ count(attention.summary.dewormingDue) }}</strong
           ><small>pendências identificadas</small>
+          <span class="paired-bars" aria-hidden="true"
+            ><i
+              [style.width.%]="
+                relativeBar(
+                  attention.summary.dewormingDue,
+                  historySummary()?.countsByTreatmentType?.DEWORMING || 0
+                )
+              "
+            ></i
+            ><i
+              [style.width.%]="
+                relativeBar(
+                  historySummary()?.countsByTreatmentType?.DEWORMING || 0,
+                  attention.summary.dewormingDue
+                )
+              "
+            ></i
+          ></span>
           <span class="card-foot"
-            >{{ count(historySummary()?.countsByTreatmentType?.DEWORMING) }} registros na consulta
-            de histórico</span
+            >{{ count(historySummary()?.countsByTreatmentType?.DEWORMING) }}
+            {{
+              historySummary()?.countsByTreatmentType?.DEWORMING === 1 ? 'registro' : 'registros'
+            }}
+            na consulta de histórico</span
           >
         </button>
       </div>
@@ -129,9 +227,23 @@
         @if (secondary().length) {
           <div class="attention-secondary">
             @for (category of secondary(); track category.type) {
-              <button type="button" (click)="showCategory(category.type)">
+              <button
+                type="button"
+                [class.vaccine]="category.type === 'VACCINATION_DUE'"
+                [class.deworm]="category.type === 'DEWORMING_DUE'"
+                [class.bruc]="category.type === 'BRUCELLOSIS_DUE'"
+                (click)="showCategory(category.type)"
+              >
+                <span class="secondary-icon"
+                  ><gr-domain-icon
+                    [domain]="category.type === 'BRUCELLOSIS_DUE' ? 'attention' : 'health'"
+                    size="sm"
+                /></span>
                 <strong>{{ category.title }}</strong
-                ><span>{{ count(category.count) }} situações</span><em>Ver detalhes →</em>
+                ><span
+                  >{{ count(category.count) }}
+                  {{ category.count === 1 ? 'situação' : 'situações' }}</span
+                ><em>Ver detalhes →</em>
               </button>
             }
           </div>
@@ -164,13 +276,13 @@
         (retry)="store.loadAgenda()"
       />
     } @else if (!agendaItems().length && (store.agenda().value?.totalPages ?? 0) <= 1) {
-      <div class="command-calm">
+      <div class="command-calm agenda-empty">
         <strong>Nenhuma ação sanitária programada nos próximos 7 dias.</strong>
       </div>
     } @else {
       <div class="agenda-days">
         @for (day of days; track day; let index = $index) {
-          <div class="agenda-day">
+          <div class="agenda-day" [class.today]="index === 0" [class.tomorrow]="index === 1">
             <header>
               <div>
                 <strong>{{ dayTitle(day, index) }}</strong
@@ -208,8 +320,11 @@
       </div>
     </header>
     <div class="coverage-grid">
-      <div class="coverage-card">
-        <span>Brucelose</span>
+      <div class="coverage-card bruc-coverage">
+        <span class="coverage-top"
+          ><span class="coverage-icon"><gr-domain-icon domain="health" size="sm" /></span
+          >Brucelose</span
+        >
         @if (store.brucCoverage().status === 'ready' && store.brucCoverage().value; as coverage) {
           <strong>{{
             coveragePercent(
@@ -235,6 +350,19 @@
           } @else {
             <p>Sem base para percentual</p>
           }
+          @if (coverageDenominator(coverage.totalActiveAnimals, coverage.unknownBirthDate) > 0) {
+            <span class="coverage-track" aria-hidden="true"
+              ><i
+                [style.width.%]="
+                  coveragePercent(
+                    coverage.withRecordedTreatment,
+                    coverage.totalActiveAnimals,
+                    coverage.unknownBirthDate
+                  )
+                "
+              ></i
+            ></span>
+          }
           <small>Indicador de registros do sistema.</small>
         } @else if (store.brucCoverage().status === 'error') {
           <small>Consulta indisponível.</small
@@ -243,8 +371,11 @@
           <gr-skeleton />
         }
       </div>
-      <div class="coverage-card">
-        <span>Aftosa · histórico</span>
+      <div class="coverage-card historic-coverage">
+        <span class="coverage-top"
+          ><span class="coverage-icon"><gr-domain-icon domain="traceability" size="sm" /></span
+          >Aftosa · histórico</span
+        >
         @if (
           store.aftosaCoverage().status === 'ready' && store.aftosaCoverage().value;
           as coverage
@@ -273,6 +404,7 @@
           } @else {
             <p>Sem base para percentual</p>
           }
+          <span class="history-marker" aria-hidden="true"></span>
           <small>Informação histórica. Não representa obrigação atual de revacinação.</small>
         } @else if (store.aftosaCoverage().status === 'error') {
           <small>Consulta indisponível.</small
@@ -281,16 +413,30 @@
           <gr-skeleton />
         }
       </div>
-      <div class="coverage-card">
-        <span>Vacinações realizadas</span
+      <div class="coverage-card vaccine-coverage">
+        <span class="coverage-top"
+          ><span class="coverage-icon"><gr-domain-icon domain="health" size="sm" /></span>Vacinações
+          realizadas</span
         ><strong>{{ count(historySummary()?.countsByTreatmentType?.VACCINATION) }}</strong>
-        <p>registros na consulta de histórico</p>
+        <p>
+          {{
+            historySummary()?.countsByTreatmentType?.VACCINATION === 1 ? 'registro' : 'registros'
+          }}
+          na consulta de histórico
+        </p>
         <small>Realizado no período consultado</small>
       </div>
-      <div class="coverage-card">
-        <span>Vermifugações realizadas</span
+      <div class="coverage-card deworm-coverage">
+        <span class="coverage-top"
+          ><span class="coverage-icon"><gr-domain-icon domain="health" size="sm" /></span
+          >Vermifugações realizadas</span
         ><strong>{{ count(historySummary()?.countsByTreatmentType?.DEWORMING) }}</strong>
-        <p>registros na consulta de histórico</p>
+        <p>
+          {{
+            historySummary()?.countsByTreatmentType?.DEWORMING === 1 ? 'registro' : 'registros'
+          }}
+          na consulta de histórico
+        </p>
         <small>Realizado no período consultado</small>
       </div>
     </div>
@@ -305,25 +451,29 @@
         <p>Registros realizados e necessidades atuais em bases distintas.</p>
       </div>
     </header>
-    <div class="reading-grid">
-      <div>
-        <span>REALIZADO NA CONSULTA</span
-        ><strong>{{ count(historySummary()?.countsByTreatmentType?.VACCINATION) }}</strong
-        ><small>vacinações</small>
+    <div class="reading-strip">
+      <div class="reading-period">
+        <span>REALIZADO NO PERÍODO CONSULTADO</span>
+        <div class="reading-values">
+          <div>
+            <small>Vacinações</small
+            ><strong>{{ count(historySummary()?.countsByTreatmentType?.VACCINATION) }}</strong>
+          </div>
+          <div>
+            <small>Vermifugações</small
+            ><strong>{{ count(historySummary()?.countsByTreatmentType?.DEWORMING) }}</strong>
+          </div>
+          <div>
+            <small>Animais atendidos</small
+            ><strong>{{ count(historySummary()?.animalsTreated) }}</strong>
+          </div>
+        </div>
       </div>
-      <div>
-        <span>REALIZADO NA CONSULTA</span
-        ><strong>{{ count(historySummary()?.countsByTreatmentType?.DEWORMING) }}</strong
-        ><small>vermifugações</small>
-      </div>
-      <div>
-        <span>REALIZADO NA CONSULTA</span
-        ><strong>{{ count(historySummary()?.animalsTreated) }}</strong
-        ><small>animais atendidos</small>
-      </div>
-      <div>
-        <span>PENDENTE AGORA</span><strong>{{ count(pendingCount()) }}</strong
-        ><small>situações sanitárias</small>
+      <div class="reading-now">
+        <span>AGORA</span>
+        <div>
+          <small>Pendências sanitárias</small><strong>{{ count(pendingCount()) }}</strong>
+        </div>
       </div>
     </div>
   </section>
@@ -379,7 +529,14 @@
       } @else {
         <div class="pending-list">
           @for (item of page.items; track item.type + item.animalId) {
-            <button type="button" class="pending-row" (click)="showItem(item)">
+            <button
+              type="button"
+              class="pending-row"
+              [class.urgent]="
+                item.type === 'BRUCELLOSIS_WINDOW_MISSED' || (item.daysOverdue ?? 0) > 0
+              "
+              (click)="showItem(item)"
+            >
               <span
                 ><strong>{{ item.identification }}</strong
                 ><small>{{ item.name || typeName(item) }}</small></span
@@ -408,7 +565,10 @@
 }
 
 <gr-dialog [open]="pickerOpen()" size="lg" (closed)="pickerOpen.set(false)"
-  ><span dialog-title>Selecionar animal</span>
+  ><span dialog-title class="dialog-heading"
+    ><span class="dialog-icon"><gr-domain-icon domain="herd" size="sm" /></span
+    ><span>Selecionar animal</span></span
+  >
   @if (pickerOpen()) {
     <p>Busque por identificação ou nome.</p>
     <app-animal-picker label="Buscar animal" [status]="''" (chosen)="chooseAnimal($event)" />
@@ -419,9 +579,15 @@
 >
 
 <gr-dialog [open]="!!store.detailType()" size="lg" (closed)="store.closeDetail()"
-  ><span dialog-title>{{
-    store.detailType() ? labels[store.detailType()!] : 'Pendência sanitária'
-  }}</span>
+  ><span dialog-title class="dialog-heading"
+    ><span class="dialog-icon"><gr-domain-icon domain="health" size="sm" /></span
+    ><span class="dialog-title-copy"
+      ><small>SAÚDE · PENDÊNCIA ATUAL</small
+      ><strong>{{
+        store.detailType() ? labels[store.detailType()!] : 'Pendência sanitária'
+      }}</strong></span
+    ></span
+  >
   @if (store.selectedItem(); as item) {
     <div class="pending-detail-head">
       <strong>{{ item.identification }}{{ item.name ? ' · ' + item.name : '' }}</strong

@@ -7,17 +7,20 @@
 .health-tabs {
   display: flex;
   gap: 0.35rem;
-  width: 100%;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid #dbe7df;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.28rem;
+  border: 1px solid #dbe7df;
+  border-radius: 0.75rem;
+  background: #edf3ee;
   overflow-x: auto;
 }
 .health-tabs button {
   flex: 0 0 auto;
-  padding: 0.52rem 0.9rem;
+  padding: 0.58rem 1.05rem;
   border: 1px solid transparent;
   border-radius: 0.52rem;
-  background: transparent;
+  background: #f8fbf8;
   color: #476957;
   font-size: 0.78rem;
   font-weight: 800;
@@ -27,6 +30,10 @@
   border-color: #0a6947;
   background: #075b3c;
   color: white;
+  box-shadow: 0 2px 7px #064a312b;
+}
+.health-tabs button:not(.active):hover {
+  background: #e3f1e7;
 }
 .health-tabs button:focus-visible {
   outline: 3px solid #65b78a;
