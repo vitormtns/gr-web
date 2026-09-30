@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Observable, Subject, of, throwError } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { BehaviorSubject, Observable, Subject, of, throwError } from 'rxjs';
 import { MembershipRole } from '../../core/api/api.models';
 import { describe, expect, it, vi } from 'vitest';
 import { ContextStore } from '../../core/context/context.store';
@@ -8,7 +9,7 @@ import { ToastService } from '../../design-system/feedback/feedback';
 import { HerdApi } from './herd-api.service';
 import { HealthPageComponent } from './health-page.component';
 import { Animal } from './herd.models';
-import { HealthReport, OperationResult } from './herd-operations.models';
+import { HealthReport, HealthTreatment, OperationResult } from './herd-operations.models';
 
 // jsdom não implementa <dialog>.showModal/close usados pelo design-system.
 for (const method of ['showModal', 'close'] as const) {
@@ -35,8 +36,33 @@ describe('HealthPageComponent procedureCode', () => {
     totalPages: 0,
     summary: { treatmentsCount: 0, animalsTreated: 0, countsByTreatmentType: {} },
   };
+  const treatment: HealthTreatment = {
+    id: 't1',
+    animal: { id: animal.id, identification: animal.identification, name: animal.name },
+    treatmentType: 'VACCINATION',
+    procedureCode: 'BRUCELLOSIS',
+    occurredOn: '2026-09-15',
+    product: 'Vacina A',
+    protocol: 'Protocolo B',
+    nextDueOn: '2027-09-15',
+    notes: 'Registrado pelo veterinário.',
+    recordedAt: '2026-09-16T12:00:00Z',
+  };
+  const populatedReport: HealthReport = {
+    ...report,
+    items: [treatment],
+    totalElements: 25,
+    totalPages: 2,
+    summary: {
+      treatmentsCount: 25,
+      animalsTreated: 13,
+      countsByTreatmentType: { VACCINATION: 18, DEWORMING: 7 },
+    },
+  };
   const ok = { operationId: 'op', animals: [], replayed: false };
   const setup = async (role: MembershipRole = 'OWNER') => {
+    const queryParamMap = new BehaviorSubject(convertToParamMap({ tab: 'history' }));
+    const router = { navigate: vi.fn(() => Promise.resolve(true)) };
     const api = {
       animal: vi.fn((_id: string): Observable<Animal> => of(animal)),
       healthReport: vi.fn((): Observable<HealthReport> => of(report)),
@@ -60,12 +86,17 @@ describe('HealthPageComponent procedureCode', () => {
         { provide: HerdApi, useValue: api },
         { provide: ContextStore, useValue: context },
         { provide: ToastService, useValue: { show: vi.fn() } },
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap },
+        },
+        { provide: Router, useValue: router },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(HealthPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    return { fixture, component: fixture.componentInstance, api, context };
+    return { fixture, component: fixture.componentInstance, api, context, queryParamMap, router };
   };
 
   it.each(['OWNER', 'ADMIN', 'MANAGER', 'OPERATOR'] as MembershipRole[])(
@@ -211,7 +242,8 @@ describe('HealthPageComponent procedureCode', () => {
     const { fixture, component } = await setup();
     component.creating.set(true);
     fixture.detectChanges();
-    const dialog = () => fixture.nativeElement.querySelector('dialog') as HTMLElement;
+    const dialog = () =>
+      fixture.nativeElement.querySelector('gr-dialog:last-of-type dialog') as HTMLElement;
     const tipoSelect = () =>
       Array.from(dialog().querySelectorAll('select')).find((s) =>
         (s as HTMLSelectElement).querySelector('option[value="VACCINATION"]'),
@@ -335,5 +367,108 @@ describe('HealthPageComponent procedureCode', () => {
       treatmentType: 'DEWORMING',
       procedureCode: null,
     });
+  });
+
+  it('mostra os quatro totais do servidor e pagina sem limitar o resumo à página visível', async () => {
+    const { component, api, fixture } = await setup();
+    api.healthReport.mockReturnValue(of(populatedReport));
+    component.reload();
+    fixture.detectChanges();
+    const metrics = Array.from(
+      fixture.nativeElement.querySelectorAll('.health-metric'),
+    ) as HTMLElement[];
+    expect(metrics.map((metric) => metric.querySelector('strong')?.textContent?.trim())).toEqual([
+      '25',
+      '13',
+      '18',
+      '7',
+    ]);
+    expect(metrics[2].querySelector('.metric-track i')?.getAttribute('style')).toContain('72%');
+    expect(fixture.nativeElement.textContent).toContain('Página 1 de 2');
+    component.changePage(1);
+    expect(api.healthReport).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }));
+  });
+
+  it('aplica os filtros no relatório do servidor e permite removê-los individualmente', async () => {
+    const { component, api, fixture } = await setup();
+    api.healthReport.mockReturnValue(of(populatedReport));
+    component.reload();
+    component.type = 'VACCINATION';
+    component.filterProcedure = 'BRUCELLOSIS';
+    component.from = '2026-09-01';
+    component.applyFilters();
+    fixture.detectChanges();
+    expect(api.healthReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        treatmentType: 'VACCINATION',
+        procedureCode: 'BRUCELLOSIS',
+        from: '2026-09-01',
+        page: 0,
+      }),
+    );
+    expect(fixture.nativeElement.querySelectorAll('.active-filters button')).toHaveLength(3);
+    component.removeFilter('procedure');
+    expect(api.healthReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ treatmentType: 'VACCINATION', procedureCode: undefined }),
+    );
+    component.filterByType('DEWORMING');
+    expect(api.healthReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ treatmentType: 'DEWORMING', procedureCode: undefined }),
+    );
+  });
+
+  it('distingue histórico vazio de consulta sem resultados', async () => {
+    const { component, api, fixture } = await setup();
+    expect(fixture.nativeElement.textContent).toContain('Nenhum tratamento registrado');
+    component.type = 'VACCINATION';
+    component.applyFilters();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Nenhum tratamento corresponde aos filtros',
+    );
+    expect(api.healthReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ treatmentType: 'VACCINATION' }),
+    );
+  });
+
+  it('abre detalhe com os campos do registro e limpa o contexto ao trocar de fazenda', async () => {
+    const { component, api, context, fixture } = await setup();
+    api.healthReport.mockReturnValue(of(populatedReport));
+    component.reload();
+    component.selectedTreatment.set(treatment);
+    component.filterPickerOpen.set(true);
+    fixture.detectChanges();
+    const detail = fixture.nativeElement.querySelectorAll('gr-dialog')[1] as HTMLElement;
+    expect(detail.textContent).toContain('Vacina A');
+    expect(detail.textContent).toContain('Protocolo B');
+    expect(detail.textContent).toContain('Registrado pelo veterinário.');
+    context.transitionPending.set(true);
+    context.contextVersion.update((v) => v + 1);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.selectedTreatment()).toBeNull();
+    expect(component.filterPickerOpen()).toBe(false);
+    expect(component.report()).toBeNull();
+  });
+
+  it('lê a tab da URL e publica a navegação interna na query string', async () => {
+    const { component, queryParamMap, router } = await setup();
+    expect(component.tab()).toBe('history');
+    component.selectTab('pending');
+    expect(router.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: { tab: 'pending', pendingType: null },
+        queryParamsHandling: 'merge',
+      }),
+    );
+    queryParamMap.next(
+      convertToParamMap({ tab: 'pending', pendingType: 'BRUCELLOSIS_WINDOW_MISSED' }),
+    );
+    expect(component.tab()).toBe('pending');
+    expect(component.pendingTypeFromRoute()).toBe('BRUCELLOSIS_WINDOW_MISSED');
+    queryParamMap.next(convertToParamMap({ tab: 'overview', pendingType: 'WEIGHING_DUE' }));
+    expect(component.tab()).toBe('overview');
+    expect(component.pendingTypeFromRoute()).toBeNull();
   });
 });

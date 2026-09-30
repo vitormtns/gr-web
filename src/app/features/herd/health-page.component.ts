@@ -8,6 +8,8 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, forkJoin } from 'rxjs';
 import { ContextStore } from '../../core/context/context.store';
 import { localDateOnly } from '../../core/date/date-only';
@@ -18,6 +20,8 @@ import {
   ToastService,
 } from '../../design-system/feedback/feedback';
 import { DialogComponent } from '../../design-system/surfaces/surfaces';
+import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
+import { PaginationComponent } from '../../design-system/data-display/data-display';
 import {
   ContextRequestScope,
   managementError,
@@ -31,40 +35,56 @@ import {
   HealthReport,
   HealthProcedureCode,
   HealthTreatmentType,
+  HealthTreatment,
   healthLabels,
   procedureLabels,
   OperationResult,
 } from './herd-operations.models';
-import { AnimalIdentityComponent, formatDate } from './herd.shared';
+import { formatDate } from './herd.shared';
+import { HealthCommandCenterComponent } from './health-command-center.component';
+import { isHealthPendingType, type HealthPendingType } from './health-operational.models';
 
 interface HealthCommand {
   batch: boolean;
   target: string;
   body: Readonly<Record<string, unknown>>;
 }
+interface AppliedHealthFilters {
+  type: HealthTreatmentType | '';
+  procedure: HealthProcedureCode | '';
+  animalId: string;
+  from: string;
+  to: string;
+}
+type FilterKey = keyof AppliedHealthFilters;
 @Component({
   selector: 'app-health-page',
   imports: [
     FormsModule,
-    AnimalIdentityComponent,
     AnimalPickerComponent,
+    DomainIconComponent,
+    PaginationComponent,
     ErrorStateComponent,
     SkeletonComponent,
     DialogComponent,
+    HealthCommandCenterComponent,
   ],
   templateUrl: './health-page.component.html',
   styleUrls: [
     './herd-page.scss',
     './operations-page.component.scss',
     './health-page.component.scss',
+    './health-page-dialog.component.scss',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HealthPageComponent {
   private readonly api = inject(HerdApi);
-  private readonly context = inject(ContextStore);
+  readonly context = inject(ContextStore);
   private readonly destroy = inject(DestroyRef);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute, { optional: true });
+  private readonly router = inject(Router, { optional: true });
   private readonly reportScope = new ContextRequestScope(this.destroy);
   private readonly writeScope = new ContextRequestScope(this.destroy);
   private command: HealthCommand | null = null;
@@ -74,6 +94,13 @@ export class HealthPageComponent {
   readonly loading = signal(false);
   readonly error = signal('');
   readonly filterError = signal('');
+  readonly filterPickerOpen = signal(false);
+  readonly filterAnimalLabel = signal('');
+  readonly selectedTreatment = signal<HealthTreatment | null>(null);
+  readonly tab = signal<'overview' | 'pending' | 'history'>('overview');
+  readonly pendingTypeFromRoute = signal<HealthPendingType | null>(null);
+  readonly appliedFilters = signal<AppliedHealthFilters | null>(null);
+  readonly metricLabels = ['Tratamentos', 'Animais atendidos', 'Vacinações', 'Vermifugações'];
   readonly creating = signal(false);
   readonly saving = signal(false);
   readonly preparing = signal(false);
@@ -98,6 +125,12 @@ export class HealthPageComponent {
   protocol = '';
   notes = '';
   constructor() {
+    this.route?.queryParamMap.pipe(takeUntilDestroyed(this.destroy)).subscribe((params) => {
+      const tab = params.get('tab');
+      this.tab.set(tab === 'pending' || tab === 'history' ? tab : 'overview');
+      const type = params.get('pendingType');
+      this.pendingTypeFromRoute.set(isHealthPendingType(type) ? type : null);
+    });
     effect(() => {
       this.context.contextVersion();
       const pending = this.context.transitionPending();
@@ -106,6 +139,10 @@ export class HealthPageComponent {
         this.reportScope.reset();
         this.resetEditor();
         this.report.set(null);
+        this.selectedTreatment.set(null);
+        this.filterPickerOpen.set(false);
+        this.filterAnimalLabel.set('');
+        this.appliedFilters.set(null);
         this.loading.set(false);
         this.error.set('');
         this.filterError.set('');
@@ -116,10 +153,21 @@ export class HealthPageComponent {
       });
     });
   }
+  selectTab(tab: 'overview' | 'pending' | 'history') {
+    this.tab.set(tab);
+    if (this.router && this.route) {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab, pendingType: null },
+        queryParamsHandling: 'merge',
+      });
+    }
+  }
   reload() {
     if (!this.ready()) return;
     this.reportScope.reset();
     this.report.set(null);
+    this.selectedTreatment.set(null);
     this.error.set('');
     this.filterError.set('');
     this.loading.set(false);
@@ -133,8 +181,16 @@ export class HealthPageComponent {
       (this.from && this.to && this.from > this.to)
     ) {
       this.filterError.set('Informe um identificador válido e datas válidas em ordem.');
+      this.appliedFilters.set(null);
       return;
     }
+    this.appliedFilters.set({
+      type: this.type === 'VACCINATION' || this.type === 'DEWORMING' ? this.type : '',
+      procedure: this.filterProcedure,
+      animalId: this.animalFilter.trim(),
+      from: this.from,
+      to: this.to,
+    });
     this.loading.set(true);
     this.reportScope.run(
       this.api.healthReport({
@@ -162,7 +218,74 @@ export class HealthPageComponent {
   clearFilters() {
     this.type = this.animalFilter = this.from = this.to = '';
     this.filterProcedure = '';
+    this.filterAnimalLabel.set('');
     this.applyFilters();
+  }
+  onFilterTypeChange() {
+    if (this.type === 'DEWORMING') this.filterProcedure = '';
+  }
+  filterByType(type: HealthTreatmentType) {
+    this.type = this.appliedFilters()?.type === type ? '' : type;
+    this.onFilterTypeChange();
+    this.applyFilters();
+  }
+  chooseFilterAnimal(animal: Animal) {
+    this.animalFilter = animal.id;
+    this.filterAnimalLabel.set(`${animal.identification}${animal.name ? ' · ' + animal.name : ''}`);
+    this.filterPickerOpen.set(false);
+    this.applyFilters();
+  }
+  hasAppliedFilters() {
+    const filters = this.appliedFilters();
+    return !!(
+      filters &&
+      (filters.type || filters.procedure || filters.animalId || filters.from || filters.to)
+    );
+  }
+  appliedType() {
+    return this.appliedFilters()?.type || '';
+  }
+  appliedFilterChips(): { key: FilterKey; label: string }[] {
+    const filters = this.appliedFilters();
+    if (!filters) return [];
+    const chips: { key: FilterKey; label: string }[] = [];
+    if (filters.type) chips.push({ key: 'type', label: this.healthLabel(filters.type) });
+    if (filters.procedure)
+      chips.push({ key: 'procedure', label: procedureLabels[filters.procedure] });
+    if (filters.animalId)
+      chips.push({
+        key: 'animalId',
+        label: this.filterAnimalLabel() || `Animal: ${filters.animalId}`,
+      });
+    if (filters.from) chips.push({ key: 'from', label: `De ${this.date(filters.from)}` });
+    if (filters.to) chips.push({ key: 'to', label: `Até ${this.date(filters.to)}` });
+    return chips;
+  }
+  removeFilter(key: FilterKey) {
+    if (key === 'type') this.type = '';
+    else if (key === 'procedure') this.filterProcedure = '';
+    else if (key === 'animalId') {
+      this.animalFilter = '';
+      this.filterAnimalLabel.set('');
+    } else if (key === 'from') this.from = '';
+    else this.to = '';
+    this.applyFilters();
+  }
+  typeShare(type: HealthTreatmentType) {
+    const summary = this.report()?.summary;
+    return summary?.treatmentsCount
+      ? ((summary.countsByTreatmentType[type] || 0) / summary.treatmentsCount) * 100
+      : 0;
+  }
+  number(value: number) {
+    return new Intl.NumberFormat('pt-BR').format(value);
+  }
+  treatmentTypeOf(item: HealthTreatment) {
+    return item.treatmentType || item.type || null;
+  }
+  treatmentLabel(item: HealthTreatment) {
+    const type = this.treatmentTypeOf(item);
+    return type ? healthLabels[type] : 'Tratamento registrado';
   }
   changePage(page: number) {
     this.page = page;
@@ -384,13 +507,4 @@ export class HealthPageComponent {
   healthLabel = (value: HealthTreatmentType) => healthLabels[value];
   date = formatDate;
   timestamp = managementTimestamp;
-  animalRef = (animal: { id: string; identification: string; name: string | null }) =>
-    ({
-      ...animal,
-      sex: 'FEMALE',
-      birthDate: null,
-      status: 'ACTIVE',
-      version: 0,
-      paddock: null,
-    }) as Animal;
 }

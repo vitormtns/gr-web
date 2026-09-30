@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { Observable, of, Subject, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { ContextStore } from '../../core/context/context.store';
@@ -85,6 +85,14 @@ async function setup(component: typeof AgendaPageComponent | typeof HealthPageCo
       { provide: HerdApi, useValue: api },
       { provide: ParityApi, useValue: parity },
       { provide: ToastService, useValue: { show: vi.fn() } },
+      ...(component === HealthPageComponent
+        ? [
+            {
+              provide: ActivatedRoute,
+              useValue: { queryParamMap: of(convertToParamMap({ tab: 'history' })) },
+            },
+          ]
+        : []),
     ],
   }).compileComponents();
   return { context, api };

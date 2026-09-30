@@ -1,142 +1,403 @@
-<div class="herd-page operations-page page-enter">
-  <header class="page-header">
+<div class="herd-page health-page page-enter">
+  <header class="page-header health-header">
     <div>
-      <span class="eyebrow">CUIDADO REALIZADO</span>
+      <span class="eyebrow">CUIDADO REALIZADO · {{ context.selectedFarm()?.farmName }}</span>
       <h1>Saúde do rebanho</h1>
-      <p>Histórico de vacinações e vermifugações já realizadas.</p>
+      <p>Consulte os cuidados realizados e registre o próximo tratamento.</p>
     </div>
     @if (permissions.canMutateHerd()) {
-      <button class="primary-action" type="button" (click)="openCreate()">
-        Registrar tratamento
+      <button class="primary-action health-primary-action" type="button" (click)="openCreate()">
+        <span aria-hidden="true">＋</span> Registrar tratamento
       </button>
     }
   </header>
-  @if (report(); as result) {
-    <section class="metric-strip" aria-label="Resumo de saúde da consulta">
-      <div>
-        <span>Tratamentos</span><strong>{{ result.summary.treatmentsCount }}</strong>
-      </div>
-      <div>
-        <span>Animais atendidos</span><strong>{{ result.summary.animalsTreated }}</strong>
-      </div>
-      <div>
-        <span>Vacinações</span
-        ><strong>{{ result.summary.countsByTreatmentType.VACCINATION || 0 }}</strong>
-      </div>
-      <div>
-        <span>Vermifugações</span
-        ><strong>{{ result.summary.countsByTreatmentType.DEWORMING || 0 }}</strong>
-      </div>
-    </section>
+
+  <nav class="health-tabs" aria-label="Seções de saúde">
+    <button
+      type="button"
+      [class.active]="tab() === 'overview'"
+      [attr.aria-current]="tab() === 'overview' ? 'page' : null"
+      (click)="selectTab('overview')"
+    >
+      Visão geral
+    </button>
+    <button
+      type="button"
+      [class.active]="tab() === 'pending'"
+      [attr.aria-current]="tab() === 'pending' ? 'page' : null"
+      (click)="selectTab('pending')"
+    >
+      Pendências
+    </button>
+    <button
+      type="button"
+      [class.active]="tab() === 'history'"
+      [attr.aria-current]="tab() === 'history' ? 'page' : null"
+      (click)="selectTab('history')"
+    >
+      Histórico
+    </button>
+  </nav>
+
+  @if (tab() !== 'history') {
+    <app-health-command-center
+      [view]="tab() === 'pending' ? 'pending' : 'overview'"
+      [historySummary]="report()?.summary || null"
+      [initialPendingType]="pendingTypeFromRoute()"
+      (openPending)="selectTab('pending')"
+    />
   }
-  <section class="section-frame operational-surface">
-    <div class="surface-tools">
-      <div>
-        <span class="section-kicker">HISTÓRICO</span>
-        <h2>Tratamentos realizados</h2>
+
+  @if (tab() === 'history') {
+    <section class="health-overview" aria-labelledby="health-overview-title">
+      <div class="health-overview-heading">
+        <span class="health-section-icon" aria-hidden="true"
+          ><gr-domain-icon domain="health" size="md"
+        /></span>
+        <div>
+          <span class="section-kicker">LEITURA SANITÁRIA</span>
+          <h2 id="health-overview-title">Cuidados realizados</h2>
+          <p>Totais da consulta atual, incluindo todas as páginas.</p>
+        </div>
+        @if (hasAppliedFilters()) {
+          <span class="overview-scope">Filtros aplicados</span>
+        }
       </div>
-    </div>
-    <form class="health-filters" (ngSubmit)="applyFilters()">
-      <label
-        >Tipo<select name="type" [(ngModel)]="type">
-          <option value="">Todos</option>
-          <option value="VACCINATION">Vacinação</option>
-          <option value="DEWORMING">Vermifugação</option>
-        </select></label
-      >
-      <label
-        >Procedimento<select name="procedureFilter" [(ngModel)]="filterProcedure">
-          <option value="">Todos</option>
-          <option value="BRUCELLOSIS">Brucelose</option>
-          <option value="FOOT_AND_MOUTH_DISEASE">Aftosa — registro histórico</option>
-        </select></label
-      >
-      <label
-        >Identificador do animal<input
-          name="animalFilter"
-          [(ngModel)]="animalFilter"
-          placeholder="UUID do animal (opcional)" /></label
-      ><label>De<input name="from" type="date" [(ngModel)]="from" /></label
-      ><label>Até<input name="to" type="date" [(ngModel)]="to" /></label>
-      <button class="secondary-action" type="submit">Aplicar filtros</button
-      ><button class="quiet-button" type="button" (click)="clearFilters()">Limpar filtros</button>
-    </form>
-    @if (filterError()) {
-      <p class="form-error filter-feedback" role="alert">{{ filterError() }}</p>
-    }
-    @if (loading()) {
-      <div class="list-loading"><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>
-    } @else if (error()) {
-      <gr-error-state
-        title="Não foi possível carregar o histórico de saúde"
-        [description]="error()"
-        (retry)="reload()"
-      />
-    } @else if (report(); as result) {
-      <p class="query-count">
-        {{ result.totalElements }}
-        {{ result.totalElements === 1 ? 'registro nesta consulta' : 'registros nesta consulta' }}
-      </p>
-      @if (!result.items.length) {
-        <div class="domain-empty">
-          <strong>Nenhum tratamento encontrado</strong>
-          <p>Revise os filtros ou registre um cuidado realizado.</p>
+      @if (loading()) {
+        <div class="metric-strip health-metrics" aria-label="Carregando leitura sanitária">
+          @for (label of metricLabels; track label) {
+            <div class="health-metric">
+              <span>{{ label }}</span
+              ><gr-skeleton /><gr-skeleton />
+            </div>
+          }
+        </div>
+      } @else if (report(); as result) {
+        <div class="metric-strip health-metrics" aria-label="Resumo de saúde da consulta">
+          <div class="health-metric metric-total">
+            <span>Tratamentos</span><strong>{{ number(result.summary.treatmentsCount) }}</strong>
+            <small>registros na consulta</small><i aria-hidden="true"></i>
+          </div>
+          <div class="health-metric metric-animals">
+            <span>Animais atendidos</span
+            ><strong>{{ number(result.summary.animalsTreated) }}</strong>
+            <small>animais distintos</small><i aria-hidden="true"></i>
+          </div>
+          <button
+            type="button"
+            class="health-metric metric-vaccine"
+            [class.selected]="appliedType() === 'VACCINATION'"
+            (click)="filterByType('VACCINATION')"
+          >
+            <span>Vacinações</span
+            ><strong>{{ number(result.summary.countsByTreatmentType.VACCINATION || 0) }}</strong>
+            <small>dos tratamentos consultados</small
+            ><span class="metric-track" aria-hidden="true"
+              ><i [style.width.%]="typeShare('VACCINATION')"></i
+            ></span>
+            <em>Ver vacinações →</em>
+          </button>
+          <button
+            type="button"
+            class="health-metric metric-deworming"
+            [class.selected]="appliedType() === 'DEWORMING'"
+            (click)="filterByType('DEWORMING')"
+          >
+            <span>Vermifugações</span
+            ><strong>{{ number(result.summary.countsByTreatmentType.DEWORMING || 0) }}</strong>
+            <small>dos tratamentos consultados</small
+            ><span class="metric-track" aria-hidden="true"
+              ><i [style.width.%]="typeShare('DEWORMING')"></i
+            ></span>
+            <em>Ver vermifugações →</em>
+          </button>
         </div>
       } @else {
-        <div class="responsive-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Animal</th>
-                <th>Tratamento</th>
-                <th>Data</th>
-                <th>Produto</th>
-                <th>Protocolo</th>
-                <th>Próxima aplicação</th>
-                <th>Detalhes</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of result.items; track item.id) {
-                <tr>
-                  <td><app-animal-identity [animal]="animalRef(item.animal!)" /></td>
-                  <td>
-                    <span class="domain-badge">{{ healthLabel(item.treatmentType!) }}</span
-                    ><small>{{
-                      item.procedureCode ? procedureLabels[item.procedureCode] : 'Não especificado'
-                    }}</small>
-                  </td>
-                  <td>{{ date(item.occurredOn) }}</td>
-                  <td>{{ item.product || 'Não informado' }}</td>
-                  <td>{{ item.protocol || 'Não informado' }}</td>
-                  <td>{{ item.nextDueOn ? date(item.nextDueOn) : 'Não definida' }}</td>
-                  <td>
-                    <details>
-                      <summary>Ver detalhes</summary>
-                      <p>Registrado em {{ timestamp(item.recordedAt) }}</p>
-                      <p>Consulte as observações no histórico de saúde do animal.</p>
-                    </details>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="overview-unavailable">
+          A leitura sanitária aparece aqui quando o histórico estiver disponível.
         </div>
-        <nav class="pagination" aria-label="Paginação do histórico">
-          <button type="button" [disabled]="page === 0" (click)="changePage(page - 1)">
-            Anterior</button
-          ><span>Página {{ page + 1 }} de {{ result.totalPages || 1 }}</span
-          ><button
-            type="button"
-            [disabled]="page + 1 >= result.totalPages"
-            (click)="changePage(page + 1)"
+      }
+    </section>
+
+    <section class="health-explore" aria-labelledby="health-explore-title">
+      <div class="health-section-heading">
+        <span class="health-section-icon" aria-hidden="true"
+          ><gr-domain-icon domain="traceability" size="md"
+        /></span>
+        <div>
+          <span class="section-kicker">EXPLORAR</span>
+          <h2 id="health-explore-title">Consultar histórico</h2>
+          <p>Combine tipo, animal e período para refinar toda a consulta.</p>
+        </div>
+      </div>
+      <form class="health-filters" (ngSubmit)="applyFilters()">
+        <div class="filter-primary">
+          <label
+            >Tipo de cuidado<select
+              name="type"
+              [(ngModel)]="type"
+              (ngModelChange)="onFilterTypeChange()"
+            >
+              <option value="">Todos os tipos</option>
+              <option value="VACCINATION">Vacinação</option>
+              <option value="DEWORMING">Vermifugação</option>
+            </select></label
           >
-            Próxima
+          <label
+            >Procedimento<select
+              name="procedureFilter"
+              [(ngModel)]="filterProcedure"
+              [disabled]="type === 'DEWORMING'"
+            >
+              <option value="">Todos os procedimentos</option>
+              <option value="BRUCELLOSIS">Brucelose</option>
+              <option value="FOOT_AND_MOUTH_DISEASE">Aftosa — registro histórico</option>
+            </select></label
+          >
+          <button class="primary-action filter-submit" type="submit">Aplicar filtros →</button>
+        </div>
+        <div class="filter-secondary">
+          <label
+            >Animal
+            <span class="filter-animal-control"
+              ><input
+                [value]="filterAnimalLabel()"
+                placeholder="Todos os animais"
+                readonly
+                aria-describedby="animal-filter-help"
+              />
+              <button type="button" class="secondary-action" (click)="filterPickerOpen.set(true)">
+                Selecionar
+              </button></span
+            >
+            <small id="animal-filter-help">Busque por identificação ou nome.</small></label
+          >
+          <label>De<input name="from" type="date" [(ngModel)]="from" /></label>
+          <label>Até<input name="to" type="date" [(ngModel)]="to" /></label>
+          <button class="quiet-button clear-filters" type="button" (click)="clearFilters()">
+            Limpar filtros
           </button>
-        </nav>
+        </div>
+      </form>
+      @if (filterError()) {
+        <p class="form-error filter-feedback" role="alert">{{ filterError() }}</p>
+      }
+      @if (hasAppliedFilters()) {
+        <div class="active-filters" aria-label="Filtros aplicados">
+          @for (chip of appliedFilterChips(); track chip.key) {
+            <button
+              type="button"
+              (click)="removeFilter(chip.key)"
+              [attr.aria-label]="'Remover filtro ' + chip.label"
+            >
+              {{ chip.label }} <span aria-hidden="true">×</span>
+            </button>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="section-frame health-history" aria-labelledby="health-history-title">
+      <div class="health-section-heading history-heading">
+        <span class="health-section-icon" aria-hidden="true"
+          ><gr-domain-icon domain="agenda" size="md"
+        /></span>
+        <div>
+          <span class="section-kicker">HISTÓRICO</span>
+          <h2 id="health-history-title">Tratamentos realizados</h2>
+          <p>Vacinações e vermifugações registradas nesta fazenda.</p>
+        </div>
+        @if (report(); as result) {
+          <strong class="result-count"
+            >{{ number(result.totalElements) }}
+            {{ result.totalElements === 1 ? 'registro' : 'registros' }}</strong
+          >
+        }
+      </div>
+      @if (loading()) {
+        <div class="health-loading" role="status" aria-label="Carregando histórico de saúde">
+          <gr-skeleton /><gr-skeleton /><gr-skeleton />
+        </div>
+      } @else if (error()) {
+        <gr-error-state
+          title="Não foi possível carregar o histórico de saúde"
+          [description]="error()"
+          (retry)="reload()"
+        />
+      } @else if (report(); as result) {
+        @if (!result.items.length) {
+          <div class="health-empty">
+            <span class="health-empty-icon" aria-hidden="true"
+              ><gr-domain-icon domain="health" size="lg"
+            /></span>
+            @if (hasAppliedFilters()) {
+              <h3>Nenhum tratamento corresponde aos filtros</h3>
+              <p>Revise os critérios para ampliar a consulta.</p>
+              <button class="secondary-action" type="button" (click)="clearFilters()">
+                Limpar filtros
+              </button>
+            } @else {
+              <h3>Nenhum tratamento registrado</h3>
+              <p>Os cuidados realizados nesta fazenda aparecerão aqui.</p>
+              @if (permissions.canMutateHerd()) {
+                <button class="primary-action" type="button" (click)="openCreate()">
+                  Registrar tratamento
+                </button>
+              }
+            }
+          </div>
+        } @else {
+          <div class="responsive-table health-table-wrap">
+            <table class="health-table">
+              <thead>
+                <tr>
+                  <th>Animal</th>
+                  <th>Tipo e procedimento</th>
+                  <th>Data do cuidado</th>
+                  <th>Produto</th>
+                  <th>Próxima aplicação</th>
+                  <th><span class="sr-only">Detalhes</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of result.items; track item.id) {
+                  <tr [attr.data-treatment-type]="treatmentTypeOf(item)">
+                    <td data-label="Animal" class="animal-cell">
+                      <span class="animal-avatar" aria-hidden="true"
+                        ><gr-domain-icon domain="herd" size="sm"
+                      /></span>
+                      <span
+                        ><strong>{{
+                          item.animal?.identification || 'Animal não informado'
+                        }}</strong>
+                        @if (item.animal?.name) {
+                          <small>{{ item.animal?.name }}</small>
+                        }
+                      </span>
+                    </td>
+                    <td data-label="Tratamento">
+                      <span class="treatment-badge">{{ treatmentLabel(item) }}</span>
+                      @if (item.procedureCode) {
+                        <small>{{ procedureLabels[item.procedureCode] }}</small>
+                      }
+                    </td>
+                    <td data-label="Data">
+                      <time [attr.datetime]="item.occurredOn">{{ date(item.occurredOn) }}</time>
+                    </td>
+                    <td data-label="Produto">{{ item.product || 'Não informado' }}</td>
+                    <td data-label="Próxima aplicação">
+                      {{ item.nextDueOn ? date(item.nextDueOn) : 'Não definida' }}
+                    </td>
+                    <td class="detail-cell">
+                      <button
+                        type="button"
+                        (click)="selectedTreatment.set(item)"
+                        [attr.aria-label]="
+                          'Ver detalhes do tratamento de ' +
+                          (item.animal?.identification || 'animal não informado')
+                        "
+                      >
+                        Ver detalhes →
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="history-footer">
+            <span>Página {{ result.page + 1 }} de {{ result.totalPages || 1 }}</span>
+            <gr-pagination
+              [page]="result.page"
+              [totalPages]="result.totalPages"
+              (pageChange)="changePage($event)"
+            />
+          </div>
+        }
+      }
+    </section>
+  }
+
+  <gr-dialog [open]="filterPickerOpen()" size="lg" (closed)="filterPickerOpen.set(false)">
+    <span dialog-title>Selecionar animal</span>
+    @if (filterPickerOpen()) {
+      <p>Busque pelo nome ou identificação para filtrar o histórico.</p>
+      <app-animal-picker
+        label="Buscar animal"
+        [status]="''"
+        (chosen)="chooseFilterAnimal($event)"
+      />
+    }
+    <div dialog-actions>
+      <button class="quiet-button" type="button" (click)="filterPickerOpen.set(false)">
+        Fechar
+      </button>
+    </div>
+  </gr-dialog>
+
+  <gr-dialog [open]="!!selectedTreatment()" size="lg" (closed)="selectedTreatment.set(null)">
+    <span dialog-title>Detalhes do tratamento</span>
+    @if (selectedTreatment(); as item) {
+      <div class="treatment-detail" [attr.data-treatment-type]="treatmentTypeOf(item)">
+        <span class="detail-icon" aria-hidden="true"
+          ><gr-domain-icon domain="health" size="md"
+        /></span>
+        <div>
+          <span class="section-kicker">CUIDADO REALIZADO</span>
+          <h3>{{ treatmentLabel(item) }}</h3>
+          <p>
+            {{ item.animal?.identification || 'Animal não informado'
+            }}{{ item.animal?.name ? ' · ' + item.animal?.name : '' }}
+          </p>
+        </div>
+      </div>
+      <dl class="treatment-facts">
+        <div>
+          <dt>Data do cuidado</dt>
+          <dd>{{ date(item.occurredOn) }}</dd>
+        </div>
+        @if (item.procedureCode) {
+          <div>
+            <dt>Procedimento</dt>
+            <dd>{{ procedureLabels[item.procedureCode] }}</dd>
+          </div>
+        }
+        @if (item.product) {
+          <div>
+            <dt>Produto</dt>
+            <dd>{{ item.product }}</dd>
+          </div>
+        }
+        @if (item.protocol) {
+          <div>
+            <dt>Protocolo</dt>
+            <dd>{{ item.protocol }}</dd>
+          </div>
+        }
+        @if (item.nextDueOn) {
+          <div>
+            <dt>Próxima aplicação</dt>
+            <dd>{{ date(item.nextDueOn) }}</dd>
+          </div>
+        }
+        <div>
+          <dt>Registrado em</dt>
+          <dd>{{ timestamp(item.recordedAt) }}</dd>
+        </div>
+      </dl>
+      @if (item.notes) {
+        <div class="detail-notes">
+          <strong>Observações</strong>
+          <p>{{ item.notes }}</p>
+        </div>
       }
     }
-  </section>
+    <div dialog-actions>
+      <button class="primary-action" type="button" (click)="selectedTreatment.set(null)">
+        Voltar ao histórico
+      </button>
+    </div>
+  </gr-dialog>
   <gr-dialog [open]="creating()" (closed)="closeCreate()">
     <span dialog-title>{{
       reviewing() ? 'Revisar tratamento realizado' : 'Registrar tratamento realizado'
