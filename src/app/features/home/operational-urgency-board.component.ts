@@ -113,7 +113,11 @@ export function selectFocusCategories(summary: {
       @if (isPartial()) {
         <p class="partial">Exibindo dados parciais: uma fonte está indisponível.</p>
       }
-      <div class="focus-grid">
+      <div
+        class="focus-grid"
+        [attr.data-secondary-count]="categories().length"
+        [class.no-hero]="!hero()"
+      >
         @if (hero(); as item) {
           <button type="button" class="hero" (click)="inspect.emit({ kind: 'urgency', item })">
             <span class="badge">{{ item.level === 'overdue' ? 'URGENTE' : 'PRIORIDADE' }}</span
@@ -140,37 +144,40 @@ export function selectFocusCategories(summary: {
             ><span class="hero-action">Ver detalhes <span aria-hidden="true">→</span></span>
           </button>
         }
-        <div class="categories">
-          @for (category of categories(); track category.key) {
-            <button
-              type="button"
-              class="category"
-              [attr.data-tone]="category.tone"
-              [attr.data-domain]="categoryDomain(category.key)"
-              (click)="openCategory(category)"
-            >
-              <span class="category-icon"
-                ><gr-domain-icon
-                  [domain]="
-                    category.pendingType?.includes('WEIGH')
-                      ? 'weight'
-                      : category.key.includes('calving')
-                        ? 'reproduction'
-                        : category.key.includes('planner')
-                          ? 'planner'
-                          : 'health'
-                  "
-                  size="md" /></span
-              ><span
-                ><strong>{{ category.title }}</strong
-                ><small
-                  >{{ category.count }} {{ category.count === 1 ? 'situação' : 'situações' }}</small
-                ></span
-              ><b>{{ category.count }}</b
-              ><span class="arrow" aria-hidden="true">›</span>
-            </button>
-          }
-        </div>
+        @if (categories().length > 0) {
+          <div class="categories">
+            @for (category of categories(); track category.key) {
+              <button
+                type="button"
+                class="category"
+                [attr.data-tone]="category.tone"
+                [attr.data-domain]="categoryDomain(category.key)"
+                (click)="openCategory(category)"
+              >
+                <span class="category-icon"
+                  ><gr-domain-icon
+                    [domain]="
+                      category.pendingType?.includes('WEIGH')
+                        ? 'weight'
+                        : category.key.includes('calving')
+                          ? 'reproduction'
+                          : category.key.includes('planner')
+                            ? 'planner'
+                            : 'health'
+                    "
+                    size="md" /></span
+                ><span
+                  ><strong>{{ category.title }}</strong
+                  ><small
+                    >{{ category.count }}
+                    {{ category.count === 1 ? 'situação' : 'situações' }}</small
+                  ></span
+                ><b>{{ category.count }}</b
+                ><span class="arrow" aria-hidden="true">›</span>
+              </button>
+            }
+          </div>
+        }
       </div>
     }
   </section>`,
@@ -219,6 +226,12 @@ export function selectFocusCategories(summary: {
         display: grid;
         grid-template-columns: minmax(0, 1.45fr) minmax(20rem, 0.95fr);
         gap: 0.65rem;
+      }
+      .focus-grid[data-secondary-count='0'] {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .focus-grid.no-hero {
+        grid-template-columns: minmax(0, 1fr);
       }
       .hero {
         position: relative;
@@ -332,12 +345,40 @@ export function selectFocusCategories(summary: {
         align-content: start;
         gap: 0.5rem;
       }
-      .categories:has(> .category:only-child) {
+      .focus-grid[data-secondary-count='1'] .categories,
+      .focus-grid[data-secondary-count='2'] .categories {
         grid-template-columns: 1fr;
+        grid-template-rows: repeat(var(--secondary-count), minmax(0, 1fr));
       }
-      .categories:has(> .category:only-child) .category {
-        min-height: 100%;
+      .focus-grid[data-secondary-count='1'] .categories {
+        --secondary-count: 1;
+      }
+      .focus-grid[data-secondary-count='2'] .categories {
+        --secondary-count: 2;
+      }
+      .focus-grid[data-secondary-count='1'] .category,
+      .focus-grid[data-secondary-count='2'] .category {
         align-content: center;
+      }
+      .focus-grid[data-secondary-count='1'] .category {
+        grid-template-columns: 2.8rem 1fr auto;
+        gap: 0.7rem;
+        padding: 1rem;
+      }
+      .focus-grid[data-secondary-count='1'] .category-icon {
+        width: 2.8rem;
+        height: 2.8rem;
+        border-radius: 0.7rem;
+      }
+      .focus-grid[data-secondary-count='1'] .category strong {
+        font-size: 0.9rem;
+      }
+      .focus-grid[data-secondary-count='1'] .category small {
+        font-size: 0.74rem;
+      }
+      .focus-grid[data-secondary-count='1'] .category b {
+        font-size: 0.88rem;
+        padding: 0.25rem 0.5rem;
       }
       .category {
         min-width: 0;
@@ -453,9 +494,16 @@ export function selectFocusCategories(summary: {
         .focus-grid {
           grid-template-columns: 1fr;
         }
+        .focus-grid[data-secondary-count='0'] {
+          grid-template-columns: 1fr;
+        }
+        .focus-grid[data-secondary-count='1'] .categories,
+        .focus-grid[data-secondary-count='2'] .categories {
+          grid-template-rows: auto;
+        }
       }
       @media (max-width: 40rem) {
-        .categories {
+        .focus-grid[data-secondary-count] .categories {
           grid-template-columns: 1fr;
         }
         .loading {

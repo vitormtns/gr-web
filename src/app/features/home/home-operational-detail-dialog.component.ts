@@ -12,6 +12,7 @@ import { Observable, Subscription } from 'rxjs';
 import { ContextStore } from '../../core/context/context.store';
 import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
 import { DialogComponent } from '../../design-system/surfaces/surfaces';
+import { DomainIconComponent, DomainIconName } from '../../design-system/primitives/domain-icon';
 import { HerdApi } from '../herd/herd-api.service';
 import {
   PendingWorkItem,
@@ -34,9 +35,19 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
     ErrorStateComponent,
     SkeletonComponent,
     ActivityChartComponent,
+    DomainIconComponent,
   ],
   template: `<gr-dialog [open]="true" size="lg" (closed)="closed.emit()">
-    <strong dialog-title>{{ title() }}</strong>
+    <div dialog-title class="detail-heading">
+      <span class="heading-icon" aria-hidden="true"
+        ><gr-domain-icon [domain]="icon()" size="md"
+      /></span>
+      <span class="heading-copy"
+        ><small aria-hidden="true">{{ eyebrow() }}</small
+        ><strong>{{ title() }}</strong
+        ><span class="heading-description" aria-hidden="true">{{ description() }}</span></span
+      >
+    </div>
     <div class="detail-body">
       @switch (request().kind) {
         @case ('metric') {
@@ -52,17 +63,31 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
                     <div>
                       <h3>Por sexo</h3>
                       @for (entry of entries(overview.herdSnapshot.bySex); track entry[0]) {
-                        <p>
-                          {{ domainLabel(entry[0]) }} <b>{{ number(entry[1]) }}</b>
-                        </p>
+                        <div class="breakdown-item">
+                          <span class="item-line"
+                            ><span>{{ domainLabel(entry[0]) }}</span
+                            ><b>{{ number(entry[1]) }}</b></span
+                          ><span class="microbar" aria-hidden="true"
+                            ><span
+                              [style.width.%]="share(entry[1], overview.herdSnapshot.activeAnimals)"
+                            ></span
+                          ></span>
+                        </div>
                       }
                     </div>
                     <div>
                       <h3>Por categoria</h3>
                       @for (entry of entries(overview.herdSnapshot.byCategory); track entry[0]) {
-                        <p>
-                          {{ domainLabel(entry[0]) }} <b>{{ number(entry[1]) }}</b>
-                        </p>
+                        <div class="breakdown-item">
+                          <span class="item-line"
+                            ><span>{{ domainLabel(entry[0]) }}</span
+                            ><b>{{ number(entry[1]) }}</b></span
+                          ><span class="microbar" aria-hidden="true"
+                            ><span
+                              [style.width.%]="share(entry[1], overview.herdSnapshot.activeAnimals)"
+                            ></span
+                          ></span>
+                        </div>
                       }
                     </div>
                   </div>
@@ -197,7 +222,7 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
         }
         @case ('urgency') {
           @if (urgencyItem(); as item) {
-            <div class="summary">
+            <div class="summary narrative">
               <strong>{{ item.title }}</strong
               ><span>{{ item.context }}</span>
             </div>
@@ -291,6 +316,51 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
       :host {
         display: contents;
       }
+      :host ::ng-deep gr-dialog dialog header {
+        background: linear-gradient(110deg, #f0f8f3, #fff);
+        border-bottom-color: #dcebe2;
+      }
+      .detail-heading {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+      }
+      .heading-icon {
+        flex: 0 0 2.55rem;
+        width: 2.55rem;
+        height: 2.55rem;
+        display: grid;
+        place-items: center;
+        border-radius: 0.7rem;
+        background: #dcefe4;
+        color: #076b47;
+      }
+      .heading-copy {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        gap: 0.05rem;
+      }
+      .heading-copy small {
+        color: #087250;
+        font-size: 0.63rem;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        font-weight: 800;
+      }
+      .heading-copy strong {
+        color: #173238;
+        font-family: var(--font-display);
+        font-size: 1.16rem;
+        line-height: 1.15;
+      }
+      .heading-description {
+        color: #58706c;
+        font-size: 0.72rem;
+        font-weight: 450;
+        letter-spacing: 0;
+      }
       .detail-body {
         display: grid;
         gap: 0.85rem;
@@ -298,17 +368,25 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
       }
       .summary {
         display: flex;
-        flex-wrap: wrap;
-        align-items: baseline;
-        gap: 0.5rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.05rem;
         padding: 1rem 1.15rem;
         border-radius: 0.7rem;
-        border: 1px solid #d9ebe1;
-        background: linear-gradient(110deg, #edf7f2, #f7fbf9);
+        border: 1px solid #cfe6d9;
+        background:
+          radial-gradient(circle at 90% 20%, #dcefe3, transparent 30%),
+          linear-gradient(110deg, #edf7f2, #f7fbf9);
       }
       .summary strong {
         font-family: var(--font-display);
-        font-size: 1.4rem;
+        font-size: 2.05rem;
+        line-height: 1.1;
+        letter-spacing: -0.035em;
+      }
+      .summary.narrative strong {
+        font-size: 1.35rem;
+        letter-spacing: -0.02em;
       }
       .summary span {
         font-size: 0.8rem;
@@ -320,24 +398,57 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
         gap: 1rem;
       }
       .breakdown > div {
-        padding: 0.7rem 0.8rem;
+        padding: 0.85rem;
         border: 1px solid #e4eee9;
         border-radius: 0.65rem;
-        background: #fbfdfc;
+        background: linear-gradient(155deg, #fff, #f6fbf8);
       }
       h3 {
-        font-size: 0.85rem;
-        margin: 0.2rem 0;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin: 0 0 0.5rem;
+        color: #2b6250;
       }
-      .breakdown p,
+      .breakdown-item {
+        padding: 0.4rem 0;
+        border-top: 1px solid #e5eee9;
+      }
+      .item-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        color: #3b5657;
+        font-size: 0.78rem;
+      }
+      .item-line b {
+        color: #173238;
+        font-variant-numeric: tabular-nums;
+      }
+      .microbar {
+        display: block;
+        height: 0.3rem;
+        margin-top: 0.3rem;
+        overflow: hidden;
+        border-radius: 1rem;
+        background: #e6f0e9;
+      }
+      .microbar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #66bd83, #087b51);
+      }
       li,
       .attention-list li {
         display: flex;
         justify-content: space-between;
         gap: 1rem;
         margin: 0.25rem 0;
-        padding: 0.4rem;
-        border-bottom: 1px solid #e0eae6;
+        padding: 0.55rem 0.7rem;
+        border: 1px solid #e1eee7;
+        border-radius: 0.45rem;
+        background: #f8fcf9;
         font-size: 0.8rem;
       }
       ul {
@@ -354,7 +465,7 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
         font-size: 0.8rem;
       }
       .detail-body > a {
-        justify-self: start;
+        justify-self: end;
         display: inline-flex;
         align-items: center;
         min-height: 2.25rem;
@@ -371,9 +482,17 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
         outline-offset: 2px;
       }
       dl {
-        display: flex;
-        gap: 2rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+        margin: 0;
         font-size: 0.8rem;
+      }
+      dl > div {
+        padding: 0.7rem;
+        border: 1px solid #e1eee7;
+        border-radius: 0.55rem;
+        background: #f8fcf9;
       }
       dt {
         color: #60747b;
@@ -388,6 +507,8 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
       }
       .table-wrap {
         overflow-x: auto;
+        border: 1px solid #dae9e1;
+        border-radius: 0.65rem;
       }
       table {
         width: 100%;
@@ -401,7 +522,14 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
         border-bottom: 1px solid #dfe9e6;
       }
       th {
-        background: #f2f7f5;
+        background: #eaf4ee;
+        color: #2c5b4b;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      tbody tr:nth-child(even) {
+        background: #f8fbf9;
       }
       .secondary {
         justify-self: start;
@@ -414,6 +542,9 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
       }
       @media (max-width: 36rem) {
         .breakdown {
+          grid-template-columns: 1fr;
+        }
+        dl {
           grid-template-columns: 1fr;
         }
       }
@@ -549,6 +680,57 @@ export class HomeOperationalDetailDialogComponent {
   }
   agendaItems(date: string) {
     return (this.store.agenda().value?.items ?? []).filter((item) => item.operationalDate === date);
+  }
+  icon(): DomainIconName {
+    const req = this.request();
+    if (req.kind === 'metric') return req.metric;
+    if (req.kind === 'pending')
+      return req.pendingType.includes('WEIGH')
+        ? 'weight'
+        : req.pendingType.includes('CALV')
+          ? 'reproduction'
+          : req.pendingType.includes('PLANNER')
+            ? 'planner'
+            : 'health';
+    if (req.kind === 'urgency') return req.item.domain;
+    if (req.kind === 'agenda-day') return 'agenda';
+    return {
+      movements: 'movement',
+      weights: 'weight',
+      treatments: 'health',
+      breedings: 'reproduction',
+      calvings: 'calving',
+      births: 'herd',
+    }[req.activity] as DomainIconName;
+  }
+  eyebrow(): string {
+    const req = this.request();
+    return req.kind === 'metric'
+      ? 'Resumo operacional'
+      : req.kind === 'pending'
+        ? 'Pendência do rebanho'
+        : req.kind === 'urgency'
+          ? 'Foco da operação'
+          : req.kind === 'agenda-day'
+            ? 'Agenda operacional'
+            : 'Indicadores da fazenda';
+  }
+  description(): string {
+    const req = this.request();
+    if (req.kind === 'metric')
+      return {
+        herd: 'Visão atual do rebanho.',
+        territory: 'Ocupação dos piquetes da fazenda.',
+        location: 'Vínculo dos animais aos piquetes.',
+        attention: 'Situações que precisam de acompanhamento.',
+      }[req.metric];
+    if (req.kind === 'pending') return 'Animais e prazos identificados na operação.';
+    if (req.kind === 'urgency') return 'Prazo, origem e registros relacionados.';
+    if (req.kind === 'agenda-day') return 'Atividades programadas para a data selecionada.';
+    return 'Atividade registrada no período selecionado.';
+  }
+  share(value: number, total: number): number {
+    return total > 0 ? Math.min(100, Math.max(0, (value / total) * 100)) : 0;
   }
   title(): string {
     const req = this.request();
