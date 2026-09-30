@@ -162,10 +162,11 @@ export class MenuComponent {}
 
 @Component({
   selector: 'gr-dialog',
-  template: `<dialog #dialog [attr.aria-labelledby]="titleId" (cancel)="requestClose($event)"><header><div [id]="titleId"><ng-content select="[dialog-title]" /></div><button type="button" aria-label="Fechar janela" (click)="closed.emit()">×</button></header><div class="body"><ng-content /></div><footer><ng-content select="[dialog-actions]" /></footer></dialog>`,
+  template: `<dialog #dialog [attr.aria-labelledby]="titleId" [attr.data-size]="size" (cancel)="requestClose($event)"><header><div [id]="titleId"><ng-content select="[dialog-title]" /></div><button type="button" aria-label="Fechar janela" (click)="closed.emit()">×</button></header><div class="body"><ng-content /></div><footer><ng-content select="[dialog-actions]" /></footer></dialog>`,
   styles: [`
     dialog {
       width: min(34rem, calc(100vw - 2rem));
+      max-height: min(86dvh, 54rem);
       padding: 0;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-xl);
@@ -174,6 +175,9 @@ export class MenuComponent {}
       box-shadow: var(--shadow-floating);
       animation: dialog-in var(--duration-standard) var(--ease-emphasized);
     }
+    dialog[data-size="sm"] { width: min(28rem, calc(100vw - 2rem)); }
+    dialog[data-size="lg"] { width: min(48rem, calc(100vw - 2rem)); }
+    dialog[data-size="xl"] { width: min(64rem, calc(100vw - 2rem)); }
     dialog::backdrop {
       background: rgba(11, 25, 16, 0.48);
       backdrop-filter: blur(8px);
@@ -210,6 +214,8 @@ export class MenuComponent {}
     }
     .body {
       padding: var(--space-6);
+      overflow-y: auto;
+      max-height: calc(min(86dvh, 54rem) - 9rem);
     }
     footer {
       display: flex;
@@ -226,6 +232,7 @@ export class DialogComponent implements AfterViewInit, OnChanges {
   private static nextId = 0;
   readonly titleId = `gr-dialog-title-${++DialogComponent.nextId}`;
   @Input() open = false;
+  @Input() size: 'sm' | 'md' | 'lg' | 'xl' = 'md';
   @Output() closed = new EventEmitter<void>();
   @ViewChild('dialog') dialog?: ElementRef<HTMLDialogElement>;
   ngAfterViewInit(): void { this.sync(); }

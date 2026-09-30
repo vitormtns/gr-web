@@ -9,7 +9,7 @@ import { ActivityBucket, ActivityTotals, DashboardOverview, HerdSnapshot, Period
 const empty = typeof location !== 'undefined' && new URLSearchParams(location.search).get('estado') === 'vazio';
 const sparse = typeof location !== 'undefined' && new URLSearchParams(location.search).get('estado') === 'esparso';
 const partial = typeof location !== 'undefined' && new URLSearchParams(location.search).get('estado') === 'falha';
-const now = new Date('2026-09-15T12:00:00Z');
+const now = new Date();
 const date = (offset: number) => new Date(now.getTime() + offset * 86400000).toISOString().slice(0, 10);
 const snapshot: HerdSnapshot = sparse
   ? { activeAnimals: 1, bySex: {}, byCategory: {}, byPaddock: [{ id: 'n', name: 'Piquete Norte', total: 0 }, { id: 's', name: 'Piquete Sul', total: 0 }], unlocatedAnimals: 1 }
@@ -41,8 +41,8 @@ export const dashboardShowcaseProviders = [
       return of({ ...overview, period: activity.period, periodActivity: activity.totals, insights: { ...overview.insights, herdActivity: { ...overview.insights.herdActivity, births: activity.totals.births, movements: activity.totals.movements, from: activity.period.from, to: activity.period.to } } });
     },
     activity: (selection: PeriodSelection) => partial ? unavailable() : of(demoActivity(selection)),
-    attention: () => of({ referenceDate: date(0), summary: {}, preview }),
-    agenda: () => of({ items: preview.map(item => ({ ...item, animalId: item.animal?.id ?? null, identification: item.animal?.identification ?? null, name: item.animal?.name ?? null })), totalPages: 1 }),
+    attention: () => of({ referenceDate: date(0), summary: { ...overview.attention, plannerOpen: overview.attention.openPlannerItems, plannerOverdue: overview.attention.overduePlannerItems }, preview }),
+    agendaPage: () => of({ items: preview.map(item => ({ ...item, animalId: item.animal?.id ?? null, identification: item.animal?.identification ?? null, name: item.animal?.name ?? null })), page: 0, size: 100, totalElements: preview.length, totalPages: 1 }),
     paddocks: () => of({ items: empty ? [] : (sparse ? paddockNames.slice(0, 2) : paddockNames).map(([id, name, occupancy]) => ({ id, name, code: null, status: 'ACTIVE', version: 1, occupancy })), totalPages: 1 }),
   }) },
 ];

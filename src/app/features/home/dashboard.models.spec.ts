@@ -22,6 +22,12 @@ describe('contratos do dashboard', () => {
     const first = mapQueueItem({ source: 'MANUAL', kind: 'WEIGHING', operationalDate: '2026-09-15', stableId: '1', summary: 'Pesar lote', animal: null, plannerItemId: 'p', pendingWorkType: null, pregnancyId: null, status: 'OPEN' });
     const second = mapQueueItem({ source: 'DERIVED', kind: 'CALVING', operationalDate: '2026-09-16', stableId: '2', summary: 'Parto próximo', animal: null, plannerItemId: null, pendingWorkType: null, pregnancyId: 'g', status: null });
     expect([first, second].map(item => item.source)).toEqual(['MANUAL', 'DERIVED']);
+    expect(first.plannerItemId).toBe('p');
+    expect(second.pregnancyId).toBe('g');
+  });
+  it('transporta metadados de pendência e animal sem inferir pelo título', () => {
+    const entry = mapQueueItem({source:'DERIVED',kind:'WEIGHING',operationalDate:'2026-09-16',stableId:'weight-1',summary:'Conferir animal',animal:{id:'animal-1',identification:'BR-1',name:'Branca'},plannerItemId:null,pendingWorkType:'WEIGHING_DUE',pregnancyId:null,status:null});
+    expect(entry).toMatchObject({animalId:'animal-1',pendingWorkType:'WEIGHING_DUE',plannerItemId:null,pregnancyId:null});
   });
   it('aceita contagens de brucelose no resumo de atenção sem opcionais', () => {
     const summary: AttentionSummary = { vaccinationDue: 24, dewormingDue: 4, weighingDue: 18, calvingUpcoming: 3, calvingOverdue: 1, plannerOpen: 7, plannerOverdue: 2, brucellosisDue: 3, brucellosisWindowMissed: 2 };

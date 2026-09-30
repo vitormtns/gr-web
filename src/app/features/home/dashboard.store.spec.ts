@@ -18,11 +18,11 @@ describe('DashboardStore', () => {
   const contextVersion = signal(1);
   const selectedOrganization = signal({ organizationId: 'org', role: 'VIEWER' });
   const selectedFarm = signal({ farmId: 'A' });
-  let api: { overview: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; attention: ReturnType<typeof vi.fn>; agenda: ReturnType<typeof vi.fn>; paddocks: ReturnType<typeof vi.fn> };
+  let api: { overview: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; attention: ReturnType<typeof vi.fn>; agendaPage: ReturnType<typeof vi.fn>; paddocks: ReturnType<typeof vi.fn> };
   let store: DashboardStore;
   beforeEach(() => {
     status.set('ready'); transitionPending.set(false); contextVersion.set(1); selectedFarm.set({ farmId: 'A' });
-    api = { overview: vi.fn(() => of(overview('A'))), activity: vi.fn(() => of(activity('A'))), attention: vi.fn(() => of({ referenceDate: '', summary: {}, preview: [] })), agenda: vi.fn(() => of({ items: [] })), paddocks: vi.fn(() => of({ items: [], totalPages: 0 })) };
+    api = { overview: vi.fn(() => of(overview('A'))), activity: vi.fn(() => of(activity('A'))), attention: vi.fn(() => of({ referenceDate: '', summary: {}, preview: [] })), agendaPage: vi.fn(() => of({ items: [], page: 0, size: 100, totalElements: 0, totalPages: 1 })), paddocks: vi.fn(() => of({ items: [], totalPages: 0 })) };
     TestBed.configureTestingModule({ providers: [DashboardStore, { provide: DashboardApiClient, useValue: api }, { provide: ContextStore, useValue: { status, transitionPending, contextVersion, selectedOrganization, selectedFarm } }] });
     store = TestBed.inject(DashboardStore); TestBed.tick();
   });
@@ -56,5 +56,17 @@ describe('DashboardStore', () => {
   it('mantém overview após falha de attention', () => {
     api.attention.mockReturnValueOnce(throwError(() => new AppError('unavailable', 'Falha', 503, 'unavailable')));
     store.retry('attention'); expect(store.attention().status).toBe('error'); expect(store.overview().status).toBe('ready');
+  });
+  it('busca a agenda em uma única janela de sete dias', () => {
+    const [from,to,page,size]=api.agendaPage.mock.calls[0];
+    expect(page).toBe(0);expect(size).toBeUndefined();
+    const start=new Date(`${from}T12:00:00`);const end=new Date(`${to}T12:00:00`);
+    expect(Math.round((end.getTime()-start.getTime())/86400000)).toBe(6);
+  });
+  it('concatena todas as páginas da janela preservando a ordem', () => {
+    api.agendaPage.mockImplementation((_from:string,_to:string,page:number)=>of(page===0?{items:[{stableId:'a'}],page:0,size:100,totalElements:2,totalPages:2}:{items:[{stableId:'b'}],page:1,size:100,totalElements:2,totalPages:2}));
+    store.retry('agenda');
+    expect(store.agenda().value?.items.map(item=>item.stableId)).toEqual(['a','b']);
+    expect(api.agendaPage).toHaveBeenCalledTimes(3);
   });
 });
