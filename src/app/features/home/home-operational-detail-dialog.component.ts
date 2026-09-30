@@ -293,7 +293,7 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
       }
       .detail-body {
         display: grid;
-        gap: 1rem;
+        gap: 0.85rem;
         color: #183238;
       }
       .summary {
@@ -301,9 +301,10 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
         flex-wrap: wrap;
         align-items: baseline;
         gap: 0.5rem;
-        padding: 0.9rem;
+        padding: 1rem 1.15rem;
         border-radius: 0.7rem;
-        background: #edf7f2;
+        border: 1px solid #d9ebe1;
+        background: linear-gradient(110deg, #edf7f2, #f7fbf9);
       }
       .summary strong {
         font-family: var(--font-display);
@@ -317,6 +318,12 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1rem;
+      }
+      .breakdown > div {
+        padding: 0.7rem 0.8rem;
+        border: 1px solid #e4eee9;
+        border-radius: 0.65rem;
+        background: #fbfdfc;
       }
       h3 {
         font-size: 0.85rem;
@@ -345,6 +352,23 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
         color: #076b47;
         font-weight: 700;
         font-size: 0.8rem;
+      }
+      .detail-body > a {
+        justify-self: start;
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.25rem;
+        padding: 0.45rem 0.7rem;
+        border: 1px solid #b8dec9;
+        border-radius: 0.5rem;
+        background: #eaf6ef;
+        text-decoration: none;
+      }
+      .detail-body > a:hover,
+      .detail-body > a:focus-visible {
+        background: #d9f0e3;
+        outline: 2px solid #0a7950;
+        outline-offset: 2px;
       }
       dl {
         display: flex;

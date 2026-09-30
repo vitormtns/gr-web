@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Output, computed } from '@angular/core';
 import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
 import { DashboardStore } from './dashboard.store';
+import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
 import { todayLocalIso } from './operational-urgency';
 import type { HomeDetailRequest } from './home-detail.models';
 
-export function agendaWindowDays(
+export function agendaWindowDays<T extends { operationalDate: string; summary: string }>(
   from: string,
-  items: readonly { operationalDate: string; summary: string }[],
+  items: readonly T[],
 ) {
   const counts = new Map<string, number>();
   for (const item of items)
@@ -35,10 +36,10 @@ export function agendaWindowDays(
 
 @Component({
   selector: 'app-home-agenda-section',
-  imports: [ErrorStateComponent, SkeletonComponent],
+  imports: [ErrorStateComponent, SkeletonComponent, DomainIconComponent],
   template: `<section class="agenda-section" aria-labelledby="agenda-title">
     <header>
-      <span class="mark" aria-hidden="true">▦</span>
+      <span class="mark" aria-hidden="true"><gr-domain-icon domain="planner" size="md" /></span>
       <div>
         <h2 id="agenda-title">Agenda operacional</h2>
         <p>Próximos sete dias e atividades programadas.</p>
@@ -48,12 +49,14 @@ export function agendaWindowDays(
       @if ((store.agenda().value?.items?.length ?? 0) === 0) {
         <p class="empty-window">Nada programado nos próximos 7 dias.</p>
       }
-      <div class="days">
+      <div class="days" [class.all-empty]="allEmpty()">
         @for (day of days(); track day.iso) {
           <button
             type="button"
             class="day"
             [class.today]="$index === 0"
+            [class.tomorrow]="$index === 1"
+            [class.no-events]="day.count === 0"
             (click)="inspect.emit({ kind: 'agenda-day', date: day.iso })"
             [attr.aria-label]="day.label + ', ' + day.date + ', ' + day.count + ' atividades'"
           >
@@ -63,12 +66,17 @@ export function agendaWindowDays(
             ><small>{{ day.date }}</small>
             <span class="events">
               @for (item of day.items.slice(0, 3); track $index) {
-                <span class="event">{{ item.summary }}</span>
+                <span class="event" [attr.data-kind]="item.kind"
+                  ><i aria-hidden="true"></i><span>{{ item.summary }}</span>
+                  @if (item.status === 'OVERDUE') {
+                    <b>Atrasada</b>
+                  }
+                </span>
               }
               @if (day.count > 3) {
                 <span class="more">Mais {{ day.count - 3 }} atividades</span>
               }
-              @if (day.count === 0) {
+              @if (day.count === 0 && !allEmpty()) {
                 <span class="empty">Nenhuma atividade</span>
               }
             </span>
@@ -94,7 +102,7 @@ export function agendaWindowDays(
         padding: 1rem;
         border: 1px solid #cce5d6;
         border-radius: 1.15rem;
-        background: #edf7f1;
+        background: linear-gradient(120deg, #edf7f1, #f2faf5);
       }
       header {
         display: flex;
@@ -126,6 +134,9 @@ export function agendaWindowDays(
         margin: 0 0 0.55rem;
         color: #345c4c;
         font-weight: 700;
+        padding: 0.45rem 0.65rem;
+        border-radius: 0.5rem;
+        background: #ffffffad;
       }
       .days,
       .loading {
@@ -155,6 +166,25 @@ export function agendaWindowDays(
         background: #fff;
         border-color: #55ad7e;
         box-shadow: 0 4px 15px #18573816;
+      }
+      .day.tomorrow {
+        border-color: #9bceae;
+        background: #fafffb;
+      }
+      .day.no-events:not(.today):not(.tomorrow) {
+        background: #f8fbf9;
+        color: #61756b;
+      }
+      .day.no-events .day-top b {
+        background: #edf3ef;
+        color: #6f8178;
+      }
+      .days.all-empty .day {
+        min-height: 4.8rem;
+      }
+      .days.all-empty .events,
+      .days.all-empty .day-action {
+        display: none;
       }
       .day:hover,
       .day:focus-visible {
@@ -191,12 +221,39 @@ export function agendaWindowDays(
         margin-top: 0.4rem;
       }
       .event {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        min-width: 0;
+        overflow: hidden;
+        font-size: 0.72rem;
+      }
+      .event i {
+        flex: 0 0 0.36rem;
+        width: 0.36rem;
+        height: 0.36rem;
+        border-radius: 50%;
+        background: #19a56e;
+      }
+      .event span {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        padding-left: 0.45rem;
-        border-left: 3px solid #19a56e;
-        font-size: 0.72rem;
+      }
+      .event b {
+        flex: 0 0 auto;
+        color: #b42331;
+        font-size: 0.62rem;
+      }
+      .event[data-kind*='VACCIN'] i,
+      .event[data-kind*='BRUC'] i {
+        background: #d94747;
+      }
+      .event[data-kind*='WEIGH'] i {
+        background: #7563bf;
+      }
+      .event[data-kind*='CALV'] i {
+        background: #d58b2d;
       }
       .empty,
       .more {
@@ -233,5 +290,6 @@ export class HomeAgendaSectionComponent {
   readonly days = computed(() =>
     agendaWindowDays(todayLocalIso(), this.store.agenda().value?.items ?? []),
   );
+  readonly allEmpty = computed(() => this.days().every((day) => day.count === 0));
   constructor(readonly store: DashboardStore) {}
 }

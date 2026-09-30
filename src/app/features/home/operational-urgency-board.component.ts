@@ -119,12 +119,24 @@ export function selectFocusCategories(summary: {
             <span class="badge">{{ item.level === 'overdue' ? 'URGENTE' : 'PRIORIDADE' }}</span
             ><span class="hero-icon"><gr-domain-icon [domain]="item.domain" size="lg" /></span
             ><span class="hero-copy"
-              ><small
-                >{{ item.source === 'MANUAL' ? 'Planejado' : 'Identificado pelos dados' }} ·
-                {{ date(item.date) }}</small
-              ><strong>{{ item.title }}</strong
-              ><span>{{ item.context || 'Acompanhe esta atividade na agenda.' }}</span
-              ><em>{{ formatUrgencyLabel(item.daysUntil) }}</em></span
+              ><strong>{{ item.title }}</strong></span
+            ><span class="hero-art" aria-hidden="true"
+              ><gr-domain-icon [domain]="item.domain" size="lg" /></span
+            ><span class="hero-facts">
+              @if (item.context) {
+                <span
+                  ><b>{{ item.animalId ? 'Animal' : 'Contexto' }}</b
+                  >{{ item.context }}</span
+                >
+              }
+              <span><b>Data</b>{{ date(item.date) }}</span>
+              @if (formatUrgencyLabel(item.daysUntil); as deadline) {
+                <span><b>Prazo</b>{{ deadline }}</span>
+              }
+              <span
+                ><b>Origem</b
+                >{{ item.source === 'MANUAL' ? 'Planejado' : 'Dados da fazenda' }}</span
+              > </span
             ><span class="hero-action">Ver detalhes <span aria-hidden="true">→</span></span>
           </button>
         }
@@ -134,6 +146,7 @@ export function selectFocusCategories(summary: {
               type="button"
               class="category"
               [attr.data-tone]="category.tone"
+              [attr.data-domain]="categoryDomain(category.key)"
               (click)="openCategory(category)"
             >
               <span class="category-icon"
@@ -169,9 +182,9 @@ export function selectFocusCategories(summary: {
       }
       .focus {
         padding: 1rem;
-        border: 1px solid #efb7b0;
+        border: 1px solid #f0d8d4;
         border-radius: 1.15rem;
-        background: linear-gradient(105deg, #fff6f4, #ffeceb);
+        background: linear-gradient(105deg, #fffaf9, #fff6f5);
         box-shadow: 0 6px 24px #7f2d1b0d;
       }
       header {
@@ -208,15 +221,19 @@ export function selectFocusCategories(summary: {
         gap: 0.65rem;
       }
       .hero {
+        position: relative;
+        overflow: hidden;
         min-height: 13rem;
         display: grid;
         grid-template-columns: 3rem 1fr;
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: auto 1fr auto auto;
         gap: 0.55rem;
         padding: 1rem;
         border: 1px solid #e9aaa7;
         border-radius: 0.8rem;
-        background: linear-gradient(120deg, #fff, #fff6f2);
+        background:
+          radial-gradient(circle at 87% 40%, #ffe6e2, transparent 37%),
+          linear-gradient(120deg, #fff, #fff6f2);
         text-align: left;
         color: #162d38;
         cursor: pointer;
@@ -241,6 +258,7 @@ export function selectFocusCategories(summary: {
         color: #ca2231;
       }
       .hero-copy {
+        z-index: 1;
         display: flex;
         flex-direction: column;
         gap: 0.3rem;
@@ -254,6 +272,38 @@ export function selectFocusCategories(summary: {
         font-size: 1.35rem;
         line-height: 1.1;
       }
+      .hero-art {
+        position: absolute;
+        right: 10%;
+        top: 25%;
+        opacity: 0.14;
+        color: #bf2434;
+        transform: scale(4.7);
+        pointer-events: none;
+      }
+      .hero-facts {
+        z-index: 1;
+        grid-column: 1/-1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem 1rem;
+        padding-top: 0.45rem;
+        border-top: 1px solid #f2d5d1;
+      }
+      .hero-facts > span {
+        display: flex;
+        flex-direction: column;
+        max-width: 10rem;
+        color: #344d55;
+        font-size: 0.68rem;
+        line-height: 1.2;
+      }
+      .hero-facts b {
+        color: #9a4d51;
+        font-size: 0.58rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
       .hero-copy span {
         font-size: 0.76rem;
         color: #53626f;
@@ -265,6 +315,7 @@ export function selectFocusCategories(summary: {
         font-weight: 800;
       }
       .hero-action {
+        z-index: 1;
         grid-column: 1/-1;
         justify-self: end;
         padding: 0.4rem 0.75rem;
@@ -281,6 +332,13 @@ export function selectFocusCategories(summary: {
         align-content: start;
         gap: 0.5rem;
       }
+      .categories:has(> .category:only-child) {
+        grid-template-columns: 1fr;
+      }
+      .categories:has(> .category:only-child) .category {
+        min-height: 100%;
+        align-content: center;
+      }
       .category {
         min-width: 0;
         display: grid;
@@ -294,6 +352,7 @@ export function selectFocusCategories(summary: {
         text-align: left;
         color: #1a3038;
         cursor: pointer;
+        box-shadow: 0 2px 8px #653b3410;
       }
       .category-icon {
         display: grid;
@@ -326,6 +385,42 @@ export function selectFocusCategories(summary: {
       .category[data-tone='normal'] b {
         background: #e3f4e9;
         color: #067346;
+      }
+      .category[data-tone='danger'] {
+        border-color: #f2c5c8;
+        background: #fff9f9;
+      }
+      .category[data-tone='danger'] .category-icon {
+        background: #ffe3e6;
+        color: #be2433;
+      }
+      .category[data-tone='warning'] {
+        border-color: #eed9b8;
+        background: #fffdf7;
+      }
+      .category[data-tone='warning'] b {
+        background: #fff0d4;
+        color: #9b5510;
+      }
+      .category[data-domain='weight'] {
+        border-color: #d8d7ef;
+        background: #faf9ff;
+      }
+      .category[data-domain='weight'] .category-icon {
+        background: #eae8fb;
+        color: #6253a8;
+      }
+      .category[data-domain='weight'] b {
+        background: #eae8fb;
+        color: #6253a8;
+      }
+      .category[data-domain='reproduction'][data-tone='normal'] {
+        border-color: #cde8d9;
+        background: #f8fdf9;
+      }
+      .category[data-domain='reproduction'][data-tone='normal'] .category-icon {
+        background: #def2e5;
+        color: #08764c;
       }
       .hero:hover,
       .category:hover,
@@ -425,6 +520,15 @@ export class OperationalUrgencyBoardComponent {
     this.store.retry('agenda');
   }
   formatUrgencyLabel = formatUrgencyLabel;
+  categoryDomain(key: string): string {
+    return key.includes('weigh')
+      ? 'weight'
+      : key.includes('calving')
+        ? 'reproduction'
+        : key.includes('planner')
+          ? 'planner'
+          : 'health';
+  }
   date(value: string): string {
     const [year, month, day] = value.split('-');
     return `${day}/${month}/${year}`;

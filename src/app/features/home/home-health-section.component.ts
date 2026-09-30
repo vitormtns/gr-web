@@ -13,14 +13,15 @@ import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feed
 import { ParityApi } from '../herd/parity-api.service';
 import { ProcedureCoverage } from '../herd/parity.models';
 import { DashboardStore } from './dashboard.store';
+import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
 import type { HomeDetailRequest } from './home-detail.models';
 
 @Component({
   selector: 'app-home-health-section',
-  imports: [RouterLink, ErrorStateComponent, SkeletonComponent],
+  imports: [RouterLink, ErrorStateComponent, SkeletonComponent, DomainIconComponent],
   template: `<section class="health-section" aria-labelledby="health-title">
     <header>
-      <span class="mark" aria-hidden="true">✚</span>
+      <span class="mark" aria-hidden="true"><gr-domain-icon domain="health" size="md" /></span>
       <div>
         <h2 id="health-title">Sanitário / Vacinas / Saúde</h2>
         <p>Registros e necessidades sanitárias do rebanho.</p>
@@ -30,16 +31,17 @@ import type { HomeDetailRequest } from './home-detail.models';
       <div class="health-grid">
         <button
           type="button"
-          class="health-card"
+          class="health-card vaccination"
           (click)="pending('VACCINATION_DUE', 'Vacinação pendente')"
         >
-          <span class="tag">Vacinação</span
+          <span class="health-icon"><gr-domain-icon domain="health" size="md" /></span
+          ><span class="tag">Vacinação</span
           ><strong>{{ number(overview.insights.healthDue.vaccinationDue) }}</strong
           ><small>pendências identificadas</small><span class="action">Ver detalhes →</span>
         </button>
         <button
           type="button"
-          class="health-card"
+          class="health-card brucellosis"
           (click)="
             pending(
               overview.attention.brucellosisWindowMissed > 0
@@ -49,7 +51,8 @@ import type { HomeDetailRequest } from './home-detail.models';
             )
           "
         >
-          <span class="tag">Brucelose</span
+          <span class="health-icon"><gr-domain-icon domain="attention" size="md" /></span
+          ><span class="tag">Brucelose</span
           ><strong>{{ number(overview.attention.brucellosisWindowMissed) }}</strong
           ><small>janelas primárias perdidas</small
           ><small>{{ number(overview.attention.brucellosisDue) }} na janela</small
@@ -57,14 +60,16 @@ import type { HomeDetailRequest } from './home-detail.models';
         </button>
         <button
           type="button"
-          class="health-card"
+          class="health-card deworming"
           (click)="pending('DEWORMING_DUE', 'Vermifugação pendente')"
         >
-          <span class="tag">Vermifugação</span
+          <span class="health-icon"><gr-domain-icon domain="health" size="md" /></span
+          ><span class="tag">Vermifugação</span
           ><strong>{{ number(overview.insights.healthDue.dewormingDue) }}</strong
           ><small>pendências identificadas</small><span class="action">Ver detalhes →</span>
         </button>
         <div class="health-card coverage">
+          <span class="health-icon"><gr-domain-icon domain="health" size="md" /></span>
           <span class="tag">Aftosa · histórico</span>
           @if (coverageStatus() === 'ready' && coverage(); as data) {
             @if (denominator(data) > 0) {
@@ -92,6 +97,7 @@ import type { HomeDetailRequest } from './home-detail.models';
           <a routerLink="/relatorios" [queryParams]="{ report: 'health' }">Ver relatório →</a>
         </div>
         <div class="health-card reading">
+          <span class="health-icon"><gr-domain-icon domain="health" size="md" /></span>
           <span class="tag">Leitura sanitária no período</span>
           <div>
             <span>Vacinações</span
@@ -167,6 +173,8 @@ import type { HomeDetailRequest } from './home-detail.models';
         gap: 0.55rem;
       }
       .health-card {
+        position: relative;
+        overflow: hidden;
         min-width: 0;
         min-height: 9.5rem;
         display: flex;
@@ -176,7 +184,7 @@ import type { HomeDetailRequest } from './home-detail.models';
         padding: 0.85rem;
         border: 1px solid #dbece9;
         border-radius: 0.72rem;
-        background: rgba(255, 255, 255, 0.94);
+        background: linear-gradient(155deg, #fff 65%, #f2f8f6);
         text-align: left;
         color: #173237;
       }
@@ -191,6 +199,44 @@ import type { HomeDetailRequest } from './home-detail.models';
       .tag {
         font-size: 0.73rem;
         font-weight: 800;
+      }
+      .health-icon {
+        width: 2.05rem;
+        height: 2.05rem;
+        display: grid;
+        place-items: center;
+        border-radius: 0.58rem;
+        background: #e1f1e8;
+        color: #087259;
+        margin-bottom: 0.2rem;
+      }
+      .vaccination {
+        background: linear-gradient(155deg, #fff 55%, #e9f6ef);
+      }
+      .brucellosis {
+        background: linear-gradient(155deg, #fff 55%, #fff0f0);
+        border-color: #f1d9d9;
+      }
+      .brucellosis .health-icon {
+        background: #ffe5e5;
+        color: #be2938;
+      }
+      .brucellosis > strong {
+        color: #b82231;
+      }
+      .deworming {
+        background: linear-gradient(155deg, #fff 55%, #fff6e8);
+        border-color: #f0e3d0;
+      }
+      .deworming .health-icon {
+        background: #fff0d9;
+        color: #ae6d16;
+      }
+      .coverage {
+        background: linear-gradient(155deg, #fff 55%, #eaf8f1);
+      }
+      .reading .health-icon {
+        background: #d1e9df;
       }
       .health-card > strong {
         font-family: var(--font-display);

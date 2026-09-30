@@ -2,14 +2,15 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Output, computed } fr
 import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
 import { DashboardStore } from './dashboard.store';
 import { HomeMiniSeriesComponent } from './home-mini-series.component';
+import { DomainIconComponent, DomainIconName } from '../../design-system/primitives/domain-icon';
 import type { HomeActivityKind, HomeDetailRequest } from './home-detail.models';
 
 @Component({
   selector: 'app-home-indicators-section',
-  imports: [ErrorStateComponent, SkeletonComponent, HomeMiniSeriesComponent],
+  imports: [ErrorStateComponent, SkeletonComponent, HomeMiniSeriesComponent, DomainIconComponent],
   template: `<section class="indicators-section" aria-labelledby="indicators-title">
     <header>
-      <span class="mark" aria-hidden="true">▥</span>
+      <span class="mark" aria-hidden="true"><gr-domain-icon domain="movement" size="md" /></span>
       <div>
         <h2 id="indicators-title">Indicadores e leitura da fazenda</h2>
         <p>Atividade registrada no período selecionado.</p>
@@ -21,9 +22,12 @@ import type { HomeActivityKind, HomeDetailRequest } from './home-detail.models';
           <button
             type="button"
             class="indicator"
+            [attr.data-tone]="item.tone"
             (click)="inspect.emit({ kind: 'activity', activity: item.kind })"
           >
-            <span class="label">{{ item.label }}</span
+            <span class="indicator-icon"
+              ><gr-domain-icon [domain]="icon(item.kind)" size="md" /></span
+            ><span class="label">{{ item.label }}</span
             ><strong>{{ number(item.value) }}</strong
             ><small>no período</small>
             <app-home-mini-series [values]="item.values" [tone]="item.tone" />
@@ -87,6 +91,8 @@ import type { HomeActivityKind, HomeDetailRequest } from './home-detail.models';
         gap: 0.55rem;
       }
       .indicator {
+        position: relative;
+        overflow: hidden;
         min-width: 0;
         display: flex;
         flex-direction: column;
@@ -94,7 +100,7 @@ import type { HomeActivityKind, HomeDetailRequest } from './home-detail.models';
         padding: 0.75rem;
         border: 1px solid #e0eaf0;
         border-radius: 0.7rem;
-        background: rgba(255, 255, 255, 0.94);
+        background: linear-gradient(150deg, #fff 60%, #edf7f3);
         text-align: left;
         color: #173237;
         cursor: pointer;
@@ -107,6 +113,37 @@ import type { HomeActivityKind, HomeDetailRequest } from './home-detail.models';
       .label {
         font-size: 0.7rem;
         font-weight: 800;
+      }
+      .indicator-icon {
+        width: 2rem;
+        height: 2rem;
+        display: grid;
+        place-items: center;
+        margin-bottom: 0.35rem;
+        border-radius: 0.55rem;
+        background: #e2f2eb;
+        color: #087259;
+      }
+      .indicator[data-tone='blue'] {
+        background: linear-gradient(150deg, #fff 60%, #eaf4fb);
+      }
+      .indicator[data-tone='blue'] .indicator-icon {
+        background: #e3f1fc;
+        color: #176eaa;
+      }
+      .indicator[data-tone='violet'] {
+        background: linear-gradient(150deg, #fff 60%, #f0edfb);
+      }
+      .indicator[data-tone='violet'] .indicator-icon {
+        background: #ede8fa;
+        color: #7655bd;
+      }
+      .indicator[data-tone='amber'] {
+        background: linear-gradient(150deg, #fff 60%, #fbf4e8);
+      }
+      .indicator[data-tone='amber'] .indicator-icon {
+        background: #fff0dc;
+        color: #a56a19;
       }
       .indicator strong {
         font-family: var(--font-display);
@@ -210,6 +247,16 @@ export class HomeIndicatorsSectionComponent {
     }));
   });
   constructor(readonly store: DashboardStore) {}
+  icon(kind: HomeActivityKind): DomainIconName {
+    return {
+      movements: 'movement',
+      weights: 'weight',
+      treatments: 'health',
+      breedings: 'reproduction',
+      calvings: 'calving',
+      births: 'herd',
+    }[kind] as DomainIconName;
+  }
   number(value: number): string {
     return new Intl.NumberFormat('pt-BR').format(value);
   }

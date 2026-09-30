@@ -19,6 +19,7 @@ import { HomeHealthSectionComponent } from './home-health-section.component';
 import { HomeIndicatorsSectionComponent } from './home-indicators-section.component';
 import { HomeOperationalDetailDialogComponent } from './home-operational-detail-dialog.component';
 import type { HomeDetailRequest } from './home-detail.models';
+import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
 
 @Component({
   selector: 'app-home-page',
@@ -34,6 +35,7 @@ import type { HomeDetailRequest } from './home-detail.models';
     HomeHealthSectionComponent,
     HomeIndicatorsSectionComponent,
     HomeOperationalDetailDialogComponent,
+    DomainIconComponent,
   ],
   template: `<section class="home-page">
     <div class="home-page__content">
@@ -111,7 +113,9 @@ import type { HomeDetailRequest } from './home-detail.models';
         } @else {
           <section class="home-summary-section" aria-labelledby="summary-title">
             <header>
-              <span class="summary-mark" aria-hidden="true">✦</span>
+              <span class="summary-mark" aria-hidden="true"
+                ><gr-domain-icon domain="herd" size="md"
+              /></span>
               <div>
                 <h2 id="summary-title">Resumo operacional imediato</h2>
                 <p>Visão geral da fazenda com os principais números e status.</p>
@@ -187,8 +191,29 @@ export class HomePageComponent {
     const active = overview.herdSnapshot.activeAnimals;
     const located = Math.max(0, active - overview.herdSnapshot.unlocatedAnimals);
     const attention = this.attentionTotal();
+    const segments = Object.entries(overview.herdSnapshot.bySex)
+      .filter(([, value]) => value > 0)
+      .slice(0, 3)
+      .map(([label, value]) => ({ label, value, share: active > 0 ? (value / active) * 100 : 0 }));
+    const attentionGroups = [
+      {
+        label: 'Saúde',
+        value:
+          overview.attention.vaccinationDue +
+          overview.attention.dewormingDue +
+          overview.attention.brucellosisDue +
+          overview.attention.brucellosisWindowMissed,
+      },
+      {
+        label: 'Reprodução',
+        value: overview.attention.calvingUpcoming + overview.attention.calvingOverdue,
+      },
+      { label: 'Pesagem', value: overview.attention.weighingDue },
+      { label: 'Planejamento', value: overview.attention.openPlannerItems },
+    ];
+    const maxGroup = Math.max(1, ...attentionGroups.map((group) => group.value));
     return [
-      { kind: 'herd', animals: this.number(active) },
+      { kind: 'herd', animals: this.number(active), segments },
       {
         kind: 'territory',
         total: ready ? this.number(total) : '—',
@@ -207,7 +232,15 @@ export class HomePageComponent {
         hasPending: overview.herdSnapshot.unlocatedAnimals > 0,
         locatedPercentage: active > 0 ? (located / active) * 100 : null,
       },
-      { kind: 'attention', total: this.number(attention), hasPending: attention > 0 },
+      {
+        kind: 'attention',
+        total: this.number(attention),
+        hasPending: attention > 0,
+        groups: attentionGroups.map((group) => ({
+          ...group,
+          share: (group.value / maxGroup) * 100,
+        })),
+      },
     ];
   });
   private contextVersion: number | null = null;
