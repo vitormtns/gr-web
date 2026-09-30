@@ -27,6 +27,10 @@ import {
   ToastService,
 } from '../../design-system/feedback/feedback';
 import { AnimalBatchOperationsComponent } from './animal-batch-operations.component';
+import { DashboardApiClient } from '../home/dashboard-api.service';
+import { DashboardOverview } from '../home/dashboard.models';
+import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
+import { DialogComponent } from '../../design-system/surfaces/surfaces';
 import { ContextRequestScope } from '../management/management.shared';
 import { HerdApi } from './herd-api.service';
 import { Animal, AnimalFilters, AnimalSex, AnimalStatus, Page } from './herd.models';
@@ -51,6 +55,8 @@ import {
     AnimalBatchOperationsComponent,
     AnimalIdentityComponent,
     AnimalStateComponent,
+    DomainIconComponent,
+    DialogComponent,
   ],
   template: `<div class="herd-page page-enter">
     <header class="page-header">
@@ -66,48 +72,137 @@ import {
         </div>
       }
     </header>
-    <gr-filter-bar
-      ><label class="search-field"
-        ><span>Buscar animal</span
-        ><input
-          type="search"
-          [ngModel]="filters().search"
-          (ngModelChange)="searchInput.next($event)"
-          placeholder="Identificação ou nome" /></label
-      ><label
-        ><span>Sexo</span
-        ><select [ngModel]="filters().sex" (ngModelChange)="setFilter('sex', $event)">
-          <option value="">Todos</option>
-          <option value="FEMALE">Fêmea</option>
-          <option value="MALE">Macho</option>
-        </select></label
-      ><label
-        ><span>Estado</span
-        ><select [ngModel]="filters().status" (ngModelChange)="setFilter('status', $event)">
-          <option value="">Todos</option>
-          <option value="ACTIVE">Ativo</option>
-          <option value="SOLD">Vendido</option>
-          <option value="DECEASED">Baixado</option>
-          <option value="TRANSFERRED">Transferido</option>
-          <option value="ARCHIVED">Arquivado</option>
-        </select></label
-      ><label
-        ><span>Localização</span
-        ><select
-          [ngModel]="
-            filters().unlocated === undefined ? '' : filters().unlocated ? 'UNLOCATED' : 'LOCATED'
-          "
-          (ngModelChange)="setLocation($event)"
+    <section class="herd-overview" aria-labelledby="herd-overview-title">
+      <header class="section-heading">
+        <span class="section-icon"><gr-domain-icon domain="herd" size="md" /></span>
+        <div>
+          <h2 id="herd-overview-title">Leitura do rebanho</h2>
+          <p>Números atuais para orientar a exploração dos animais.</p>
+        </div>
+      </header>
+      <div class="overview-cards">
+        <button type="button" class="overview-card" (click)="clearFilters()">
+          <span class="card-label">Animais encontrados</span
+          ><strong>{{ state() === 'ready' ? number(page()?.totalElements ?? 0) : '—' }}</strong
+          ><small>{{ hasFilters() ? 'na busca atual' : 'no rebanho' }}</small
+          ><span class="card-action">Ver todos →</span>
+        </button>
+        <button type="button" class="overview-card" (click)="setFilter('status', 'ACTIVE')">
+          <span class="card-label">Ativos</span
+          ><strong>{{ summary() ? number(summary()!.herdSnapshot.activeAnimals) : '—' }}</strong
+          ><small>animais em atividade</small><span class="card-action">Filtrar ativos →</span>
+        </button>
+        <button type="button" class="overview-card" (click)="filterActiveSex()">
+          <span class="card-label">Ativos por sexo</span
+          ><strong>{{ summary() ? number(sexCount('FEMALE')) : '—' }}</strong
+          ><small>fêmeas · {{ summary() ? number(sexCount('MALE')) : '—' }} machos</small
+          ><span class="sex-track" aria-hidden="true"
+            ><span [style.width.%]="femaleShare()"></span></span
+          ><span class="card-action">Filtrar fêmeas →</span>
+        </button>
+        <button
+          type="button"
+          class="overview-card attention-card"
+          (click)="filterActiveUnlocated()"
         >
-          <option value="">Todas</option>
-          <option value="UNLOCATED">Sem piquete</option>
-          <option value="LOCATED">Com piquete</option>
-        </select></label
-      >
-      @if (hasFilters()) {
-        <button class="quiet-button" type="button" (click)="clearFilters()">Limpar filtros</button>
-      }
-    </gr-filter-bar>
+          <span class="card-label">Sem piquete</span
+          ><strong>{{ summary() ? number(summary()!.herdSnapshot.unlocatedAnimals) : '—' }}</strong
+          ><small>ativos sem localização</small><span class="card-action">Ver animais →</span>
+        </button>
+      </div>
+    </section>
+    <section class="explorer" aria-labelledby="explorer-title">
+      <header class="section-heading">
+        <span class="section-icon"><gr-domain-icon domain="traceability" size="md" /></span>
+        <div>
+          <h2 id="explorer-title">Explorar animais</h2>
+          <p>Busque e refine sem perder o contexto da fazenda.</p>
+        </div>
+      </header>
+      <gr-filter-bar
+        ><label class="search-field"
+          ><span>Buscar animal</span
+          ><input
+            type="search"
+            [ngModel]="searchDraft()"
+            (ngModelChange)="onSearchInput($event)"
+            placeholder="Buscar por nome ou identificação"
+        /></label>
+        @if (searchDraft()) {
+          <button
+            type="button"
+            class="search-clear"
+            (click)="clearSearch()"
+            aria-label="Limpar busca"
+          >
+            ×
+          </button>
+        }
+        <label
+          ><span>Sexo</span
+          ><select [ngModel]="filters().sex" (ngModelChange)="setFilter('sex', $event)">
+            <option value="">Todos</option>
+            <option value="FEMALE">Fêmea</option>
+            <option value="MALE">Macho</option>
+          </select></label
+        ><label
+          ><span>Estado</span
+          ><select [ngModel]="filters().status" (ngModelChange)="setFilter('status', $event)">
+            <option value="">Todos</option>
+            <option value="ACTIVE">Ativo</option>
+            <option value="SOLD">Vendido</option>
+            <option value="DECEASED">Baixado</option>
+            <option value="TRANSFERRED">Transferido</option>
+            <option value="ARCHIVED">Arquivado</option>
+          </select></label
+        ><label
+          ><span>Localização</span
+          ><select
+            [ngModel]="
+              filters().unlocated === undefined ? '' : filters().unlocated ? 'UNLOCATED' : 'LOCATED'
+            "
+            (ngModelChange)="setLocation($event)"
+          >
+            <option value="">Todas</option>
+            <option value="UNLOCATED">Sem piquete</option>
+            <option value="LOCATED">Com piquete</option>
+          </select></label
+        >
+        <button
+          class="secondary-action advanced-trigger"
+          type="button"
+          (click)="advancedOpen.set(true)"
+        >
+          Mais filtros
+        </button>
+      </gr-filter-bar>
+      <div class="filter-meta">
+        <span role="status">
+          @if (searchPending()) {
+            Aplicando busca…
+          } @else if (state() === 'loading') {
+            Consultando animais…
+          } @else {
+            Ordenado por identificação
+          }
+        </span>
+        @if (activeFilters().length) {
+          <div class="filter-chips" aria-label="Filtros ativos">
+            @for (filter of activeFilters(); track filter.key) {
+              <button
+                type="button"
+                class="filter-chip"
+                (click)="removeFilter(filter.key)"
+                [attr.aria-label]="'Remover filtro ' + filter.label"
+              >
+                {{ filter.label }} <span aria-hidden="true">×</span>
+              </button>
+            }
+            <button type="button" class="clear-all" (click)="clearFilters()">Limpar tudo</button>
+          </div>
+        }
+      </div>
+    </section>
     @if (state() === 'error') {
       <gr-error-state
         level="page"
@@ -148,7 +243,36 @@ import {
               } @else {
                 {{ page()?.totalElements }} {{ page()?.totalElements === 1 ? 'animal' : 'animais' }}
               }</span
-            ><small>Ordenação operacional estável</small>
+            ><small
+              >{{ hasFilters() ? 'Resultado dos filtros ativos' : 'Rebanho da fazenda atual' }} ·
+              identificação em ordem crescente</small
+            >
+          </div>
+          <div class="list-controls">
+            <label
+              >Por página<select [ngModel]="filters().size" (ngModelChange)="setPageSize($event)">
+                <option [ngValue]="20">20</option>
+                <option [ngValue]="50">50</option>
+                <option [ngValue]="100">100</option>
+              </select></label
+            >
+            <div class="view-switch" role="group" aria-label="Visualização dos animais">
+              <button
+                type="button"
+                [class.active]="viewMode() === 'table'"
+                [attr.aria-pressed]="viewMode() === 'table'"
+                (click)="setViewMode('table')"
+              >
+                Tabela</button
+              ><button
+                type="button"
+                [class.active]="viewMode() === 'cards'"
+                [attr.aria-pressed]="viewMode() === 'cards'"
+                (click)="setViewMode('cards')"
+              >
+                Cards
+              </button>
+            </div>
           </div>
           @if (selected().size) {
             <div class="batch-selection">
@@ -164,55 +288,100 @@ import {
             </div>
           }
         </div>
-        <gr-table [loading]="state() === 'loading'" [empty]="false"
-          ><thead>
-            <tr>
-              @if (permissions.canMutateHerd()) {
-                <th class="select-cell"><span class="sr-only">Selecionar</span></th>
-              }
-              <th>Animal</th>
-              <th>Estado</th>
-              <th>Sexo</th>
-              <th>Território atual</th>
-              <th><span class="sr-only">Abrir perfil</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (animal of page()?.items || []; track animal.id) {
-              <tr [class.terminal]="animal.status !== 'ACTIVE'">
+        @if (viewMode() === 'table') {
+          <gr-table [loading]="state() === 'loading'" [empty]="false"
+            ><thead>
+              <tr>
                 @if (permissions.canMutateHerd()) {
-                  <td class="select-cell">
-                    @if (animal.status === 'ACTIVE') {
-                      <input
-                        type="checkbox"
-                        [checked]="selected().has(animal.id)"
-                        [attr.aria-label]="'Selecionar ' + animal.identification"
-                        (change)="toggle(animal)"
-                      />
-                    }
-                  </td>
+                  <th class="select-cell"><span class="sr-only">Selecionar</span></th>
                 }
-                <td><app-animal-identity [animal]="animal" /></td>
-                <td><app-animal-state [status]="animal.status" /></td>
-                <td>{{ sex(animal.sex) }}</td>
-                <td>
-                  <span class="territory"
-                    ><i aria-hidden="true"></i
-                    >{{ animal.paddock?.name || 'Sem piquete definido' }}</span
-                  >
-                </td>
-                <td>
-                  <a
-                    class="row-link"
-                    [routerLink]="['/rebanho/animais', animal.id]"
-                    [attr.aria-label]="'Abrir perfil de ' + animal.identification"
-                    >→</a
-                  >
-                </td>
+                <th>Animal</th>
+                <th>Estado</th>
+                <th>Sexo</th>
+                <th>Território atual</th>
+                <th><span class="sr-only">Abrir perfil</span></th>
               </tr>
+            </thead>
+            <tbody>
+              @for (animal of page()?.items || []; track animal.id) {
+                <tr
+                  [class.terminal]="animal.status !== 'ACTIVE'"
+                  (click)="openAnimal(animal, $event)"
+                  (keydown.enter)="openAnimal(animal, $event)"
+                  tabindex="0"
+                  [attr.aria-label]="'Abrir perfil de ' + animal.identification"
+                >
+                  @if (permissions.canMutateHerd()) {
+                    <td class="select-cell">
+                      @if (animal.status === 'ACTIVE') {
+                        <input
+                          type="checkbox"
+                          [checked]="selected().has(animal.id)"
+                          [attr.aria-label]="'Selecionar ' + animal.identification"
+                          (change)="toggle(animal)"
+                        />
+                      }
+                    </td>
+                  }
+                  <td>
+                    <app-animal-identity [animal]="animal" [queryParams]="listQueryParams()" />
+                  </td>
+                  <td><app-animal-state [status]="animal.status" /></td>
+                  <td>
+                    <span class="sex-pill">{{ sex(animal.sex) }}</span>
+                  </td>
+                  <td>
+                    <span class="territory"
+                      ><i aria-hidden="true"></i
+                      >{{ animal.paddock?.name || 'Sem piquete definido' }}</span
+                    >
+                  </td>
+                  <td>
+                    <a
+                      class="row-link"
+                      [routerLink]="['/rebanho/animais', animal.id]"
+                      [queryParams]="listQueryParams()"
+                      [attr.aria-label]="'Abrir perfil de ' + animal.identification"
+                      >→</a
+                    >
+                  </td>
+                </tr>
+              }
+            </tbody></gr-table
+          >
+        } @else {
+          <div class="animal-cards" [class.loading]="state() === 'loading'">
+            @for (animal of page()?.items || []; track animal.id) {
+              <article class="animal-card" [class.terminal]="animal.status !== 'ACTIVE'">
+                <div class="animal-card-top">
+                  <span class="animal-avatar" aria-hidden="true"
+                    ><gr-domain-icon domain="herd" size="md" /></span
+                  ><app-animal-state [status]="animal.status" />
+                </div>
+                <a
+                  [routerLink]="['/rebanho/animais', animal.id]"
+                  [queryParams]="listQueryParams()"
+                  class="animal-card-name"
+                  >{{ animal.identification }}</a
+                ><span class="animal-card-subtitle">{{ animal.name || 'Sem nome informado' }}</span>
+                <div class="animal-card-facts">
+                  <span>{{ sex(animal.sex) }}</span
+                  ><span>{{ animal.paddock?.name || 'Sem piquete definido' }}</span>
+                </div>
+                @if (permissions.canMutateHerd() && animal.status === 'ACTIVE') {
+                  <label class="card-select"
+                    ><input
+                      type="checkbox"
+                      [checked]="selected().has(animal.id)"
+                      (change)="toggle(animal)"
+                    />
+                    Selecionar</label
+                  >
+                }
+              </article>
             }
-          </tbody></gr-table
-        >
+          </div>
+        }
         @if (page(); as result) {
           <gr-pagination
             [page]="result.page"
@@ -222,23 +391,64 @@ import {
         }
       </section>
     }
+    <gr-dialog [open]="advancedOpen()" size="lg" (closed)="advancedOpen.set(false)"
+      ><strong dialog-title>Filtros do rebanho</strong>
+      <p class="advanced-intro">
+        Combine os filtros disponíveis para encontrar animais em todo o rebanho.
+      </p>
+      <div class="advanced-grid">
+        <label
+          >Sexo<select [ngModel]="filters().sex" (ngModelChange)="setFilter('sex', $event)">
+            <option value="">Todos</option>
+            <option value="FEMALE">Fêmea</option>
+            <option value="MALE">Macho</option>
+          </select></label
+        ><label
+          >Estado<select [ngModel]="filters().status" (ngModelChange)="setFilter('status', $event)">
+            <option value="">Todos</option>
+            <option value="ACTIVE">Ativo</option>
+            <option value="SOLD">Vendido</option>
+            <option value="DECEASED">Baixado</option>
+            <option value="TRANSFERRED">Transferido</option>
+            <option value="ARCHIVED">Arquivado</option>
+          </select></label
+        ><label
+          >Localização<select
+            [ngModel]="
+              filters().unlocated === undefined ? '' : filters().unlocated ? 'UNLOCATED' : 'LOCATED'
+            "
+            (ngModelChange)="setLocation($event)"
+          >
+            <option value="">Todas</option>
+            <option value="UNLOCATED">Sem piquete</option>
+            <option value="LOCATED">Com piquete</option>
+          </select></label
+        ><label
+          >Animais por página<select
+            [ngModel]="filters().size"
+            (ngModelChange)="setPageSize($event)"
+          >
+            <option [ngValue]="20">20</option>
+            <option [ngValue]="50">50</option>
+            <option [ngValue]="100">100</option>
+          </select></label
+        >
+      </div>
+      <div dialog-actions>
+        <button class="quiet-button" type="button" (click)="clearFilters()">Limpar filtros</button
+        ><button class="primary-action" type="button" (click)="advancedOpen.set(false)">
+          Ver resultados
+        </button>
+      </div></gr-dialog
+    >
   </div>`,
-  styles: [
-    `
-      .parity-actions,
-      .batch-selection {
-        display: flex;
-        gap: var(--space-2);
-        flex-wrap: wrap;
-        align-items: center;
-      }
-    `,
-  ],
+  styleUrls: ['./herd-page.scss', './animal-list-page.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AnimalListPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(HerdApi);
+  private readonly dashboard = inject(DashboardApiClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
@@ -251,7 +461,26 @@ export class AnimalListPageComponent {
   readonly selected = signal(new Map<string, Animal>());
   readonly selectedAnimals = computed(() => [...this.selected().values()]);
   private readonly scope = new ContextRequestScope(this.destroyRef);
+  private readonly summaryScope = new ContextRequestScope(this.destroyRef);
   readonly filters = signal<AnimalFilters>(parseFilters(this.route.snapshot.queryParamMap));
+  readonly viewMode = signal<'table' | 'cards'>(
+    this.route.snapshot.queryParamMap.get('view') === 'cards' ? 'cards' : 'table',
+  );
+  readonly advancedOpen = signal(false);
+  readonly searchDraft = signal(this.filters().search);
+  readonly searchPending = signal(false);
+  readonly summary = signal<DashboardOverview | null>(null);
+  readonly activeFilters = computed(() => {
+    const filters = this.filters();
+    const chips: { key: 'search' | 'sex' | 'status' | 'location'; label: string }[] = [];
+    if (filters.search) chips.push({ key: 'search', label: `Busca: ${filters.search}` });
+    if (filters.sex) chips.push({ key: 'sex', label: `Sexo: ${sexLabel(filters.sex)}` });
+    if (filters.status)
+      chips.push({ key: 'status', label: `Estado: ${this.statusText(filters.status)}` });
+    if (filters.unlocated !== undefined)
+      chips.push({ key: 'location', label: filters.unlocated ? 'Sem piquete' : 'Com piquete' });
+    return chips;
+  });
   private generation = 0;
   private routeReady = false;
   private initialContext = true;
@@ -265,12 +494,19 @@ export class AnimalListPageComponent {
         takeUntilDestroyed(),
       )
       .subscribe(({ value, epoch }) => {
-        if (epoch === this.contextEpoch && !this.context.transitionPending())
+        if (epoch === this.contextEpoch && !this.context.transitionPending()) {
+          this.searchPending.set(false);
           this.setFilter('search', value.trim());
+        }
       });
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      this.filters.set(parseFilters(params));
-      if (this.routeReady) this.load();
+      const nextFilters = parseFilters(params);
+      const filtersChanged = JSON.stringify(nextFilters) !== JSON.stringify(this.filters());
+      this.filters.set(nextFilters);
+      this.viewMode.set(params.get('view') === 'cards' ? 'cards' : 'table');
+      this.searchDraft.set(this.filters().search);
+      this.searchPending.set(false);
+      if (this.routeReady && filtersChanged) this.load();
       this.routeReady = true;
     });
     effect(() => {
@@ -279,6 +515,7 @@ export class AnimalListPageComponent {
       const farm = this.context.selectedFarm();
       untracked(() => {
         this.scope.reset();
+        this.summaryScope.reset();
         this.generation++;
         this.contextEpoch++;
         if (!this.initialContext) {
@@ -286,12 +523,15 @@ export class AnimalListPageComponent {
           this.syncUrl();
         }
         this.selected.set(new Map());
+        this.summary.set(null);
+        this.advancedOpen.set(false);
         this.page.set(null);
         this.error.set(null);
         this.state.set('loading');
         if (!pending && farm) {
           this.initialContext = false;
           this.load();
+          this.loadSummary();
         }
       });
     });
@@ -300,12 +540,89 @@ export class AnimalListPageComponent {
     return errorReference(this.error()?.requestId);
   }
   sex = sexLabel;
+  number(value: number) {
+    return new Intl.NumberFormat('pt-BR').format(value);
+  }
+  statusText(status: AnimalStatus) {
+    return {
+      ACTIVE: 'Ativo',
+      SOLD: 'Vendido',
+      DECEASED: 'Baixado',
+      TRANSFERRED: 'Transferido',
+      ARCHIVED: 'Arquivado',
+    }[status];
+  }
+  sexCount(sex: AnimalSex) {
+    return this.summary()?.herdSnapshot.bySex[sex] ?? 0;
+  }
+  femaleShare() {
+    const total = this.summary()?.herdSnapshot.activeAnimals ?? 0;
+    return total ? (this.sexCount('FEMALE') / total) * 100 : 0;
+  }
+  onSearchInput(value: string) {
+    this.searchDraft.set(value);
+    this.searchPending.set(true);
+    this.searchInput.next(value);
+  }
+  clearSearch() {
+    this.searchDraft.set('');
+    this.searchPending.set(false);
+    this.setFilter('search', '');
+  }
+  setPageSize(value: number) {
+    if (![20, 50, 100].includes(Number(value))) return;
+    this.filters.update((f) => ({ ...f, size: Number(value), page: 0 }));
+    this.syncUrl();
+  }
+  setViewMode(value: 'table' | 'cards') {
+    this.viewMode.set(value);
+    this.syncUrl();
+  }
+  removeFilter(key: 'search' | 'sex' | 'status' | 'location') {
+    if (key === 'location') this.setLocation('');
+    else if (key === 'search') this.clearSearch();
+    else this.setFilter(key, '');
+  }
+  listQueryParams(): Record<string, string | number | null> {
+    const f = this.filters();
+    return {
+      search: f.search || null,
+      sex: f.sex || null,
+      status: f.status || null,
+      unlocated: f.unlocated === undefined ? null : String(f.unlocated),
+      page: f.page || null,
+      size: f.size === 20 ? null : f.size,
+      view: this.viewMode() === 'cards' ? 'cards' : null,
+    };
+  }
+  openAnimal(animal: Animal, event: Event) {
+    if ((event.target as HTMLElement).closest('a, button, input, label, select')) return;
+    if (event instanceof KeyboardEvent && event.key !== 'Enter') return;
+    void this.router.navigate(['/rebanho/animais', animal.id], {
+      queryParams: this.listQueryParams(),
+    });
+  }
+  private loadSummary() {
+    this.summaryScope.run(
+      this.dashboard.overview({ period: 'TODAY' }),
+      (value) => this.summary.set(value),
+      () => this.summary.set(null),
+    );
+  }
   hasFilters() {
     const f = this.filters();
     return !!(f.search || f.sex || f.status || f.unlocated !== undefined);
   }
   setFilter<K extends 'search' | 'sex' | 'status'>(key: K, value: AnimalFilters[K]) {
     this.filters.update((f) => ({ ...f, [key]: value, page: 0 }));
+    this.syncUrl();
+  }
+  filterActiveSex() {
+    this.filters.update((f) => ({ ...f, sex: 'FEMALE', status: 'ACTIVE', page: 0 }));
+    this.syncUrl();
+  }
+  filterActiveUnlocated() {
+    this.filters.update((f) => ({ ...f, status: 'ACTIVE', unlocated: true, page: 0 }));
     this.syncUrl();
   }
   setLocation(value: string) {
@@ -318,6 +635,8 @@ export class AnimalListPageComponent {
   }
   clearFilters() {
     this.filters.set({ search: '', sex: '', status: '', page: 0, size: 20 });
+    this.searchDraft.set('');
+    this.searchPending.set(false);
     this.syncUrl();
   }
   changePage(page: number) {
@@ -380,6 +699,7 @@ export class AnimalListPageComponent {
         unlocated: f.unlocated === undefined ? null : String(f.unlocated),
         page: f.page || null,
         size: f.size === 20 ? null : f.size,
+        view: this.viewMode() === 'cards' ? 'cards' : null,
       },
       replaceUrl: true,
     });

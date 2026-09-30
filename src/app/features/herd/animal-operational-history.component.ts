@@ -47,27 +47,31 @@ type HistoryTab = 'weights' | 'health' | 'pregnancies' | 'calves';
     <header>
       <div>
         <span class="section-kicker">REGISTROS DO ANIMAL</span>
-        <h2>Históricos e vínculos</h2>
+        <h2>
+          {{ navigationMode() === 'all' ? 'Históricos e vínculos' : tabLabel() + ' do animal' }}
+        </h2>
       </div>
     </header>
-    <nav class="history-tabs" aria-label="Históricos do animal">
-      @for (option of tabs(); track option.id) {
-        <button
-          type="button"
-          class="secondary-action"
-          [class.active]="tab() === option.id"
-          [attr.aria-pressed]="tab() === option.id"
-          (click)="selectTab(option.id)"
-        >
-          {{ option.label }}
-        </button>
-      }
-    </nav>
+    @if (navigationMode() !== 'none') {
+      <nav class="history-tabs" aria-label="Históricos do animal">
+        @for (option of tabs(); track option.id) {
+          <button
+            type="button"
+            class="secondary-action"
+            [class.active]="tab() === option.id"
+            [attr.aria-pressed]="tab() === option.id"
+            (click)="selectTab(option.id)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </nav>
+    }
     @if (error()) {
       <gr-error-state
         [title]="'Não foi possível carregar ' + tabLabel().toLowerCase()"
         [description]="error()"
-        (retry)="load()"
+        (retry)="load(true)"
       />
     } @else if (!loading() && !itemCount()) {
       <gr-empty-state
@@ -231,6 +235,8 @@ type HistoryTab = 'weights' | 'health' | 'pregnancies' | 'calves';
 })
 export class AnimalOperationalHistoryComponent {
   readonly animal = input.required<Animal>();
+  readonly activeTab = input<HistoryTab | null>('weights');
+  readonly navigationMode = input<'all' | 'reproduction' | 'none'>('all');
   readonly context = inject(ContextStore);
   private readonly api = inject(HerdApi);
   private readonly scope = new ContextRequestScope(inject(DestroyRef));
@@ -242,6 +248,7 @@ export class AnimalOperationalHistoryComponent {
   readonly health = signal<CountedPage<HealthTreatment> | null>(null);
   readonly pregnancies = signal<PregnancyPage | null>(null);
   readonly calves = signal<Animal[]>([]);
+  private readonly cache = new Map<string, unknown>();
   date = formatDate;
   timestamp = managementTimestamp;
   procedureLabels = procedureLabels;
@@ -260,15 +267,34 @@ export class AnimalOperationalHistoryComponent {
       const pending = this.context.transitionPending();
       untracked(() => {
         this.scope.reset();
+        this.cache.clear();
         this.tab.set('weights');
         this.page.set(0);
         this.clear();
-        if (!pending && this.context.selectedFarm()) this.load();
+        if (!pending && this.context.selectedFarm() && this.activeTab()) {
+          this.tab.set(this.activeTab()!);
+          this.load();
+        }
+      });
+    });
+    let initialTab = true;
+    effect(() => {
+      const active = this.activeTab();
+      if (initialTab) {
+        initialTab = false;
+        return;
+      }
+      untracked(() => {
+        if (active && !this.context.transitionPending()) {
+          this.tab.set(active);
+          this.page.set(0);
+          this.load();
+        }
       });
     });
   }
   tabs(): { id: HistoryTab; label: string }[] {
-    return [
+    const available: { id: HistoryTab; label: string }[] = [
       { id: 'weights', label: 'Pesagens' },
       { id: 'health', label: 'Saúde' },
       ...(this.animal().sex === 'FEMALE'
@@ -278,6 +304,9 @@ export class AnimalOperationalHistoryComponent {
           ]
         : []),
     ];
+    return this.navigationMode() === 'reproduction'
+      ? available.filter((item) => item.id === 'pregnancies' || item.id === 'calves')
+      : available;
   }
   tabLabel() {
     return this.tabs().find((item) => item.id === this.tab())?.label || 'Registros';
@@ -323,12 +352,17 @@ export class AnimalOperationalHistoryComponent {
     const type = item.treatmentType || item.type;
     return type ? healthLabels[type] : 'Tratamento registrado';
   }
-  load() {
+  load(force = false) {
     if (this.context.transitionPending() || !this.context.selectedFarm()) return;
     this.scope.reset();
     this.clear();
     const id = this.animal().id,
       page = this.page();
+    const key = `${this.tab()}:${page}`;
+    if (!force && this.cache.has(key)) {
+      this.applyResult(this.cache.get(key));
+      return;
+    }
     const fail = (failure: unknown) => {
       this.loading.set(false);
       this.error.set(
@@ -339,8 +373,8 @@ export class AnimalOperationalHistoryComponent {
       this.scope.run(
         this.api.weights(id, page),
         (value) => {
-          this.weights.set(value);
-          this.loading.set(false);
+          this.cache.set(key, value);
+          this.applyResult(value);
         },
         fail,
       );
@@ -348,8 +382,8 @@ export class AnimalOperationalHistoryComponent {
       this.scope.run(
         this.api.treatments(id, page),
         (value) => {
-          this.health.set(value);
-          this.loading.set(false);
+          this.cache.set(key, value);
+          this.applyResult(value);
         },
         fail,
       );
@@ -357,8 +391,8 @@ export class AnimalOperationalHistoryComponent {
       this.scope.run(
         this.api.pregnancies(id, page),
         (value) => {
-          this.pregnancies.set(value);
-          this.loading.set(false);
+          this.cache.set(key, value);
+          this.applyResult(value);
         },
         fail,
       );
@@ -366,10 +400,17 @@ export class AnimalOperationalHistoryComponent {
       this.scope.run(
         this.api.calves(id, page, 20),
         (value) => {
-          this.calves.set(value);
-          this.loading.set(false);
+          this.cache.set(key, value);
+          this.applyResult(value);
         },
         fail,
       );
+  }
+  private applyResult(value: unknown) {
+    if (this.tab() === 'weights') this.weights.set(value as WeightPage);
+    else if (this.tab() === 'health') this.health.set(value as CountedPage<HealthTreatment>);
+    else if (this.tab() === 'pregnancies') this.pregnancies.set(value as PregnancyPage);
+    else this.calves.set(value as Animal[]);
+    this.loading.set(false);
   }
 }

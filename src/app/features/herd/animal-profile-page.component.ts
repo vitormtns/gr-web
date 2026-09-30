@@ -2,6 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
+  HostListener,
+  ViewChild,
   effect,
   inject,
   signal,
@@ -30,6 +33,7 @@ import {
   ToastService,
 } from '../../design-system/feedback/feedback';
 import { DialogComponent } from '../../design-system/surfaces/surfaces';
+import { DomainIconComponent, DomainIconName } from '../../design-system/primitives/domain-icon';
 import { HerdApi } from './herd-api.service';
 import {
   Animal,
@@ -47,6 +51,9 @@ import {
   PendingWorkPage,
   PregnancyPage,
   WeightPage,
+  HealthTreatment,
+  healthLabels,
+  procedureLabels,
   pendingLabels,
   pregnancyLabels,
 } from './herd-operations.models';
@@ -54,6 +61,8 @@ import {
 import { AnimalManagementComponent } from './animal-management.component';
 
 type Action = 'correct' | 'move' | 'transfer' | 'weight' | null;
+type ProfileSection = 'overview' | 'health' | 'weight' | 'reproduction' | 'production' | 'history';
+type ManagementAction = 'mother' | 'note' | 'milk' | 'sale' | 'death';
 @Component({
   selector: 'app-animal-profile-page',
   providers: [HerdApi],
@@ -69,9 +78,12 @@ type Action = 'correct' | 'move' | 'transfer' | 'weight' | null;
     ErrorStateComponent,
     SkeletonComponent,
     DialogComponent,
+    DomainIconComponent,
   ],
   template: `<div class="herd-page profile page-enter">
-    <a class="back-link" routerLink="/rebanho/animais">← Voltar ao rebanho</a>
+    <a class="back-link" routerLink="/rebanho/animais" [queryParams]="returnQueryParams()"
+      >← Voltar ao rebanho</a
+    >
     @if (state() === 'loading') {
       <div class="profile-skeleton" aria-label="Carregando perfil do animal">
         <gr-skeleton /><gr-skeleton /><gr-skeleton /><gr-skeleton />
@@ -87,21 +99,31 @@ type Action = 'correct' | 'move' | 'transfer' | 'weight' | null;
     } @else if (animal(); as item) {
       <header class="profile-header">
         <div class="identity-block">
-          <span class="identity-orbit" aria-hidden="true"><i></i></span>
+          <span class="identity-orbit identity-medallion" aria-hidden="true"
+            ><gr-domain-icon domain="herd" size="lg"
+          /></span>
           <div>
-            <span class="eyebrow">IDENTIDADE ANIMAL</span>
+            <span class="eyebrow">PERFIL OPERACIONAL · {{ context.selectedFarm()?.farmName }}</span>
             <h1>{{ item.identification }}</h1>
             @if (item.name) {
-              <p>{{ item.name }}</p>
+              <p class="animal-name">{{ item.name }}</p>
             }
+            <div class="profile-badges">
+              <gr-status-indicator [tone]="tone(item.status)">{{
+                status(item.status)
+              }}</gr-status-indicator
+              ><span>{{ sex(item.sex) }}</span
+              ><span>{{ item.paddock?.name || 'Sem piquete definido' }}</span>
+            </div>
+            <div class="hero-birth">
+              <strong>{{ age(item.birthDate) }}</strong>
+              <span>{{
+                item.birthDate ? 'Nascimento ' + date(item.birthDate) : 'Nascimento não informado'
+              }}</span>
+            </div>
           </div>
         </div>
         <div class="profile-actions">
-          @if (permissions.canMutateHerd()) {
-            <button class="secondary-action" type="button" (click)="openCorrection(item)">
-              Corrigir dados
-            </button>
-          }
           @if (canOperate(item)) {
             <button class="secondary-action" type="button" (click)="openMovement()">
               Movimentar
@@ -111,6 +133,45 @@ type Action = 'correct' | 'move' | 'transfer' | 'weight' | null;
             <button class="primary-action" type="button" (click)="openTransfer()">
               Transferir
             </button>
+          }
+          @if (permissions.canMutateHerd()) {
+            <details class="profile-menu" (keydown.escape)="closeMenu($event)">
+              <summary>Registrar</summary>
+              <div class="profile-menu-options">
+                @if (canOperate(item)) {
+                  <button type="button" (click)="openWeight(); closeMenu($event)">Pesagem</button>
+                }
+                @if (item.status === 'ACTIVE' && item.sex === 'FEMALE') {
+                  <button type="button" (click)="openManagement('milk', $event)">Leite</button>
+                }
+                <button type="button" (click)="openManagement('note', $event)">Observação</button>
+              </div>
+            </details>
+          }
+          @if (permissions.canMutateHerd() || permissions.canSellHerd()) {
+            <details class="profile-menu" (keydown.escape)="closeMenu($event)">
+              <summary>Mais ações</summary>
+              <div class="profile-menu-options">
+                @if (permissions.canMutateHerd()) {
+                  <button type="button" (click)="openCorrection(item); closeMenu($event)">
+                    Corrigir dados
+                  </button>
+                  <button type="button" (click)="openManagement('mother', $event)">
+                    Corrigir vínculo materno
+                  </button>
+                  @if (item.status === 'ACTIVE') {
+                    <button type="button" (click)="openManagement('death', $event)">
+                      Registrar morte
+                    </button>
+                  }
+                }
+                @if (permissions.canSellHerd() && item.status === 'ACTIVE') {
+                  <button type="button" (click)="openManagement('sale', $event)">
+                    Registrar venda
+                  </button>
+                }
+              </div>
+            </details>
           }
         </div>
       </header>
@@ -127,204 +188,254 @@ type Action = 'correct' | 'move' | 'transfer' | 'weight' | null;
           </button></gr-alert
         >
       }
-      <section class="state-strip" aria-label="Estado e território atuais">
-        <div>
-          <span>Estado atual</span
-          ><gr-status-indicator [tone]="tone(item.status)">{{
-            status(item.status)
-          }}</gr-status-indicator>
-        </div>
-        <div>
-          <span>Sexo</span><strong>{{ sex(item.sex) }}</strong>
-        </div>
-        <div>
-          <span>Nascimento</span><strong>{{ date(item.birthDate) }}</strong>
-        </div>
-        <div class="territory-current">
-          <span>Território atual</span><strong>{{ context.selectedFarm()?.farmName }}</strong
-          ><small>› {{ item.paddock?.name || 'Sem piquete definido' }}</small>
-        </div>
-      </section>
-      <section class="intelligence section-frame" aria-labelledby="intelligence-title">
-        <header>
-          <div>
-            <span class="section-kicker">LEITURA DO ANIMAL</span>
-            <h2 id="intelligence-title">Situação operacional</h2>
-          </div>
-          @if (canOperate(item)) {
-            <button class="secondary-action" type="button" (click)="openWeight()">
-              Registrar pesagem
-            </button>
-          }
-        </header>
-        @if (intelligenceError()) {
-          <gr-error-state
-            title="Parte da leitura operacional não pôde ser carregada"
-            (retry)="loadIntelligence()"
-          />
-        } @else if (!weights() || !pendingWork() || (item.sex === 'FEMALE' && !pregnancies())) {
-          <div class="timeline-loading"><gr-skeleton /><gr-skeleton /></div>
-        } @else {
-          <div class="intelligence-grid">
-            <div>
-              <span>Última pesagem</span>
-              @if (latestWeight(); as weight) {
-                <strong>{{ weight.weightKg | grDecimal }} kg</strong
-                ><small>{{ date(weight.measuredOn) }}</small>
-              } @else {
-                <strong>Sem pesagens</strong><small>Nenhum peso registrado</small>
-              }
-            </div>
-            <div>
-              <span>Necessidades atuais</span><strong>{{ pendingWork()!.totalElements }}</strong
-              ><small>{{ pendingSummary() }}</small>
-            </div>
-            @if (activePregnancy(); as pregnancy) {
-              <div>
-                <span>Gestação</span><strong>{{ pregnancyLabel(pregnancy.status) }}</strong
-                ><small>{{
-                  pregnancy.expectedCalvingOn
-                    ? 'Parto esperado em ' + date(pregnancy.expectedCalvingOn)
-                    : 'Sem data esperada'
-                }}</small>
-              </div>
-            }
-            @if (mother(); as relatedMother) {
-              <div>
-                <span>Mãe</span
-                ><strong
-                  ><a [routerLink]="['/rebanho/animais', relatedMother.id]">{{
-                    relatedMother.identification
-                  }}</a></strong
-                ><small>{{ relatedMother.name || 'Sem nome informado' }}</small>
-              </div>
-            }
-            @if (calves().length) {
-              <div>
-                <span>Crias consultadas</span><strong>{{ calves().length }}</strong
-                ><small
-                  >{{ calves()[0].identification
-                  }}{{ calves().length > 1 ? ' e outras' : '' }}</small
-                >
-              </div>
-            }
-          </div>
-          @if ((weights()?.items?.length || 0) > 1) {
-            <div class="weight-evolution">
-              <div>
-                <strong>Evolução nas últimas pesagens</strong><span>{{ weightSummary() }}</span>
-              </div>
-              <svg viewBox="0 0 360 90" role="img" [attr.aria-label]="weightSummary()">
-                <polyline
-                  [attr.points]="weightPoints()"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  vector-effect="non-scaling-stroke"
-                />
-              </svg>
-            </div>
-          }
-        }
-      </section>
-      <app-animal-operational-history [animal]="item" /><app-animal-management
-        [animal]="item"
-        [mother]="mother()"
-        (changed)="load()"
-      />
-      <div class="detail-grid">
-        <section class="timeline section-frame" aria-labelledby="timeline-title">
-          <header>
-            <div>
-              <span class="section-kicker">TRAJETÓRIA</span>
-              <h2 id="timeline-title">Histórico do animal</h2>
-            </div>
-            @if (history(); as result) {
-              <span>{{ result.totalElements }} {{ result.totalElements === 1 ? 'evento' : 'eventos' }}</span>
-            }
-          </header>
-          <label class="history-type"
-            >Tipo de evento<select [(ngModel)]="historyType" (ngModelChange)="loadHistory(0)">
-              <option value="">Todos</option>
-              @for (type of historyTypes; track type) {
-                <option [value]="type">{{ historyTypeLabel(type) }}</option>
-              }
-            </select></label
+      <nav class="profile-sections" role="tablist" aria-label="Seções do perfil">
+        @for (section of profileSections(item); track section.id) {
+          <button
+            type="button"
+            role="tab"
+            [id]="'profile-tab-' + section.id"
+            [attr.aria-selected]="selectedSection() === section.id"
+            aria-controls="profile-panel"
+            [attr.tabindex]="selectedSection() === section.id ? 0 : -1"
+            (click)="selectSection(section.id)"
+            (keydown)="onSectionKeydown($event, section.id, item)"
           >
-          @if (historyError()) {
-            <gr-error-state
-              title="Não foi possível carregar o histórico"
-              [reference]="historyReference"
-              (retry)="load()"
-            />
-          } @else if (!history()) {
-            <div class="timeline-loading"><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>
-          } @else if (!visibleEvents().length) {
-            <div class="timeline-empty">
-              <strong>Nenhum evento disponível neste contexto.</strong>
-              <p>Novos acontecimentos do ciclo de vida aparecerão aqui.</p>
-            </div>
-          } @else {
-            <ol>
-              @for (event of visibleEvents(); track event.id) {
-                <li>
-                  <span class="timeline-marker" aria-hidden="true"></span>
-                  <div class="event">
-                    <div>
-                      <strong>{{ eventTitle(event) }}</strong
-                      ><time [attr.datetime]="event.occurredOn || event.recordedAt">{{
-                        eventDate(event)
-                      }}</time>
-                    </div>
-                    <p>{{ eventSummary(event) }}</p>
-                    <small
-                      >Versão {{ event.resultingVersion }} ·
-                      {{ event.actorUserId ? 'Autor registrado' : 'Autor não informado' }}</small
+            {{ section.label }}
+          </button>
+        }
+      </nav>
+      <div
+        id="profile-panel"
+        role="tabpanel"
+        [attr.aria-labelledby]="'profile-tab-' + selectedSection()"
+      >
+        @if (selectedSection() === 'overview' || selectedSection() === 'history') {
+          <div class="detail-grid">
+            <section class="timeline section-frame" aria-labelledby="timeline-title">
+              <header>
+                <div>
+                  <span class="section-kicker">TRAJETÓRIA</span>
+                  <h2 id="timeline-title">Histórico do animal</h2>
+                </div>
+                @if (history(); as result) {
+                  <span
+                    >{{ result.totalElements }}
+                    {{ result.totalElements === 1 ? 'evento' : 'eventos' }}</span
+                  >
+                }
+              </header>
+              <label class="history-type"
+                >Tipo de evento<select [(ngModel)]="historyType" (ngModelChange)="loadHistory(0)">
+                  <option value="">Todos</option>
+                  @for (type of historyTypes; track type) {
+                    <option [value]="type">{{ historyTypeLabel(type) }}</option>
+                  }
+                </select></label
+              >
+              @if (historyError()) {
+                <gr-error-state
+                  title="Não foi possível carregar o histórico"
+                  [reference]="historyReference"
+                  (retry)="load()"
+                />
+              } @else if (!history()) {
+                <div class="timeline-loading"><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>
+              } @else if (!visibleEvents().length) {
+                <div class="timeline-empty">
+                  <strong>Nenhum evento disponível neste contexto.</strong>
+                  <p>Novos acontecimentos do ciclo de vida aparecerão aqui.</p>
+                </div>
+              } @else {
+                <ol>
+                  @for (event of visibleEvents(); track event.id; let index = $index) {
+                    @if (
+                      index === 0 || eventPeriod(event) !== eventPeriod(visibleEvents()[index - 1])
+                    ) {
+                      <li class="timeline-period">{{ eventPeriod(event) }}</li>
+                    }
+                    <li
+                      [attr.data-domain]="eventDomain(event.type)"
+                      [attr.data-event-type]="event.type"
                     >
-                    @if (event.type === 'MOTHER_CORRECTED') {
-                      <div class="parity-actions">
-                        @if (eventRelation(event, 'beforeMotherId'); as before) {
-                          <a [routerLink]="['/rebanho/animais', before]">Ver mãe anterior</a>
-                        }
-                        @if (eventRelation(event, 'afterMotherId'); as after) {
-                          <a [routerLink]="['/rebanho/animais', after]">Ver mãe vinculada</a>
+                      <span class="timeline-marker" aria-hidden="true"
+                        ><gr-domain-icon [domain]="eventDomain(event.type)" size="sm"
+                      /></span>
+                      <div class="event">
+                        <div>
+                          <strong>{{ eventTitle(event) }}</strong
+                          ><time [attr.datetime]="event.occurredOn || event.recordedAt">{{
+                            eventDate(event)
+                          }}</time>
+                        </div>
+                        <p>{{ eventSummary(event) }}</p>
+                        <small
+                          >Versão {{ event.resultingVersion }}
+                          @if (event.actorUserId) {
+                            · Autor registrado
+                          }
+                        </small>
+                        <button
+                          type="button"
+                          class="event-detail"
+                          (click)="selectedEvent.set(event)"
+                        >
+                          Ver detalhes →
+                        </button>
+                        @if (event.type === 'MOTHER_CORRECTED') {
+                          <div class="parity-actions">
+                            @if (eventRelation(event, 'beforeMotherId'); as before) {
+                              <a [routerLink]="['/rebanho/animais', before]">Ver mãe anterior</a>
+                            }
+                            @if (eventRelation(event, 'afterMotherId'); as after) {
+                              <a [routerLink]="['/rebanho/animais', after]">Ver mãe vinculada</a>
+                            }
+                          </div>
                         }
                       </div>
-                    }
-                  </div>
-                </li>
+                    </li>
+                  }
+                </ol>
+                <gr-pagination
+                  [page]="history()!.page"
+                  [totalPages]="history()!.totalPages"
+                  (pageChange)="loadHistory($event)"
+                />
               }
-            </ol>
-            <gr-pagination
-              [page]="history()!.page"
-              [totalPages]="history()!.totalPages"
-              (pageChange)="loadHistory($event)"
-            />
-          }
-        </section>
-        <aside class="facts section-frame">
-          <span class="section-kicker">LEITURA ATUAL</span>
-          <h2>Dados de identidade</h2>
-          <dl>
-            <div>
-              <dt>Identificação</dt>
-              <dd>{{ item.identification }}</dd>
-            </div>
-            <div>
-              <dt>Nome</dt>
-              <dd>{{ item.name || 'Não informado' }}</dd>
-            </div>
-            <div>
-              <dt>Sexo</dt>
-              <dd>{{ sex(item.sex) }}</dd>
-            </div>
-            <div>
-              <dt>Nascimento</dt>
-              <dd>{{ date(item.birthDate) }}</dd>
-            </div>
-          </dl>
-        </aside>
+            </section>
+            <aside class="profile-sidebar" aria-label="Contexto do animal">
+              <section class="facts section-frame">
+                <span class="section-kicker">SITUAÇÃO AGORA</span>
+                <h2>{{ status(item.status) }}</h2>
+                <dl>
+                  <div>
+                    <dt>Animal</dt>
+                    <dd>{{ sex(item.sex) }} · {{ age(item.birthDate) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Território</dt>
+                    <dd>{{ item.paddock?.name || 'Sem piquete definido' }}</dd>
+                  </div>
+                </dl>
+              </section>
+              <section class="side-card side-health section-frame">
+                <span class="section-kicker">SAÚDE E ATENÇÃO</span>
+                <h2>Necessidades atuais</h2>
+                @if (intelligenceError()) {
+                  <p>Parte da leitura operacional está indisponível.</p>
+                  <button class="event-detail" type="button" (click)="loadIntelligence()">
+                    Tentar novamente
+                  </button>
+                } @else if (pendingWork(); as pendingItems) {
+                  <strong class="side-value">{{ pendingItems.totalElements }}</strong>
+                  <p>{{ pendingSummary() }}</p>
+                } @else {
+                  <p>Consultando necessidades…</p>
+                }
+              </section>
+              <section class="side-card side-performance section-frame">
+                <span class="section-kicker">ÚLTIMOS REGISTROS</span>
+                <h2>Atividade recente</h2>
+                @if (latestWeight(); as weight) {
+                  <div class="rail-record">
+                    <span>Pesagem</span><strong>{{ weight.weightKg | grDecimal }} kg</strong
+                    ><small>{{ date(weight.measuredOn) }}</small>
+                  </div>
+                }
+                @if (latestTreatment(); as treatment) {
+                  <div class="rail-record">
+                    <span>Saúde</span><strong>{{ treatmentLabel(treatment) }}</strong
+                    ><small>{{ date(treatment.occurredOn) }}</small>
+                  </div>
+                }
+                @if (latestMovement(); as movement) {
+                  <div class="rail-record">
+                    <span>Movimentação</span><strong>{{ eventSummary(movement) }}</strong
+                    ><small>{{ eventDate(movement) }}</small>
+                  </div>
+                }
+                @if (intelligenceError()) {
+                  <p>Registros temporariamente indisponíveis.</p>
+                } @else if (!latestWeight() && !latestTreatment() && !latestMovement()) {
+                  <p>Nenhum registro recente disponível.</p>
+                }
+              </section>
+              <section class="side-card side-relations section-frame">
+                <span class="section-kicker">RELAÇÕES</span>
+                <h2>Família e reprodução</h2>
+                @if (mother(); as relatedMother) {
+                  <p>
+                    Mãe:
+                    <a [routerLink]="['/rebanho/animais', relatedMother.id]">{{
+                      relatedMother.identification
+                    }}</a>
+                  </p>
+                } @else {
+                  <p>Mãe não informada.</p>
+                }
+                @if (item.sex === 'FEMALE') {
+                  <p>
+                    {{ calves().length }}
+                    {{ calves().length === 1 ? 'cria consultada' : 'crias consultadas' }}
+                  </p>
+                  @if (activePregnancy(); as pregnancy) {
+                    <p>{{ pregnancyLabel(pregnancy.status) }}</p>
+                  }
+                }
+              </section>
+            </aside>
+          </div>
+        }
+        <div class="record-view" [hidden]="!isRecordSection()">
+          <app-animal-operational-history
+            [animal]="item"
+            [activeTab]="recordTab(item)"
+            [navigationMode]="selectedSection() === 'reproduction' ? 'reproduction' : 'none'"
+          />
+        </div>
+        <app-animal-management
+          [animal]="item"
+          [mother]="mother()"
+          [showActions]="false"
+          [showProduction]="selectedSection() === 'production'"
+          (changed)="load()"
+        />
       </div>
+    }
+    @if (selectedEvent(); as event) {
+      <gr-dialog [open]="true" size="lg" (closed)="selectedEvent.set(null)"
+        ><span dialog-title>{{ eventTitle(event) }}</span>
+        <div class="event-dialog">
+          <span class="event-dialog-icon"
+            ><gr-domain-icon [domain]="eventDomain(event.type)" size="md"
+          /></span>
+          <div>
+            <strong>{{ eventTitle(event) }}</strong
+            ><time [attr.datetime]="event.occurredOn || event.recordedAt">{{
+              eventDate(event)
+            }}</time>
+            <p>{{ eventSummary(event) }}</p>
+          </div>
+        </div>
+        <dl class="event-dialog-facts">
+          <div>
+            <dt>Tipo</dt>
+            <dd>{{ eventTitle(event) }}</dd>
+          </div>
+          <div>
+            <dt>Versão registrada</dt>
+            <dd>{{ event.resultingVersion }}</dd>
+          </div>
+          <div>
+            <dt>Registro</dt>
+            <dd>{{ event.actorUserId ? 'Autor registrado' : 'Autor não informado' }}</dd>
+          </div>
+        </dl>
+        <div dialog-actions>
+          <button class="primary-action" type="button" (click)="selectedEvent.set(null)">
+            Voltar ao perfil
+          </button>
+        </div></gr-dialog
+      >
     }
     <gr-dialog [open]="action() === 'correct'" (closed)="closeAction()"
       ><span dialog-title>Corrigir dados do animal</span>
@@ -516,13 +627,17 @@ type Action = 'correct' | 'move' | 'transfer' | 'weight' | null;
     >
   </div>`,
   styleUrls: [
+    './herd-page.scss',
     './animal-profile-page.component.scss',
     './operations-page.component.scss',
     './profile-intelligence.scss',
+    './animal-profile-redesign.scss',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AnimalProfilePageComponent {
+  @ViewChild(AnimalManagementComponent) management?: AnimalManagementComponent;
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly api = inject(HerdApi);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -535,6 +650,7 @@ export class AnimalProfilePageComponent {
   readonly history = signal<AnimalHistory | null>(null);
   readonly weights = signal<WeightPage | null>(null);
   readonly pendingWork = signal<PendingWorkPage | null>(null);
+  readonly latestTreatment = signal<HealthTreatment | null>(null);
   readonly pregnancies = signal<PregnancyPage | null>(null);
   readonly mother = signal<Animal | null>(null);
   readonly calves = signal<Animal[]>([]);
@@ -542,6 +658,11 @@ export class AnimalProfilePageComponent {
   readonly error = signal<AppError | null>(null);
   readonly historyError = signal<AppError | null>(null);
   readonly action = signal<Action>(null);
+  readonly selectedEvent = signal<AnimalEvent | null>(null);
+  readonly selectedSection = signal<ProfileSection>(
+    this.parseSection(this.route.snapshot.queryParamMap?.get('section')),
+  );
+  readonly latestMovement = signal<AnimalEvent | null>(null);
   readonly correctionReview = signal(false);
   readonly actionError = signal('');
   readonly pending = signal(false);
@@ -591,6 +712,20 @@ export class AnimalProfilePageComponent {
   notes = '';
   weightKg = '';
   constructor() {
+    this.route.queryParamMap?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const section = this.parseSection(params.get('section'));
+      const previous = this.selectedSection();
+      this.selectedSection.set(section);
+      if (
+        previous !== section &&
+        (section === 'overview' || section === 'history') &&
+        this.animal() &&
+        !this.history() &&
+        !this.historyError()
+      ) {
+        this.loadHistory(0);
+      }
+    });
     let initialRoute = true;
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (initialRoute) {
@@ -615,13 +750,16 @@ export class AnimalProfilePageComponent {
         this.paddocks.set([]);
         this.destinationFarms.set([]);
         this.action.set(null);
+        this.selectedEvent.set(null);
         this.pending.set(false);
         if (pending || !farm) {
           this.generation++;
           this.animal.set(null);
           this.history.set(null);
+          this.latestMovement.set(null);
           this.weights.set(null);
           this.pendingWork.set(null);
+          this.latestTreatment.set(null);
           this.pregnancies.set(null);
           this.mother.set(null);
           this.calves.set([]);
@@ -635,6 +773,97 @@ export class AnimalProfilePageComponent {
   get id() {
     return this.route.snapshot.paramMap.get('animalId') || '';
   }
+  private parseSection(value: string | null): ProfileSection {
+    return ['overview', 'health', 'weight', 'reproduction', 'production', 'history'].includes(
+      value || '',
+    )
+      ? (value as ProfileSection)
+      : 'overview';
+  }
+  profileSections(item: Animal): { id: ProfileSection; label: string }[] {
+    return [
+      { id: 'overview', label: 'Visão geral' },
+      { id: 'health', label: 'Saúde' },
+      { id: 'weight', label: 'Peso' },
+      ...(item.sex === 'FEMALE'
+        ? [
+            { id: 'reproduction' as const, label: 'Reprodução' },
+            { id: 'production' as const, label: 'Produção' },
+          ]
+        : []),
+      { id: 'history', label: 'Histórico' },
+    ];
+  }
+  selectSection(section: ProfileSection) {
+    const item = this.animal();
+    if (!item || !this.profileSections(item).some((entry) => entry.id === section)) return;
+    this.selectedSection.set(section);
+    if (
+      (section === 'overview' || section === 'history') &&
+      !this.history() &&
+      !this.historyError()
+    ) {
+      this.loadHistory(0);
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { section: section === 'overview' ? null : section },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+  onSectionKeydown(event: KeyboardEvent, section: ProfileSection, item: Animal) {
+    const tabs = this.profileSections(item);
+    const index = tabs.findIndex((entry) => entry.id === section);
+    const next =
+      event.key === 'ArrowRight'
+        ? index + 1
+        : event.key === 'ArrowLeft'
+          ? index - 1
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? tabs.length - 1
+              : -1;
+    if (next < 0 && event.key !== 'ArrowLeft') return;
+    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const target = tabs[(next + tabs.length) % tabs.length];
+    this.selectSection(target.id);
+    this.host.nativeElement.querySelector<HTMLElement>(`#profile-tab-${target.id}`)?.focus();
+  }
+  isRecordSection() {
+    return ['health', 'weight', 'reproduction'].includes(this.selectedSection());
+  }
+  recordTab(item: Animal): 'health' | 'weights' | 'pregnancies' | null {
+    return this.selectedSection() === 'health'
+      ? 'health'
+      : this.selectedSection() === 'weight'
+        ? 'weights'
+        : this.selectedSection() === 'reproduction' && item.sex === 'FEMALE'
+          ? 'pregnancies'
+          : null;
+  }
+  openManagement(action: ManagementAction, event: Event) {
+    this.management?.open(action);
+    this.closeMenu(event);
+  }
+  closeMenu(event: Event) {
+    const menu = (event.target as HTMLElement).closest('details');
+    if (!(menu instanceof HTMLDetailsElement)) return;
+    menu.open = false;
+    if (event instanceof KeyboardEvent) {
+      event.preventDefault();
+      menu.querySelector<HTMLElement>('summary')?.focus();
+    }
+  }
+  @HostListener('document:click', ['$event'])
+  closeMenusOutside(event: MouseEvent) {
+    if ((event.target as Element).closest('.profile-menu')) return;
+    this.host.nativeElement
+      .querySelectorAll<HTMLDetailsElement>('.profile-menu[open]')
+      .forEach((menu) => (menu.open = false));
+  }
   get reference() {
     return errorReference(this.error()?.requestId);
   }
@@ -645,6 +874,50 @@ export class AnimalProfilePageComponent {
   status = (s: Animal['status']) => statusLabels[s];
   sex = (s: Animal['sex']) => sexLabels[s];
   date = formatDate;
+  returnQueryParams(): Record<string, string> {
+    const params = this.route.snapshot.queryParamMap;
+    if (!params) return {};
+    const result: Record<string, string> = {};
+    for (const key of ['search', 'sex', 'status', 'unlocated', 'page', 'size', 'view']) {
+      const value = params.get(key);
+      if (value) result[key] = value;
+    }
+    return result;
+  }
+  age(birthDate: string | null): string {
+    if (!birthDate) return 'Idade não informada';
+    const [year, month, day] = birthDate.split('-').map(Number);
+    const [nowYear, nowMonth, nowDay] = this.today.split('-').map(Number);
+    let years = nowYear - year;
+    if (nowMonth < month || (nowMonth === month && nowDay < day)) years--;
+    if (years < 0) return 'Idade não informada';
+    return years === 1 ? '1 ano' : `${years} anos`;
+  }
+  eventDomain(type: string): DomainIconName {
+    if (type === 'BORN' || type === 'CALVED') return 'calving';
+    if (type === 'SOLD' || type === 'DECEASED') return 'attention';
+    if (type.includes('HEALTH')) return 'health';
+    if (type.includes('WEIGH')) return 'weight';
+    if (
+      ['BREEDING_RECORDED', 'PREGNANCY_CONFIRMED', 'PREGNANCY_ENDED', 'MOTHER_CORRECTED'].includes(
+        type,
+      )
+    )
+      return 'reproduction';
+    if (type.includes('MOV') || type.includes('TRANSFER')) return 'movement';
+    if (type.includes('MILK')) return 'herd';
+    return 'traceability';
+  }
+  eventPeriod(event: AnimalEvent): string {
+    const date = new Date(event.recordedAt);
+    return Number.isNaN(date.getTime())
+      ? 'Período não informado'
+      : new Intl.DateTimeFormat('pt-BR', {
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'America/Sao_Paulo',
+        }).format(date);
+  }
   canOperate(a: Animal) {
     return this.permissions.canMutateHerd() && a.status === 'ACTIVE';
   }
@@ -658,6 +931,7 @@ export class AnimalProfilePageComponent {
     this.catalogScope.reset();
     this.historyScope.reset();
     this.action.set(null);
+    this.selectedEvent.set(null);
     this.pending.set(false);
     this.animal.set(null);
     this.historyType = '';
@@ -679,9 +953,11 @@ export class AnimalProfilePageComponent {
     this.conflict.set(false);
     this.error.set(null);
     this.history.set(null);
+    this.latestMovement.set(null);
     this.historyError.set(null);
     this.weights.set(null);
     this.pendingWork.set(null);
+    this.latestTreatment.set(null);
     this.pregnancies.set(null);
     this.api
       .animal(id)
@@ -690,8 +966,13 @@ export class AnimalProfilePageComponent {
         next: (a) => {
           if (generation !== this.generation) return;
           this.animal.set(a);
+          if (!this.profileSections(a).some((section) => section.id === this.selectedSection())) {
+            this.selectSection('overview');
+          }
           this.state.set('ready');
-          this.loadHistory(0);
+          if (this.selectedSection() === 'overview' || this.selectedSection() === 'history') {
+            this.loadHistory(0);
+          }
           this.loadIntelligence(generation);
         },
         error: (e) => {
@@ -706,6 +987,7 @@ export class AnimalProfilePageComponent {
     this.intelligenceCancel.next();
     this.weights.set(null);
     this.pendingWork.set(null);
+    this.latestTreatment.set(null);
     this.pregnancies.set(null);
     this.intelligenceError.set(false);
     this.mother.set(null);
@@ -736,6 +1018,21 @@ export class AnimalProfilePageComponent {
         },
         error: () => {
           if (generation === this.generation) this.intelligenceError.set(true);
+        },
+      });
+    this.api
+      .treatments(this.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        takeUntil(this.cancel),
+        takeUntil(this.intelligenceCancel),
+      )
+      .subscribe({
+        next: (result) => {
+          if (generation === this.generation) this.latestTreatment.set(result.items[0] || null);
+        },
+        error: () => {
+          if (generation === this.generation) this.latestTreatment.set(null);
         },
       });
     this.api
@@ -781,7 +1078,12 @@ export class AnimalProfilePageComponent {
     this.historyError.set(null);
     this.historyScope.run(
       this.api.history(this.id, page, this.historyType),
-      (value) => this.history.set(value),
+      (value) => {
+        this.history.set(value);
+        if (page === 0 && !this.historyType) {
+          this.latestMovement.set(value.items.find((event) => event.type === 'MOVED') || null);
+        }
+      },
       (error) =>
         this.historyError.set(
           error instanceof AppError
@@ -1131,6 +1433,11 @@ export class AnimalProfilePageComponent {
     );
   }
   pregnancyLabel = (v: keyof typeof pregnancyLabels) => pregnancyLabels[v];
+  treatmentLabel(treatment: HealthTreatment): string {
+    if (treatment.procedureCode) return procedureLabels[treatment.procedureCode];
+    const type = treatment.treatmentType || treatment.type;
+    return type ? healthLabels[type] : 'Ação sanitária registrada';
+  }
   pendingSummary() {
     const items = this.pendingWork()?.items || [];
     return items.length

@@ -19,7 +19,9 @@ const animal: Animal = {
   version: 2,
   paddock: null,
 };
-async function setup() {
+async function setup(
+  activeTab: 'weights' | 'health' | 'pregnancies' | 'calves' | null = 'weights',
+) {
   const api = {
     weights: vi.fn((_id: string, _page?: number): Observable<WeightPage> =>
       of({
@@ -61,6 +63,7 @@ async function setup() {
   }).compileComponents();
   const fixture = TestBed.createComponent(AnimalOperationalHistoryComponent);
   fixture.componentRef.setInput('animal', animal);
+  fixture.componentRef.setInput('activeTab', activeTab);
   fixture.detectChanges();
   await fixture.whenStable();
   return { fixture, component: fixture.componentInstance, api, context };
@@ -114,5 +117,25 @@ describe('Históricos operacionais do animal', () => {
     component.selectTab('pregnancies');
     expect(component.tab()).toBe('weights');
     expect(api.pregnancies).not.toHaveBeenCalled();
+  });
+  it('consulta registros somente na primeira abertura e invalida o cache na troca de fazenda', async () => {
+    const { fixture, component, api, context } = await setup(null);
+    expect(api.weights).not.toHaveBeenCalled();
+    expect(api.treatments).not.toHaveBeenCalled();
+    fixture.componentRef.setInput('activeTab', 'health');
+    fixture.detectChanges();
+    expect(api.treatments).toHaveBeenCalledTimes(1);
+    fixture.componentRef.setInput('activeTab', 'weights');
+    fixture.detectChanges();
+    expect(api.weights).toHaveBeenCalledTimes(1);
+    fixture.componentRef.setInput('activeTab', 'health');
+    fixture.detectChanges();
+    expect(api.treatments).toHaveBeenCalledTimes(1);
+    context.transitionPending.set(true);
+    fixture.detectChanges();
+    context.transitionPending.set(false);
+    fixture.detectChanges();
+    expect(api.treatments).toHaveBeenCalledTimes(2);
+    expect(component.tab()).toBe('health');
   });
 });
