@@ -8,6 +8,8 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, forkJoin } from 'rxjs';
 import { ContextStore } from '../../core/context/context.store';
 import { localDateOnly } from '../../core/date/date-only';
@@ -39,6 +41,8 @@ import {
   OperationResult,
 } from './herd-operations.models';
 import { formatDate } from './herd.shared';
+import { HealthCommandCenterComponent } from './health-command-center.component';
+import { isHealthPendingType, type HealthPendingType } from './health-operational.models';
 
 interface HealthCommand {
   batch: boolean;
@@ -63,6 +67,7 @@ type FilterKey = keyof AppliedHealthFilters;
     ErrorStateComponent,
     SkeletonComponent,
     DialogComponent,
+    HealthCommandCenterComponent,
   ],
   templateUrl: './health-page.component.html',
   styleUrls: [
@@ -78,6 +83,8 @@ export class HealthPageComponent {
   readonly context = inject(ContextStore);
   private readonly destroy = inject(DestroyRef);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute, { optional: true });
+  private readonly router = inject(Router, { optional: true });
   private readonly reportScope = new ContextRequestScope(this.destroy);
   private readonly writeScope = new ContextRequestScope(this.destroy);
   private command: HealthCommand | null = null;
@@ -90,6 +97,8 @@ export class HealthPageComponent {
   readonly filterPickerOpen = signal(false);
   readonly filterAnimalLabel = signal('');
   readonly selectedTreatment = signal<HealthTreatment | null>(null);
+  readonly tab = signal<'overview' | 'pending' | 'history'>('overview');
+  readonly pendingTypeFromRoute = signal<HealthPendingType | null>(null);
   readonly appliedFilters = signal<AppliedHealthFilters | null>(null);
   readonly metricLabels = ['Tratamentos', 'Animais atendidos', 'Vacinações', 'Vermifugações'];
   readonly creating = signal(false);
@@ -116,6 +125,12 @@ export class HealthPageComponent {
   protocol = '';
   notes = '';
   constructor() {
+    this.route?.queryParamMap.pipe(takeUntilDestroyed(this.destroy)).subscribe((params) => {
+      const tab = params.get('tab');
+      this.tab.set(tab === 'pending' || tab === 'history' ? tab : 'overview');
+      const type = params.get('pendingType');
+      this.pendingTypeFromRoute.set(isHealthPendingType(type) ? type : null);
+    });
     effect(() => {
       this.context.contextVersion();
       const pending = this.context.transitionPending();
@@ -137,6 +152,16 @@ export class HealthPageComponent {
         if (!pending && farm) this.reload();
       });
     });
+  }
+  selectTab(tab: 'overview' | 'pending' | 'history') {
+    this.tab.set(tab);
+    if (this.router && this.route) {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab, pendingType: null },
+        queryParamsHandling: 'merge',
+      });
+    }
   }
   reload() {
     if (!this.ready()) return;

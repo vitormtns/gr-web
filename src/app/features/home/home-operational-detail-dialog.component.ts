@@ -14,6 +14,7 @@ import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feed
 import { DialogComponent } from '../../design-system/surfaces/surfaces';
 import { DomainIconComponent, DomainIconName } from '../../design-system/primitives/domain-icon';
 import { HerdApi } from '../herd/herd-api.service';
+import { isHealthPendingType } from '../herd/health-operational.models';
 import {
   PendingWorkItem,
   PendingWorkPage,
@@ -215,9 +216,13 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
             }
           }
           <a
-            routerLink="/rebanho/agenda"
+            [routerLink]="isHealthPendingType(pendingType()) ? '/rebanho/saude' : '/rebanho/agenda'"
             [queryParams]="{ tab: 'pending', pendingType: pendingType() }"
-            >Abrir pendências na agenda →</a
+            >{{
+              isHealthPendingType(pendingType())
+                ? 'Abrir pendências sanitárias →'
+                : 'Abrir pendências na agenda →'
+            }}</a
           >
         }
         @case ('urgency') {
@@ -553,6 +558,7 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomeOperationalDetailDialogComponent {
+  readonly isHealthPendingType = isHealthPendingType;
   readonly request = input.required<HomeDetailRequest>();
   @Output() closed = new EventEmitter<void>();
   readonly loadStatus = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');

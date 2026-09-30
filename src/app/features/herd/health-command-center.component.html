@@ -1,0 +1,482 @@
+@if (view() === 'overview') {
+  <section class="command-summary" aria-labelledby="command-summary-title">
+    <header class="command-heading light">
+      <span class="command-icon"><gr-domain-icon domain="health" size="md" /></span>
+      <div>
+        <span class="command-kicker">SAÚDE DO REBANHO · AGORA</span>
+        <h2 id="command-summary-title">Situação sanitária agora</h2>
+        <p>Necessidades atuais identificadas nesta fazenda.</p>
+      </div>
+    </header>
+    @if (store.attention().status === 'loading' || store.attention().status === 'idle') {
+      <div class="command-summary-grid" aria-label="Carregando situação sanitária">
+        @for (type of types; track type) {
+          <div class="command-summary-card"><gr-skeleton /><gr-skeleton /></div>
+        }
+      </div>
+    } @else if (store.attention().status === 'error') {
+      <gr-error-state
+        title="Não foi possível carregar a situação sanitária"
+        [description]="store.attention().error"
+        (retry)="store.loadAttention()"
+      />
+    } @else if (store.attention().value; as attention) {
+      <div class="command-summary-grid">
+        <button type="button" class="command-summary-card" (click)="openPending.emit()">
+          <span class="card-eyebrow">Pendências sanitárias</span
+          ><strong>{{ count(pendingCount()) }}</strong
+          ><small>situações sanitárias</small>
+          <span class="card-foot"
+            >{{ count(attention.summary.brucellosisWindowMissed) }} janelas primárias perdidas</span
+          >
+        </button>
+        <button
+          type="button"
+          class="command-summary-card bruc"
+          [class.danger]="attention.summary.brucellosisWindowMissed > 0"
+          (click)="
+            showCategory(
+              attention.summary.brucellosisWindowMissed
+                ? 'BRUCELLOSIS_WINDOW_MISSED'
+                : 'BRUCELLOSIS_DUE'
+            )
+          "
+        >
+          <span class="card-eyebrow">Brucelose</span
+          ><strong>{{ count(attention.summary.brucellosisDue) }}</strong
+          ><small>na janela</small>
+          <span class="card-foot"
+            >{{ count(attention.summary.brucellosisWindowMissed) }} janelas primárias perdidas</span
+          >
+        </button>
+        <button
+          type="button"
+          class="command-summary-card vaccine"
+          (click)="showCategory('VACCINATION_DUE')"
+        >
+          <span class="card-eyebrow">Vacinação</span
+          ><strong>{{ count(attention.summary.vaccinationDue) }}</strong
+          ><small>pendências identificadas</small>
+          <span class="card-foot"
+            >{{ count(historySummary()?.countsByTreatmentType?.VACCINATION) }} registros na consulta
+            de histórico</span
+          >
+        </button>
+        <button
+          type="button"
+          class="command-summary-card deworm"
+          (click)="showCategory('DEWORMING_DUE')"
+        >
+          <span class="card-eyebrow">Vermifugação</span
+          ><strong>{{ count(attention.summary.dewormingDue) }}</strong
+          ><small>pendências identificadas</small>
+          <span class="card-foot"
+            >{{ count(historySummary()?.countsByTreatmentType?.DEWORMING) }} registros na consulta
+            de histórico</span
+          >
+        </button>
+      </div>
+    }
+  </section>
+
+  <section class="command-attention" aria-labelledby="command-attention-title">
+    <header class="command-heading">
+      <span class="command-icon danger-icon"><gr-domain-icon domain="attention" size="md" /></span>
+      <div>
+        <span class="command-kicker">PRIORIDADE</span>
+        <h2 id="command-attention-title">Atenção sanitária</h2>
+        <p>O que exige acompanhamento primeiro.</p>
+      </div>
+    </header>
+    @if (store.attention().status === 'error') {
+      <gr-error-state
+        title="Não foi possível carregar as prioridades sanitárias"
+        [description]="store.attention().error"
+        (retry)="store.loadAttention()"
+      />
+    } @else if (store.samples().status === 'loading' || store.samples().status === 'idle') {
+      <div class="attention-grid"><gr-skeleton /><gr-skeleton /></div>
+    } @else if (store.samples().status === 'error') {
+      <gr-error-state
+        title="Não foi possível carregar as prioridades sanitárias"
+        [description]="store.samples().error"
+        (retry)="store.loadAttention()"
+      />
+    } @else if (hero(); as item) {
+      <div class="attention-grid" [attr.data-secondary-count]="secondary().length">
+        <button
+          type="button"
+          class="attention-hero"
+          [class.critical]="item.type === 'BRUCELLOSIS_WINDOW_MISSED'"
+          (click)="showItem(item)"
+        >
+          <span class="urgency-tag">{{
+            item.type === 'BRUCELLOSIS_WINDOW_MISSED' || (item.daysOverdue ?? 0) > 0
+              ? 'URGENTE'
+              : 'ATENÇÃO'
+          }}</span>
+          <strong>{{ typeName(item) }}</strong
+          ><span>{{ item.identification }}{{ item.name ? ' · ' + item.name : '' }}</span>
+          <small
+            >{{ deadline(item) ? 'Prazo: ' + date(deadline(item)) : 'Prazo não informado' }} ·
+            {{ timing(item) }}</small
+          >
+          @if (item.type === 'BRUCELLOSIS_WINDOW_MISSED') {
+            <small>Consulte o fluxo aplicável para regularização sanitária.</small>
+          }
+          <em>Ver detalhes →</em>
+        </button>
+        @if (secondary().length) {
+          <div class="attention-secondary">
+            @for (category of secondary(); track category.type) {
+              <button type="button" (click)="showCategory(category.type)">
+                <strong>{{ category.title }}</strong
+                ><span>{{ count(category.count) }} situações</span><em>Ver detalhes →</em>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="command-calm">
+        <strong>Nenhuma pendência sanitária identificada agora.</strong>
+        <p>Continue acompanhando os registros e as próximas ações.</p>
+      </div>
+    }
+  </section>
+
+  <section class="command-agenda" aria-labelledby="command-agenda-title">
+    <header class="command-heading">
+      <span class="command-icon"><gr-domain-icon domain="agenda" size="md" /></span>
+      <div>
+        <span class="command-kicker">PRÓXIMOS 7 DIAS</span>
+        <h2 id="command-agenda-title">Próximas ações sanitárias</h2>
+        <p>Eventos de vacinação e vermifugação da agenda.</p>
+      </div>
+      <a routerLink="/rebanho/agenda">Abrir agenda →</a>
+    </header>
+    @if (store.agenda().status === 'loading' || store.agenda().status === 'idle') {
+      <div class="agenda-loading"><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>
+    } @else if (store.agenda().status === 'error') {
+      <gr-error-state
+        title="Não foi possível carregar a agenda sanitária"
+        [description]="store.agenda().error"
+        (retry)="store.loadAgenda()"
+      />
+    } @else if (!agendaItems().length && (store.agenda().value?.totalPages ?? 0) <= 1) {
+      <div class="command-calm">
+        <strong>Nenhuma ação sanitária programada nos próximos 7 dias.</strong>
+      </div>
+    } @else {
+      <div class="agenda-days">
+        @for (day of days; track day; let index = $index) {
+          <div class="agenda-day">
+            <header>
+              <div>
+                <strong>{{ dayTitle(day, index) }}</strong
+                ><small>{{ date(day) }}</small>
+              </div>
+              <span>{{ onDay(day).length }}</span>
+            </header>
+            @for (item of onDay(day).slice(0, 3); track item.stableId) {
+              <p><i [class.blue]="item.kind === 'DEWORMING'"></i>{{ item.summary }}</p>
+            }
+            @if (onDay(day).length > 3) {
+              <small>+{{ onDay(day).length - 3 }} ações</small>
+            }
+            @if (!onDay(day).length) {
+              <small>Sem ações nesta consulta</small>
+            }
+          </div>
+        }
+      </div>
+      @if ((store.agenda().value?.totalPages ?? 0) > 1) {
+        <p class="page-caveat">
+          A agenda possui mais páginas. Consulte a agenda completa para ver todas as ações.
+        </p>
+      }
+    }
+  </section>
+
+  <section class="command-coverage" aria-labelledby="command-coverage-title">
+    <header class="command-heading">
+      <span class="command-icon blue-icon"><gr-domain-icon domain="health" size="md" /></span>
+      <div>
+        <span class="command-kicker">REGISTROS E NECESSIDADES</span>
+        <h2 id="command-coverage-title">Cobertura e acompanhamento</h2>
+        <p>Indicadores de registros do sistema; não representam conformidade sanitária.</p>
+      </div>
+    </header>
+    <div class="coverage-grid">
+      <div class="coverage-card">
+        <span>Brucelose</span>
+        @if (store.brucCoverage().status === 'ready' && store.brucCoverage().value; as coverage) {
+          <strong>{{
+            coveragePercent(
+              coverage.withRecordedTreatment,
+              coverage.totalActiveAnimals,
+              coverage.unknownBirthDate
+            ) === null
+              ? '—'
+              : coveragePercent(
+                  coverage.withRecordedTreatment,
+                  coverage.totalActiveAnimals,
+                  coverage.unknownBirthDate
+                ) + '%'
+          }}</strong>
+          @if (coverageDenominator(coverage.totalActiveAnimals, coverage.unknownBirthDate) > 0) {
+            <p>
+              {{ count(coverage.withRecordedTreatment) }} de
+              {{
+                count(coverageDenominator(coverage.totalActiveAnimals, coverage.unknownBirthDate))
+              }}
+              animais com registro estruturado
+            </p>
+          } @else {
+            <p>Sem base para percentual</p>
+          }
+          <small>Indicador de registros do sistema.</small>
+        } @else if (store.brucCoverage().status === 'error') {
+          <small>Consulta indisponível.</small
+          ><button type="button" (click)="store.loadBrucCoverage()">Tentar novamente</button>
+        } @else {
+          <gr-skeleton />
+        }
+      </div>
+      <div class="coverage-card">
+        <span>Aftosa · histórico</span>
+        @if (
+          store.aftosaCoverage().status === 'ready' && store.aftosaCoverage().value;
+          as coverage
+        ) {
+          <strong>{{
+            coveragePercent(
+              coverage.withRecordedTreatment,
+              coverage.totalActiveAnimals,
+              coverage.unknownBirthDate
+            ) === null
+              ? '—'
+              : coveragePercent(
+                  coverage.withRecordedTreatment,
+                  coverage.totalActiveAnimals,
+                  coverage.unknownBirthDate
+                ) + '%'
+          }}</strong>
+          @if (coverageDenominator(coverage.totalActiveAnimals, coverage.unknownBirthDate) > 0) {
+            <p>
+              {{ count(coverage.withRecordedTreatment) }} de
+              {{
+                count(coverageDenominator(coverage.totalActiveAnimals, coverage.unknownBirthDate))
+              }}
+              animais com registro histórico
+            </p>
+          } @else {
+            <p>Sem base para percentual</p>
+          }
+          <small>Informação histórica. Não representa obrigação atual de revacinação.</small>
+        } @else if (store.aftosaCoverage().status === 'error') {
+          <small>Consulta indisponível.</small
+          ><button type="button" (click)="store.loadAftosaCoverage()">Tentar novamente</button>
+        } @else {
+          <gr-skeleton />
+        }
+      </div>
+      <div class="coverage-card">
+        <span>Vacinações realizadas</span
+        ><strong>{{ count(historySummary()?.countsByTreatmentType?.VACCINATION) }}</strong>
+        <p>registros na consulta de histórico</p>
+        <small>Realizado no período consultado</small>
+      </div>
+      <div class="coverage-card">
+        <span>Vermifugações realizadas</span
+        ><strong>{{ count(historySummary()?.countsByTreatmentType?.DEWORMING) }}</strong>
+        <p>registros na consulta de histórico</p>
+        <small>Realizado no período consultado</small>
+      </div>
+    </div>
+  </section>
+
+  <section class="command-reading" aria-labelledby="command-reading-title">
+    <header class="command-heading">
+      <span class="command-icon"><gr-domain-icon domain="traceability" size="md" /></span>
+      <div>
+        <span class="command-kicker">RESUMO RECENTE</span>
+        <h2 id="command-reading-title">Leitura sanitária na consulta</h2>
+        <p>Registros realizados e necessidades atuais em bases distintas.</p>
+      </div>
+    </header>
+    <div class="reading-grid">
+      <div>
+        <span>REALIZADO NA CONSULTA</span
+        ><strong>{{ count(historySummary()?.countsByTreatmentType?.VACCINATION) }}</strong
+        ><small>vacinações</small>
+      </div>
+      <div>
+        <span>REALIZADO NA CONSULTA</span
+        ><strong>{{ count(historySummary()?.countsByTreatmentType?.DEWORMING) }}</strong
+        ><small>vermifugações</small>
+      </div>
+      <div>
+        <span>REALIZADO NA CONSULTA</span
+        ><strong>{{ count(historySummary()?.animalsTreated) }}</strong
+        ><small>animais atendidos</small>
+      </div>
+      <div>
+        <span>PENDENTE AGORA</span><strong>{{ count(pendingCount()) }}</strong
+        ><small>situações sanitárias</small>
+      </div>
+    </div>
+  </section>
+}
+
+@if (view() === 'pending') {
+  <section class="command-pending" aria-labelledby="command-pending-title">
+    <header class="command-heading">
+      <span class="command-icon danger-icon"><gr-domain-icon domain="attention" size="md" /></span>
+      <div>
+        <span class="command-kicker">TRABALHO SANITÁRIO</span>
+        <h2 id="command-pending-title">Pendências sanitárias</h2>
+        <p>Explore cada tipo com paginação do servidor.</p>
+      </div>
+    </header>
+    <form class="pending-controls" (ngSubmit)="applyType()">
+      <label
+        >Tipo de pendência<select name="pendingType" [(ngModel)]="pendingType">
+          @for (type of types; track type) {
+            <option [value]="type">{{ labels[type] }}</option>
+          }
+        </select></label
+      ><button class="primary-action" type="submit">Aplicar</button
+      ><button class="secondary-action" type="button" (click)="pickerOpen.set(true)">
+        Selecionar animal
+      </button>
+      @if (store.pendingAnimalId()) {
+        <button class="quiet-button" type="button" (click)="clearAnimal()">
+          Limpar animal: {{ store.pendingAnimalLabel() }}
+        </button>
+      }
+    </form>
+    @if (store.pending().status === 'loading' || store.pending().status === 'idle') {
+      <div class="pending-loading"><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>
+    } @else if (store.pending().status === 'error') {
+      <gr-error-state
+        title="Não foi possível carregar as pendências sanitárias"
+        [description]="store.pending().error"
+        (retry)="store.loadPending()"
+      />
+    } @else if (store.pending().value; as page) {
+      <div class="pending-result">
+        <strong
+          >{{ count(page.totalElements) }}
+          {{ page.totalElements === 1 ? 'situação' : 'situações' }}</strong
+        ><span>{{ labels[store.pendingType() || pendingType] }}</span>
+      </div>
+      @if (!page.items.length) {
+        <div class="command-calm">
+          <strong>Nenhuma pendência deste tipo encontrada.</strong>
+          <p>Escolha outro tipo ou animal para continuar a consulta.</p>
+        </div>
+      } @else {
+        <div class="pending-list">
+          @for (item of page.items; track item.type + item.animalId) {
+            <button type="button" class="pending-row" (click)="showItem(item)">
+              <span
+                ><strong>{{ item.identification }}</strong
+                ><small>{{ item.name || typeName(item) }}</small></span
+              ><span
+                ><strong>{{ deadline(item) ? date(deadline(item)) : 'Sem prazo' }}</strong
+                ><small>{{ timing(item) }}</small></span
+              ><span>
+                @if (item.lastPerformedOn) {
+                  <small>Último registro: {{ date(item.lastPerformedOn) }}</small>
+                }</span
+              ><em>Detalhes →</em>
+            </button>
+          }
+        </div>
+      }
+      <div class="pending-footer">
+        <span>Página {{ page.page + 1 }} de {{ page.totalPages || 1 }}</span
+        ><gr-pagination
+          [page]="page.page"
+          [totalPages]="page.totalPages"
+          (pageChange)="store.loadPending($event)"
+        />
+      </div>
+    }
+  </section>
+}
+
+<gr-dialog [open]="pickerOpen()" size="lg" (closed)="pickerOpen.set(false)"
+  ><span dialog-title>Selecionar animal</span>
+  @if (pickerOpen()) {
+    <p>Busque por identificação ou nome.</p>
+    <app-animal-picker label="Buscar animal" [status]="''" (chosen)="chooseAnimal($event)" />
+  }
+  <div dialog-actions>
+    <button class="quiet-button" type="button" (click)="pickerOpen.set(false)">Fechar</button>
+  </div></gr-dialog
+>
+
+<gr-dialog [open]="!!store.detailType()" size="lg" (closed)="store.closeDetail()"
+  ><span dialog-title>{{
+    store.detailType() ? labels[store.detailType()!] : 'Pendência sanitária'
+  }}</span>
+  @if (store.selectedItem(); as item) {
+    <div class="pending-detail-head">
+      <strong>{{ item.identification }}{{ item.name ? ' · ' + item.name : '' }}</strong
+      ><span>{{ timing(item) }}</span>
+      <p>{{ deadline(item) ? 'Prazo: ' + date(deadline(item)) : 'Prazo não informado' }}</p>
+      @if (item.lastPerformedOn) {
+        <p>Último registro: {{ date(item.lastPerformedOn) }}</p>
+      }
+    </div>
+  }
+  @if (store.detailType() === 'BRUCELLOSIS_WINDOW_MISSED') {
+    <p class="bruc-note">Consulte o fluxo aplicável para regularização sanitária.</p>
+  }
+  @if (store.detail().status === 'loading') {
+    <div class="pending-loading"><gr-skeleton /><gr-skeleton /></div>
+  } @else if (store.detail().status === 'error') {
+    <gr-error-state
+      title="Não foi possível carregar os detalhes"
+      [description]="store.detail().error"
+      (retry)="store.loadDetail()"
+    />
+  } @else if (store.detail().value; as page) {
+    <p class="detail-count">
+      {{ count(page.totalElements) }}
+      {{ page.totalElements === 1 ? 'situação' : 'situações' }} deste tipo
+    </p>
+    <div class="detail-list">
+      @for (item of page.items; track item.type + item.animalId) {
+        <div>
+          <strong>{{ item.identification }}</strong
+          ><span>{{ item.name || 'Animal sem nome' }}</span
+          ><small
+            >{{ deadline(item) ? date(deadline(item)) : 'Prazo não informado' }} ·
+            {{ timing(item) }}</small
+          >
+          @if (item.lastPerformedOn) {
+            <small>Último registro: {{ date(item.lastPerformedOn) }}</small>
+          }
+        </div>
+      }
+    </div>
+    <gr-pagination
+      [page]="page.page"
+      [totalPages]="page.totalPages"
+      (pageChange)="store.loadDetail($event)"
+    />
+  }
+  <div dialog-actions>
+    <button class="quiet-button" type="button" (click)="store.closeDetail()">Fechar</button
+    ><a
+      class="primary-action"
+      routerLink="/rebanho/agenda"
+      [queryParams]="{ tab: 'pending', pendingType: store.detailType() }"
+      (click)="store.closeDetail()"
+      >Abrir pendências →</a
+    >
+  </div>
+</gr-dialog>

@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Observable, Subject, of, throwError } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { BehaviorSubject, Observable, Subject, of, throwError } from 'rxjs';
 import { MembershipRole } from '../../core/api/api.models';
 import { describe, expect, it, vi } from 'vitest';
 import { ContextStore } from '../../core/context/context.store';
@@ -60,6 +61,8 @@ describe('HealthPageComponent procedureCode', () => {
   };
   const ok = { operationId: 'op', animals: [], replayed: false };
   const setup = async (role: MembershipRole = 'OWNER') => {
+    const queryParamMap = new BehaviorSubject(convertToParamMap({ tab: 'history' }));
+    const router = { navigate: vi.fn(() => Promise.resolve(true)) };
     const api = {
       animal: vi.fn((_id: string): Observable<Animal> => of(animal)),
       healthReport: vi.fn((): Observable<HealthReport> => of(report)),
@@ -83,12 +86,17 @@ describe('HealthPageComponent procedureCode', () => {
         { provide: HerdApi, useValue: api },
         { provide: ContextStore, useValue: context },
         { provide: ToastService, useValue: { show: vi.fn() } },
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap },
+        },
+        { provide: Router, useValue: router },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(HealthPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    return { fixture, component: fixture.componentInstance, api, context };
+    return { fixture, component: fixture.componentInstance, api, context, queryParamMap, router };
   };
 
   it.each(['OWNER', 'ADMIN', 'MANAGER', 'OPERATOR'] as MembershipRole[])(
@@ -441,5 +449,26 @@ describe('HealthPageComponent procedureCode', () => {
     expect(component.selectedTreatment()).toBeNull();
     expect(component.filterPickerOpen()).toBe(false);
     expect(component.report()).toBeNull();
+  });
+
+  it('lê a tab da URL e publica a navegação interna na query string', async () => {
+    const { component, queryParamMap, router } = await setup();
+    expect(component.tab()).toBe('history');
+    component.selectTab('pending');
+    expect(router.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: { tab: 'pending', pendingType: null },
+        queryParamsHandling: 'merge',
+      }),
+    );
+    queryParamMap.next(
+      convertToParamMap({ tab: 'pending', pendingType: 'BRUCELLOSIS_WINDOW_MISSED' }),
+    );
+    expect(component.tab()).toBe('pending');
+    expect(component.pendingTypeFromRoute()).toBe('BRUCELLOSIS_WINDOW_MISSED');
+    queryParamMap.next(convertToParamMap({ tab: 'overview', pendingType: 'WEIGHING_DUE' }));
+    expect(component.tab()).toBe('overview');
+    expect(component.pendingTypeFromRoute()).toBeNull();
   });
 });
