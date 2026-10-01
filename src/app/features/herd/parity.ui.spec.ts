@@ -565,7 +565,6 @@ describe('Reprodução em lote', () => {
     expect(api.breedBatch).toHaveBeenCalledWith(
       expect.objectContaining({
         mothers: [{ id: animal.id, expectedVersion: 7 }],
-        expectedCalvingOn: null,
       }),
     );
     expect(component.result()?.items).toHaveLength(1);

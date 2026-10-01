@@ -146,9 +146,13 @@ describe('Reprodução com revisão e versões atuais', () => {
   it.each(['OWNER', 'ADMIN', 'MANAGER', 'OPERATOR'] as MembershipRole[])(
     '%s pode revisar cobertura e confirmação',
     async (role) => {
-      const { component, api } = await setup(role);
+      const { component, api, fixture } = await setup(role);
       component.openBreeding();
       component.chooseMother({ ...mother, version: 1 });
+      expect(component.expectedCalvingPreview('2026-01-15')).toBe('2026-10-25');
+      component.serviceOn = '2026-01-31';
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('10/11/2026');
       component.prepare();
       expect(component.reviewing()).toBe(true);
       expect(api.breed).not.toHaveBeenCalled();
@@ -161,6 +165,7 @@ describe('Reprodução com revisão e versões atuais', () => {
           operationId: expect.any(String),
         }),
       );
+      expect(api.breed.mock.calls[0][1]).not.toHaveProperty('expectedCalvingOn');
       component.openPregnancy(pregnancy.id, 'confirm');
       component.prepare();
       component.save();

@@ -68,7 +68,6 @@ export interface BreedingBatchCommand {
   serviceType: ReproductionServiceType;
   serviceOn: string;
   sireReference: string | null;
-  expectedCalvingOn: string | null;
   notes: string | null;
   mothers: { id: string; expectedVersion: number }[];
 }

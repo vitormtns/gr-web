@@ -26,6 +26,7 @@ import { AnimalPickerComponent } from './animal-picker.component';
 import { BreedingBatchComponent } from './breeding-batch.component';
 import { HerdApi } from './herd-api.service';
 import { validImportDate } from './herd-import';
+import { expectedCalvingPreview } from './reproduction-preview';
 import { Animal, AnimalSex, newUuid } from './herd.models';
 import {
   Pregnancy,
@@ -117,7 +118,6 @@ export class ReproductionPageComponent {
   pregnancyMotherId = '';
   serviceType: ReproductionServiceType = 'INSEMINATION';
   serviceOn = this.today;
-  expectedCalvingOn = '';
   sireReference = '';
   notes = '';
   transitionOn = this.today;
@@ -428,7 +428,6 @@ export class ReproductionPageComponent {
             expectedVersion: current.mother.version,
             serviceType: this.serviceType,
             serviceOn: this.serviceOn,
-            expectedCalvingOn: this.expectedCalvingOn || null,
             sireReference: this.sireReference.trim() || null,
             notes: this.notes.trim() || null,
           };
@@ -563,13 +562,11 @@ export class ReproductionPageComponent {
     if (
       flow === 'breeding' &&
       (!['INSEMINATION', 'NATURAL_SERVICE'].includes(this.serviceType) ||
-        (this.expectedCalvingOn &&
-          (!validImportDate(this.expectedCalvingOn) || this.expectedCalvingOn <= this.serviceOn)) ||
         this.sireReference.trim().length > 160 ||
         this.notes.trim().length > 1000)
     ) {
       this.formError.set(
-        'Revise o tipo de serviço, a previsão posterior ao serviço e os limites das observações.',
+        'Revise o tipo de serviço e os limites das observações.',
       );
       return false;
     }
@@ -596,6 +593,7 @@ export class ReproductionPageComponent {
     }
     return true;
   }
+  expectedCalvingPreview = expectedCalvingPreview;
   private ready() {
     return !this.context.transitionPending() && !!this.context.selectedFarm();
   }
@@ -611,8 +609,7 @@ export class ReproductionPageComponent {
     this.prepared = null;
     this.serviceType = 'INSEMINATION';
     this.serviceOn = this.transitionOn = this.calvedOn = this.birthDate = this.today;
-    this.expectedCalvingOn =
-      this.sireReference =
+    this.sireReference =
       this.notes =
       this.calfIdentification =
       this.calfName =

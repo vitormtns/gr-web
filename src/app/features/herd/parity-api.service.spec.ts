@@ -47,7 +47,6 @@ describe('Contratos públicos de paridade', () => {
       serviceType: 'INSEMINATION' as const,
       serviceOn: '2026-09-01',
       sireReference: null,
-      expectedCalvingOn: null,
       notes: null,
       mothers: [{ id: 'a', expectedVersion: 7 }],
     };
