@@ -1,0 +1,83 @@
+<div class="repro-overview">
+  <section class="repro-section journey-section" aria-labelledby="journey-title">
+    <div class="repro-heading"><div><span class="repro-kicker">CICLO REPRODUTIVO</span><h2 id="journey-title">Jornada reprodutiva do rebanho</h2><p>Matrizes em cada etapa registrada do ciclo.</p></div></div>
+    @if (store.overview().status === 'loading' || store.overview().status === 'idle') {
+      <div class="journey-grid" aria-label="Carregando jornada"><gr-skeleton /><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>
+    } @else if (store.overview().status === 'error') {
+      <gr-error-state title="Não foi possível carregar a jornada" [description]="store.overview().error" (retry)="store.loadOverview()" />
+    } @else {
+      <ol class="journey-grid">
+        @for (stage of journey(); track stage.tone; let index = $index) {
+          <li class="journey-card" [attr.data-tone]="stage.tone">
+            <span class="stage-index" aria-hidden="true"><gr-domain-icon [domain]="stage.tone === 'calving' ? 'calving' : 'reproduction'" size="sm" /><small>0{{ index + 1 }}</small></span>
+            <span class="stage-label">{{ stage.label }}</span>
+            <strong>{{ stage.count }}</strong><small>{{ stage.note }}</small>
+          </li>
+        }
+      </ol>
+      <p class="repro-footnote">Leitura das etapas registradas. Os totais representam eventos da consulta e gestações em acompanhamento com serviço no período; não são uma coorte única.</p>
+      @if (!journey().some(stage => stage.count > 0)) { <p class="repro-empty">Nenhum ciclo reprodutivo registrado neste contexto.</p> }
+    }
+  </section>
+
+  <section class="repro-section" aria-labelledby="attention-title">
+    <div class="repro-heading"><div><span class="repro-kicker">AGORA</span><h2 id="attention-title">Atenção reprodutiva</h2></div></div>
+    @if (store.attention().status === 'loading' || store.attention().status === 'idle') { <gr-skeleton /> }
+    @else if (store.attention().status === 'error') { <gr-error-state title="Não foi possível carregar a atenção reprodutiva" [description]="store.attention().error" (retry)="store.loadAttention()" /> }
+    @else if (store.attention().value; as attention) {
+      @if (attention.overdue.totalElements || attention.upcoming.totalElements || attention.plannedChecks || store.overview().value?.summary?.openPossiblePregnancies) {
+        <div class="attention-grid">
+          @if (attention.overdue.items[0]; as urgent) {
+            <article class="attention-hero"><span class="urgent-badge">URGENTE</span><h3>Parto após a data esperada</h3><p class="attention-animal">{{ urgent.identification }}{{ urgent.name ? ' · ' + urgent.name : '' }}</p><p>Previsto para <time [attr.datetime]="urgent.expectedOn">{{ date(urgent.expectedOn) }}</time></p><p>{{ urgent.daysOverdue }} {{ urgent.daysOverdue === 1 ? 'dia de atraso' : 'dias de atraso' }}</p><button type="button" (click)="store.openDetail('CALVING_OVERDUE')">Ver detalhes de {{ attention.overdue.totalElements }} {{ attention.overdue.totalElements === 1 ? 'parto' : 'partos' }}</button></article>
+          }
+          <div class="attention-secondary">
+            @if (attention.upcoming.totalElements) { <button type="button" class="attention-tile" (click)="store.openDetail('CALVING_UPCOMING')"><span>Partos próximos</span><strong>{{ attention.upcoming.totalElements }}</strong><small>Com previsão próxima</small></button> }
+            @if (attention.plannedChecks) { <div class="attention-tile"><span>Diagnósticos planejados</span><strong>{{ attention.plannedChecks }}</strong><small>Tarefas em aberto no planejamento</small></div> }
+            @if (store.overview().value?.summary?.openPossiblePregnancies; as possible) { <div class="attention-tile"><span>Possíveis gestações</span><strong>{{ possible }}</strong><small>Em acompanhamento no período</small></div> }
+          </div>
+        </div>
+      } @else { <p class="repro-empty">Nenhuma atenção reprodutiva identificada agora.</p> }
+    }
+  </section>
+
+  <section class="repro-section" aria-labelledby="milestone-title">
+    <div class="repro-heading"><div><span class="repro-kicker">PRÓXIMOS 7 DIAS</span><h2 id="milestone-title">Próximos marcos reprodutivos</h2></div></div>
+    @if (store.milestones().status === 'loading' || store.milestones().status === 'idle') { <gr-skeleton /> }
+    @else if (store.milestones().status === 'error') { <gr-error-state title="Não foi possível carregar os próximos marcos" [description]="store.milestones().error" (retry)="store.loadMilestones()" /> }
+    @else if (!store.milestones().value?.length) { <p class="repro-empty">Nenhum marco reprodutivo previsto nos próximos 7 dias.</p> }
+    @else { <div class="milestone-grid">
+      @for (day of days; track day) { @if (dayItems(day).length) {
+        <article class="milestone-day"><h3>{{ dayLabel(day) }}</h3><time [attr.datetime]="day">{{ date(day) }}</time><ul>
+          @for (item of dayItems(day).slice(0, 3); track item.stableId) { <li><span>{{ item.kind === 'PREGNANCY_CHECK' ? 'Diagnóstico planejado' : item.kind === 'BREEDING' ? 'Serviço' : 'Parto' }}</span><strong>{{ item.summary }}</strong>@if (item.identification) { <small>{{ item.identification }}{{ item.name ? ' · ' + item.name : '' }}</small> }</li> }
+        </ul>@if (dayItems(day).length > 3) { <p>+{{ dayItems(day).length - 3 }} marcos</p> }</article>
+      } }
+    </div> }
+  </section>
+
+  @if (store.overview().value; as result) {
+    <div class="repro-summary-grid">
+      <section class="repro-section" aria-labelledby="composition-title"><div class="repro-heading"><div><span class="repro-kicker">LEITURA DO CICLO</span><h2 id="composition-title">Composição dos registros reprodutivos</h2></div></div>
+        <div class="cycle-bars">@for (stage of journey(); track stage.tone) { <div class="cycle-row" [attr.data-tone]="stage.tone"><div><span>{{ stage.label }}</span><strong>{{ stage.count }}</strong></div><span class="cycle-track"><span [style.width]="width(stage.count)"></span></span></div> }</div>
+        @if (!maxCount()) { <p class="repro-empty">Nenhum registro nesta leitura.</p> }
+      </section>
+      <section class="repro-section" aria-labelledby="summary-title"><div class="repro-heading"><div><span class="repro-kicker">REGISTROS E ACOMPANHAMENTO</span><h2 id="summary-title">Resumo no período</h2></div></div>
+        <h3 class="summary-group-title">Realizados na consulta</h3><dl class="summary-list"><div><dt>Serviços</dt><dd>{{ result.summary.servicesRecorded }}</dd></div><div><dt>Confirmações</dt><dd>{{ result.summary.pregnanciesConfirmed }}</dd></div><div><dt>Encerramentos</dt><dd>{{ result.summary.pregnanciesTerminated }}</dd></div><div><dt>Partos</dt><dd>{{ result.summary.calvings }}</dd></div><div><dt>Crias nascidas</dt><dd>{{ result.summary.calvesBorn }}</dd></div></dl>
+        <h3 class="summary-group-title">Em acompanhamento, com serviço no período</h3><dl class="summary-list"><div><dt>Possíveis</dt><dd>{{ result.summary.openPossiblePregnancies }}</dd></div><div><dt>Confirmadas</dt><dd>{{ result.summary.openConfirmedPregnancies }}</dd></div></dl>
+      </section>
+    </div>
+    <section class="repro-section" aria-labelledby="recent-title"><div class="repro-heading"><div><span class="repro-kicker">MOVIMENTAÇÃO RECENTE</span><h2 id="recent-title">Últimos eventos reprodutivos</h2></div><button type="button" (click)="openHistory.emit()">Ver histórico completo</button></div>
+      @if (!result.items.length) { <p class="repro-empty">Nenhum evento reprodutivo encontrado.</p> }
+      @else { <div class="recent-scroll"><table><thead><tr><th>Data</th><th>Matriz</th><th>Evento</th><th>Serviço</th><th>Previsão</th><th>Ação</th></tr></thead><tbody>
+        @for (item of result.items.slice(0, 5); track item.id) { <tr><td><time [attr.datetime]="item.occurredOn">{{ date(item.occurredOn) }}</time></td><td><a [routerLink]="['/rebanho/animais', item.mother.id]">{{ item.mother.identification }}{{ item.mother.name ? ' · ' + item.mother.name : '' }}</a></td><td>{{ eventLabel(item.action) }}</td><td>{{ serviceLabel(item.serviceType) }}</td><td>{{ item.expectedCalvingOn ? date(item.expectedCalvingOn) : '—' }}</td><td>@if (item.pregnancyId) { <button type="button" (click)="openPregnancy.emit(item.pregnancyId)">Ver gestação</button> }</td></tr> }
+      </tbody></table></div> }
+    </section>
+  }
+</div>
+
+<gr-dialog [open]="store.detailType() !== null" size="xl" (closed)="store.closeDetail()"><span dialog-title>{{ store.detailType() === 'CALVING_OVERDUE' ? 'Partos após a data esperada' : 'Partos próximos' }}</span>
+  @if (store.detail().status === 'loading') { <gr-skeleton /> }
+  @else if (store.detail().status === 'error') { <gr-error-state title="Não foi possível carregar os partos" [description]="store.detail().error" (retry)="store.loadDetail(store.detailPage())" /> }
+  @else if (store.detail().value; as page) { <div class="recent-scroll"><table><thead><tr><th>Matriz</th><th>Data esperada</th><th>Situação</th><th>Ação</th></tr></thead><tbody>
+    @for (item of page.items; track item.animalId) { <tr><td>{{ item.identification }}{{ item.name ? ' · ' + item.name : '' }}</td><td><time [attr.datetime]="item.expectedOn">{{ date(item.expectedOn) }}</time></td><td>{{ item.daysOverdue !== null ? item.daysOverdue + ' dias de atraso' : item.daysUntil + ' dias até o parto' }}</td><td><a [routerLink]="['/rebanho/animais', item.animalId]">Ver perfil da matriz</a>@if (item.pregnancyId) { <button type="button" (click)="store.closeDetail(); openPregnancy.emit(item.pregnancyId)">Abrir gestação</button> }</td></tr> }
+  </tbody></table></div><nav class="detail-pagination" aria-label="Paginação dos partos"><button type="button" [disabled]="page.page === 0" (click)="store.loadDetail(page.page - 1)">Anterior</button><span>Página {{ page.page + 1 }} de {{ page.totalPages || 1 }}</span><button type="button" [disabled]="page.page + 1 >= page.totalPages" (click)="store.loadDetail(page.page + 1)">Próxima</button></nav> }
+</gr-dialog>

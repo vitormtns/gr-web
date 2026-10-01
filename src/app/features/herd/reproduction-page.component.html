@@ -3,40 +3,48 @@
     <div>
       <span class="eyebrow">PROCESSO REPRODUTIVO</span>
       <h1>Reprodução</h1>
-      <p>Do serviço registrado ao parto, com o estado atual de cada gestação.</p>
+      <p>Acompanhe o ciclo reprodutivo do serviço ao parto.</p>
     </div>
     <div class="profile-actions">
-      @if (permissions.canManageReproduction()) {
-        <button class="secondary-action" type="button" (click)="openStandaloneCalving()">
-          Registrar parto sem gestação
-        </button>
-      }
       @if (permissions.canMutateHerd()) {
-        <button class="primary-action" type="button" (click)="openBreeding()">
-          Registrar cobertura
-        </button>
+        <button class="secondary-action" type="button" (click)="openBatch()">Serviço em lote</button>
+      }
+      @if (permissions.canMutateHerd() || permissions.canManageReproduction()) {
+        <div class="event-menu" (keydown)="onEventMenuKeydown($event)">
+          <button class="primary-action" type="button" aria-haspopup="menu" [attr.aria-expanded]="eventMenuOpen()" (click)="toggleEventMenu()">+ Registrar evento <span aria-hidden="true">⌄</span></button>
+          @if (eventMenuOpen()) { <div class="event-menu-list" role="menu">
+            @if (permissions.canMutateHerd()) { <button type="button" role="menuitem" (click)="openBreeding()">Registrar serviço</button> }
+            @if (permissions.canManageReproduction()) { <button type="button" role="menuitem" (click)="openStandaloneCalving()">Registrar parto</button> }
+          </div> }
+        </div>
       }
     </div>
   </header>
-  <app-breeding-batch (changed)="reload()" />
-  @if (report(); as result) {
-    <section class="metric-strip" aria-label="Resumo reprodutivo da consulta">
-      <div>
-        <span>Serviços</span><strong>{{ result.summary.servicesRecorded }}</strong>
-      </div>
-      <div>
-        <span>Possíveis gestações</span
-        ><strong>{{ result.summary.openPossiblePregnancies }}</strong>
-      </div>
-      <div>
-        <span>Gestações confirmadas</span
-        ><strong>{{ result.summary.openConfirmedPregnancies }}</strong>
-      </div>
-      <div>
-        <span>Partos</span><strong>{{ result.summary.calvings }}</strong>
-      </div>
-    </section>
-  }
+  <app-breeding-batch [embedded]="true" (changed)="reload(); operational.loadAll(); loadPregnancies()" />
+  <div class="repro-tabs" role="tablist" aria-label="Áreas da reprodução" (keydown)="onTabKeydown($event)">
+    <button type="button" role="tab" id="repro-tab-overview" aria-controls="repro-panel-overview" [attr.aria-selected]="tab() === 'overview'" [tabIndex]="tab() === 'overview' ? 0 : -1" [class.active]="tab() === 'overview'" (click)="selectTab('overview')">Visão geral</button>
+    <button type="button" role="tab" id="repro-tab-pregnancies" aria-controls="repro-panel-pregnancies" [attr.aria-selected]="tab() === 'pregnancies'" [tabIndex]="tab() === 'pregnancies' ? 0 : -1" [class.active]="tab() === 'pregnancies'" (click)="selectTab('pregnancies')">Gestações</button>
+    <button type="button" role="tab" id="repro-tab-history" aria-controls="repro-panel-history" [attr.aria-selected]="tab() === 'history'" [tabIndex]="tab() === 'history' ? 0 : -1" [class.active]="tab() === 'history'" (click)="selectTab('history')">Histórico</button>
+  </div>
+  @if (tab() === 'overview') { <section id="repro-panel-overview" role="tabpanel" aria-labelledby="repro-tab-overview"><app-reproduction-overview (openPregnancy)="openPregnancy($event, 'view')" (openHistory)="selectTab('history')" /></section> }
+  @if (tab() === 'pregnancies') { <section id="repro-panel-pregnancies" role="tabpanel" aria-labelledby="repro-tab-pregnancies" class="section-frame operational-surface">
+    <div class="surface-tools"><div><span class="section-kicker">ESTADO REPRODUTIVO</span><h2>Gestações do rebanho</h2><p>Consulte as gestações registradas na fazenda.</p></div></div>
+    <form class="reproduction-filters" (ngSubmit)="applyPregnancyFilters()">
+      <label>Situação<select name="pregnancyStatus" [(ngModel)]="pregnancyStatus"><option value="">Todas</option><option value="POSSIBLE">Em acompanhamento</option><option value="CONFIRMED">Confirmada</option><option value="CALVED">Parto realizado</option><option value="TERMINATED">Encerrada</option></select></label>
+      <label>Tipo de serviço<select name="pregnancyServiceType" [(ngModel)]="pregnancyServiceType"><option value="">Todos</option><option value="INSEMINATION">Inseminação</option><option value="NATURAL_SERVICE">Monta natural</option></select></label>
+      <div class="history-mother-filter"><span>Buscar matriz</span>@if (selectedPregnancyMother(); as selected) { <div class="selected-filter">{{ selected.identification }}{{ selected.name ? ' · ' + selected.name : '' }} <button type="button" (click)="clearPregnancyMother()">Remover</button></div> }<button type="button" class="quiet-button" (click)="pregnancyPickerOpen.set(!pregnancyPickerOpen())">{{ selectedPregnancyMother() ? 'Alterar matriz' : 'Selecionar matriz' }}</button></div>
+      <button class="secondary-action" type="submit">Aplicar filtros</button>
+    </form>
+    @if (pregnancyPickerOpen()) { <div class="history-picker"><app-animal-picker label="Buscar matriz" sex="FEMALE" status="" (chosen)="choosePregnancyMother($event)" /></div> }
+    @if (pregnanciesLoading()) { <div class="list-loading"><gr-skeleton /><gr-skeleton /></div> }
+    @else if (pregnanciesError()) { <gr-error-state title="Não foi possível carregar as gestações" [description]="pregnanciesError()" (retry)="loadPregnancies()" /> }
+    @else if (pregnancies(); as result) {
+      @if (!result.items.length) { <div class="domain-empty"><strong>Nenhuma gestação encontrada para os filtros.</strong></div> }
+      @else { <div class="process-list">@for (item of result.items; track item.id) { <article class="process-card"><div><span class="domain-badge">{{ pregnancyLabel(item.status) }}</span><h3><a [routerLink]="['/rebanho/animais', item.mother.id]">{{ item.mother.identification }}{{ item.mother.name ? ' · ' + item.mother.name : '' }}</a></h3><p>{{ serviceLabel(item.serviceType) }} · Serviço em <time [attr.datetime]="item.serviceOn">{{ date(item.serviceOn) }}</time></p>@if (item.expectedCalvingOn) { <p>Parto esperado em <time [attr.datetime]="item.expectedCalvingOn">{{ date(item.expectedCalvingOn) }}</time></p> }</div><div class="item-actions"><button type="button" (click)="openPregnancy(item.id, 'view')">Ver gestação</button>@if (item.status === 'POSSIBLE' && permissions.canMutateHerd()) { <button type="button" (click)="openPregnancy(item.id, 'confirm')">Confirmar</button> }@if ((item.status === 'POSSIBLE' || item.status === 'CONFIRMED') && permissions.canManageReproduction()) { <button type="button" (click)="openPregnancy(item.id, 'terminate')">Encerrar</button><button type="button" (click)="openPregnancy(item.id, 'calving')">Registrar parto</button> }</div></article> }</div>
+      <nav class="pagination" aria-label="Paginação das gestações"><button type="button" [disabled]="pregnancyPage === 0" (click)="changePregnancyPage(pregnancyPage - 1)">Anterior</button><span>Página {{ pregnancyPage + 1 }} de {{ result.totalPages || 1 }}</span><button type="button" [disabled]="pregnancyPage + 1 >= result.totalPages" (click)="changePregnancyPage(pregnancyPage + 1)">Próxima</button></nav> }
+    }
+  </section> }
+  @if (tab() === 'history') {
   <section class="section-frame operational-surface">
     <div class="surface-tools">
       <div>
@@ -61,17 +69,16 @@
           <option value="NATURAL_SERVICE">Monta natural</option>
         </select></label
       >
-      <label
-        >Identificador da mãe<input
-          name="motherFilter"
-          [(ngModel)]="motherFilter"
-          placeholder="UUID da mãe (opcional)"
-      /></label>
+      <div class="history-mother-filter"><span>Buscar matriz</span>
+        @if (selectedHistoryMother(); as selected) { <div class="selected-filter">{{ selected.identification }}{{ selected.name ? ' · ' + selected.name : '' }} <button type="button" (click)="clearHistoryMother()">Remover</button></div> } @else if (motherFilter) { <div class="selected-filter">Filtro de matriz ativo <button type="button" (click)="clearHistoryMother()">Remover</button></div> }
+        <button type="button" class="quiet-button" (click)="historyPickerOpen.set(!historyPickerOpen())">{{ selectedHistoryMother() ? 'Alterar matriz' : 'Selecionar matriz' }}</button>
+      </div>
       <label>De<input name="from" type="date" [(ngModel)]="from" /></label>
       <label>Até<input name="to" type="date" [(ngModel)]="to" /></label>
       <button class="secondary-action" type="submit">Aplicar filtros</button
       ><button class="quiet-button" type="button" (click)="clearFilters()">Limpar filtros</button>
     </form>
+    @if (historyPickerOpen()) { <div class="history-picker"><app-animal-picker label="Buscar matriz" sex="FEMALE" status="" (chosen)="chooseHistoryMother($event)" /></div> }
     @if (filterError()) {
       <p class="form-error filter-feedback" role="alert">{{ filterError() }}</p>
     }
@@ -170,13 +177,20 @@
       }
     }
   </section>
+  }
   <gr-dialog [open]="flow() !== null" (closed)="close()">
-    <span dialog-title>{{ reviewing() ? 'Revisar: ' : '' }}{{ title() }}</span>
+    <span dialog-title><span class="dialog-kicker">PROCESSO REPRODUTIVO</span>{{ reviewing() ? 'Revisar: ' : '' }}{{ title() }}</span>
     @if (editorLoading()) {
       <p role="status">Consultando os dados atuais…</p>
       <gr-skeleton />
     }
     @if (pregnancy(); as p) {
+      <ol class="pregnancy-journey" aria-label="Jornada desta gestação">
+        <li><span>Serviço</span><time [attr.datetime]="p.serviceOn">{{ date(p.serviceOn) }}</time></li>
+        @if (p.confirmedOn) { <li><span>Confirmação</span><time [attr.datetime]="p.confirmedOn">{{ date(p.confirmedOn) }}</time></li> }
+        @if (p.endedOn) { <li><span>{{ p.status === 'CALVED' ? 'Parto' : 'Encerramento' }}</span><time [attr.datetime]="p.endedOn">{{ date(p.endedOn) }}</time></li> }
+        @else if (p.expectedCalvingOn) { <li><span>Parto previsto</span><time [attr.datetime]="p.expectedCalvingOn">{{ date(p.expectedCalvingOn) }}</time></li> }
+      </ol>
       <dl class="pregnancy-details">
         <div>
           <dt>Situação</dt>
@@ -190,14 +204,8 @@
           <dt>Parto esperado</dt>
           <dd>{{ date(p.expectedCalvingOn) }}</dd>
         </div>
-        <div>
-          <dt>Confirmação</dt>
-          <dd>{{ date(p.confirmedOn) }}</dd>
-        </div>
-        <div>
-          <dt>Encerramento</dt>
-          <dd>{{ date(p.endedOn) }}</dd>
-        </div>
+        @if (p.confirmedOn) { <div><dt>Confirmação</dt><dd>{{ date(p.confirmedOn) }}</dd></div> }
+        @if (p.endedOn) { <div><dt>Encerramento</dt><dd>{{ date(p.endedOn) }}</dd></div> }
         <div>
           <dt>Referência do reprodutor</dt>
           <dd>{{ p.sireReference || 'Não informada' }}</dd>
@@ -208,10 +216,6 @@
             <dd>{{ terminationLabel(p.terminationReason) }}</dd>
           </div>
         }
-        <div>
-          <dt>Versão</dt>
-          <dd>{{ p.version }}</dd>
-        </div>
       </dl>
       <p>
         <a [routerLink]="['/rebanho/animais', p.motherId]">Consultar mãe</a>

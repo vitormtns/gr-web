@@ -4,6 +4,7 @@ import {
   DestroyRef,
   effect,
   inject,
+  input,
   output,
   signal,
 } from '@angular/core';
@@ -29,7 +30,7 @@ import { validImportDate } from './herd-import';
   imports: [FormsModule, DialogComponent, AnimalPickerComponent],
   template: `
     @if (permissions.canMutateHerd()) {
-      <section class="section-frame parity-section">
+      @if (!embedded()) { <section class="section-frame parity-section">
         <h2>Serviço reprodutivo em lote</h2>
         <p>Registre inseminação ou monta natural para até 100 fêmeas em uma operação atômica.</p>
         <button class="secondary-action" type="button" (click)="start()">Preparar lote</button>
@@ -57,7 +58,7 @@ import { validImportDate } from './herd-import';
             </table>
           </div>
         }
-      </section>
+      </section> }
     }
     <gr-dialog [open]="opened()" (closed)="close()"
       ><span dialog-title>Preparar serviço em lote</span>
@@ -177,6 +178,7 @@ import { validImportDate } from './herd-import';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BreedingBatchComponent {
+  readonly embedded = input(false);
   readonly changed = output<void>();
   readonly permissions = inject(PermissionService);
   private readonly context = inject(ContextStore);

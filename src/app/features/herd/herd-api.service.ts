@@ -4,7 +4,7 @@ import { ApiClient } from '../../core/api/api-client.service';
 import { ItemsResponse } from '../../core/api/api.models';
 import { CountedPage } from './parity.models';
 import { Animal, AnimalFilters, AnimalHistory, BatchResult, MovementPage, Page, PaddockRef, TransferItem, TransferResult } from './herd.models';
-import { AgendaPage, CalvingResult, HealthReport, OperationResult, PendingWorkPage, PlannerItem, PlannerPage, Pregnancy, PregnancyPage, ReproductionReport, WeightPage } from './herd-operations.models';
+import { AgendaPage, CalvingResult, FarmPregnancyPage, HealthReport, OperationResult, PendingWorkPage, PlannerItem, PlannerPage, Pregnancy, PregnancyPage, ReproductionReport, WeightPage } from './herd-operations.models';
 
 @Injectable({ providedIn: 'root' })
 export class HerdApi {
@@ -39,6 +39,7 @@ export class HerdApi {
   recordHealthBatch(body:object):Observable<OperationResult>{return this.api.post('/api/v1/herd/health-treatments/batch',body,true)}
   reproductionReport(filters:{motherId?:string;serviceType?:string;pregnancyStatus?:string;from?:string;to?:string;page?:number}):Observable<ReproductionReport>{return this.api.get(`/api/v1/herd/reports/reproduction?${query(filters)}`,true)}
   pregnancies(motherId:string,page=0):Observable<PregnancyPage>{return this.api.get(`/api/v1/herd/animals/${encodeURIComponent(motherId)}/pregnancies?page=${page}&size=20`,true)}
+  allPregnancies(filters:{status?:string;motherId?:string;serviceType?:string;page?:number}={}):Observable<FarmPregnancyPage>{return this.api.get(`/api/v1/herd/pregnancies?${query({...filters,size:20})}`,true)}
   pregnancy(id:string):Observable<Pregnancy>{return this.api.get(`/api/v1/herd/pregnancies/${encodeURIComponent(id)}`,true)}
   breed(motherId:string,body:object):Observable<Pregnancy>{return this.api.post(`/api/v1/herd/animals/${encodeURIComponent(motherId)}/breedings`,body,true)}
   confirmPregnancy(id:string,body:object):Observable<Pregnancy>{return this.api.post(`/api/v1/herd/pregnancies/${encodeURIComponent(id)}/confirmation`,body,true)}

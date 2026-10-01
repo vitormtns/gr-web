@@ -23,7 +23,9 @@ class PickerStub {
 }
 @Component({ selector: 'app-breeding-batch', template: '' })
 class BatchStub {
+  embedded = input(false);
   changed = output<void>();
+  start() {}
 }
 HTMLDialogElement.prototype.showModal ??= function () {
   this.open = true;
@@ -80,6 +82,10 @@ async function setup(role: MembershipRole = 'OWNER', query: Record<string, strin
   };
   const api = {
     reproductionReport: vi.fn((_filters: object): Observable<ReproductionReport> => of(report)),
+    pendingWork: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
+    planner: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
+    agenda: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
+    allPregnancies: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
     animal: vi.fn((_id: string): Observable<Animal> => of(mother)),
     pregnancy: vi.fn((_id: string): Observable<Pregnancy> => of(pregnancy)),
     breed: vi.fn((_id: string, _body: object): Observable<unknown> => of(pregnancy)),
@@ -96,7 +102,7 @@ async function setup(role: MembershipRole = 'OWNER', query: Record<string, strin
       provideRouter([]),
       {
         provide: ActivatedRoute,
-        useValue: { snapshot: { queryParamMap: convertToParamMap(query) } },
+        useValue: { snapshot: { queryParamMap: convertToParamMap(query) }, queryParamMap: of(convertToParamMap(query)) },
       },
       { provide: ContextStore, useValue: context },
       { provide: HerdApi, useValue: api },
@@ -114,6 +120,29 @@ async function setup(role: MembershipRole = 'OWNER', query: Record<string, strin
   return { fixture, component: fixture.componentInstance, api, context, toast };
 }
 describe('Reprodução com revisão e versões atuais', () => {
+  it('abre deep link de gestações com consulta global paginada', async () => {
+    const { component, api, fixture } = await setup('OWNER', { tab: 'pregnancies' });
+    expect(component.tab()).toBe('pregnancies');
+    expect(api.allPregnancies).toHaveBeenCalledWith(expect.objectContaining({ page: 0 }));
+    expect(fixture.nativeElement.textContent).toContain('Gestações do rebanho');
+  });
+  it('oferece busca por matriz no histórico sem pedir UUID', async () => {
+    const { component, fixture } = await setup();
+    component.selectTab('history');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Buscar matriz');
+    expect(fixture.nativeElement.querySelector('input[placeholder*="UUID"]')).toBeNull();
+  });
+  it('abre a experiência de serviço em lote pelo CTA do cabeçalho', async () => {
+    const { component, fixture } = await setup();
+    const start = vi.fn();
+    component.batch = { start } as unknown as BreedingBatchComponent;
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button'))
+      .find((element: any) => element.textContent.includes('Serviço em lote')) as HTMLButtonElement;
+    button.click();
+    expect(start).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.querySelector('app-breeding-batch')).not.toBeNull();
+  });
   it.each(['OWNER', 'ADMIN', 'MANAGER', 'OPERATOR'] as MembershipRole[])(
     '%s pode revisar cobertura e confirmação',
     async (role) => {
@@ -296,8 +325,9 @@ describe('Reprodução com revisão e versões atuais', () => {
     );
     api.reproductionReport.mockReturnValue(throwError(() => Error('Indisponível')));
     component.reload();
+    component.operational.loadOverview();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.metric-strip')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.journey-card')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar');
     context.contextVersion.update((v) => v + 1);
     fixture.detectChanges();
