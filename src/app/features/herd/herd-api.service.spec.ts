@@ -161,6 +161,14 @@ describe('HerdApi', () => {
       true,
     );
   });
+  it('consulta gestações de toda a fazenda com filtros e paginação no servidor', () => {
+    const { client, api } = setup();
+    api.allPregnancies({ status: 'CONFIRMED', motherId: 'mother', serviceType: 'INSEMINATION', page: 2 }).subscribe();
+    expect(client.get).toHaveBeenCalledWith(
+      '/api/v1/herd/pregnancies?page=2&size=20&status=CONFIRMED&motherId=mother&serviceType=INSEMINATION',
+      true,
+    );
+  });
   it('envia versionamento otimista nas transições de gestação e planner', () => {
     const { client, api } = setup();
     const transition = { operationId: 'stable', expectedVersion: 4, occurredOn: '2026-09-17' };

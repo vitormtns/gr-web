@@ -2,13 +2,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ViewChild,
   effect,
   inject,
   signal,
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, Observable, of } from 'rxjs';
 import { ContextStore } from '../../core/context/context.store';
 import { localDateOnly } from '../../core/date/date-only';
@@ -27,6 +29,7 @@ import { validImportDate } from './herd-import';
 import { Animal, AnimalSex, newUuid } from './herd.models';
 import {
   Pregnancy,
+  FarmPregnancyPage,
   PregnancyTerminationReason,
   ReproductionReport,
   ReproductionServiceType,
@@ -34,6 +37,8 @@ import {
   serviceLabels,
 } from './herd-operations.models';
 import { formatDate } from './herd.shared';
+import { ReproductionOperationalStore } from './reproduction-operational.store';
+import { ReproductionOverviewComponent } from './reproduction-overview.component';
 
 type Flow = 'breeding' | 'confirm' | 'terminate' | 'calving' | 'view';
 interface PreparedCommand {
@@ -50,6 +55,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
     RouterLink,
     AnimalPickerComponent,
     BreedingBatchComponent,
+    ReproductionOverviewComponent,
     ErrorStateComponent,
     SkeletonComponent,
     DialogComponent,
@@ -61,19 +67,33 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
     './reproduction-page.component.scss',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [ReproductionOperationalStore],
 })
 export class ReproductionPageComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly api = inject(HerdApi);
+  readonly operational = inject(ReproductionOperationalStore);
+  @ViewChild(BreedingBatchComponent) batch?: BreedingBatchComponent;
   readonly context = inject(ContextStore);
   readonly permissions = inject(PermissionService);
   private readonly toast = inject(ToastService);
   private readonly destroy = inject(DestroyRef);
   private readonly reportScope = new ContextRequestScope(this.destroy);
+  private readonly pregnanciesScope = new ContextRequestScope(this.destroy);
   private readonly editorScope = new ContextRequestScope(this.destroy);
   private initialContext = true;
   private prepared: PreparedCommand | null = null;
   readonly report = signal<ReproductionReport | null>(null);
+  readonly pregnancies = signal<FarmPregnancyPage | null>(null);
+  readonly pregnanciesLoading = signal(false);
+  readonly pregnanciesError = signal('');
+  readonly tab = signal<'overview' | 'pregnancies' | 'history'>('overview');
+  readonly eventMenuOpen = signal(false);
+  readonly historyPickerOpen = signal(false);
+  readonly selectedHistoryMother = signal<Animal | null>(null);
+  readonly pregnancyPickerOpen = signal(false);
+  readonly selectedPregnancyMother = signal<Animal | null>(null);
   readonly loading = signal(false);
   readonly error = signal('');
   readonly filterError = signal('');
@@ -91,6 +111,10 @@ export class ReproductionPageComponent {
   from = '';
   to = '';
   page = 0;
+  pregnancyPage = 0;
+  pregnancyStatus = '';
+  pregnancyServiceType = '';
+  pregnancyMotherId = '';
   serviceType: ReproductionServiceType = 'INSEMINATION';
   serviceOn = this.today;
   expectedCalvingOn = '';
@@ -104,31 +128,135 @@ export class ReproductionPageComponent {
   calfSex: AnimalSex = 'FEMALE';
   birthDate = this.today;
   constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroy)).subscribe((params) => {
+      const requested = params.get('tab');
+      this.tab.set(requested === 'history' || requested === 'pregnancies' ? requested : 'overview');
+      if (!this.initialContext && this.tab() === 'pregnancies' && !this.pregnancies() && !this.pregnanciesLoading() && this.ready())
+        this.loadPregnancies();
+    });
     effect(() => {
       this.context.contextVersion();
       const pending = this.context.transitionPending();
       const farm = this.context.selectedFarm();
       untracked(() => {
         this.reportScope.reset();
+        this.pregnanciesScope.reset();
+        this.operational.closeDetail();
+        this.pregnancies.set(null);
+        this.pregnanciesLoading.set(false);
+        this.pregnanciesError.set('');
+        this.eventMenuOpen.set(false);
+        this.historyPickerOpen.set(false);
+        this.selectedHistoryMother.set(null);
+        this.pregnancyPickerOpen.set(false);
+        this.selectedPregnancyMother.set(null);
         this.resetEditor();
         this.report.set(null);
         this.error.set('');
         this.filterError.set('');
         this.loading.set(false);
         this.page = 0;
+        this.pregnancyPage = 0;
+        this.pregnancyStatus = this.pregnancyServiceType = this.pregnancyMotherId = '';
         this.status = this.serviceFilter = this.motherFilter = this.from = this.to = '';
+        if (!this.initialContext) {
+          void this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge', queryParams: {
+            pregnancyStatus: null, serviceType: null, motherId: null, from: null, to: null, page: null,
+          } });
+        }
         if (pending || !farm) return;
         if (this.initialContext) {
           const requested = this.route.snapshot.queryParamMap.get('pregnancyStatus') || '';
           this.status = ['POSSIBLE', 'CONFIRMED', 'CALVED', 'TERMINATED'].includes(requested)
             ? requested
             : '';
+          const params = this.route.snapshot.queryParamMap;
+          this.serviceFilter = ['INSEMINATION', 'NATURAL_SERVICE'].includes(params.get('serviceType') || '') ? params.get('serviceType')! : '';
+          this.motherFilter = uuid.test(params.get('motherId') || '') ? params.get('motherId')! : '';
+          this.from = validImportDate(params.get('from') || '') ? params.get('from')! : '';
+          this.to = validImportDate(params.get('to') || '') ? params.get('to')! : '';
+          const requestedPage = Number(params.get('page') || 0);
+          this.page = Number.isSafeInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
           this.initialContext = false;
         }
         this.reload();
+        if (this.tab() === 'pregnancies') this.loadPregnancies();
       });
     });
   }
+  selectTab(tab: 'overview' | 'pregnancies' | 'history') {
+    if (tab !== 'overview') this.operational.closeDetail();
+    this.tab.set(tab);
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { tab }, queryParamsHandling: 'merge' });
+    if (tab === 'pregnancies' && !this.pregnancies() && !this.pregnanciesLoading()) this.loadPregnancies();
+  }
+  onTabKeydown(event: KeyboardEvent) {
+    const tabs = ['overview', 'pregnancies', 'history'] as const;
+    const index = tabs.indexOf(this.tab());
+    const next = event.key === 'ArrowRight' ? (index + 1) % 3
+      : event.key === 'ArrowLeft' ? (index + 2) % 3
+      : event.key === 'Home' ? 0 : event.key === 'End' ? 2 : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    this.selectTab(tabs[next]);
+    queueMicrotask(() => document.getElementById(`repro-tab-${tabs[next]}`)?.focus());
+  }
+  openBatch() {
+    if (this.permissions.canMutateHerd() && this.ready()) this.batch?.start();
+  }
+  toggleEventMenu() {
+    this.eventMenuOpen.update((open) => !open);
+    if (this.eventMenuOpen()) queueMicrotask(() => document.querySelector<HTMLButtonElement>('.event-menu-list button')?.focus());
+  }
+  onEventMenuKeydown(event: KeyboardEvent) {
+    if (!this.eventMenuOpen()) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.eventMenuOpen.set(false);
+      queueMicrotask(() => document.querySelector<HTMLButtonElement>('.event-menu > button')?.focus());
+      return;
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = Array.from(document.querySelectorAll<HTMLButtonElement>('.event-menu-list button'));
+    if (!items.length) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+      : event.key === 'ArrowDown' ? (current + 1) % items.length
+      : (current - 1 + items.length) % items.length;
+    items[next].focus();
+  }
+  chooseHistoryMother(animal: Animal) {
+    this.selectedHistoryMother.set(animal);
+    this.motherFilter = animal.id;
+    this.historyPickerOpen.set(false);
+  }
+  clearHistoryMother() {
+    this.selectedHistoryMother.set(null);
+    this.motherFilter = '';
+  }
+  choosePregnancyMother(animal: Animal) {
+    this.selectedPregnancyMother.set(animal);
+    this.pregnancyMotherId = animal.id;
+    this.pregnancyPickerOpen.set(false);
+  }
+  clearPregnancyMother() {
+    this.selectedPregnancyMother.set(null);
+    this.pregnancyMotherId = '';
+  }
+  loadPregnancies() {
+    if (!this.ready()) return;
+    this.pregnanciesScope.reset();
+    this.pregnanciesLoading.set(true);
+    this.pregnanciesError.set('');
+    this.pregnanciesScope.run(
+      this.api.allPregnancies({ status: this.pregnancyStatus || undefined, serviceType: this.pregnancyServiceType || undefined, motherId: this.pregnancyMotherId || undefined, page: this.pregnancyPage }),
+      (value) => { this.pregnancies.set(value); this.pregnanciesLoading.set(false); },
+      (error) => { this.pregnanciesError.set(managementError(error, 'Não foi possível carregar as gestações.')); this.pregnanciesLoading.set(false); },
+    );
+  }
+  applyPregnancyFilters() { this.pregnancyPage = 0; this.loadPregnancies(); }
+  changePregnancyPage(page: number) { this.pregnancyPage = page; this.loadPregnancies(); }
   reload() {
     if (!this.ready()) return;
     this.reportScope.reset();
@@ -169,26 +297,38 @@ export class ReproductionPageComponent {
   }
   applyFilters() {
     this.page = 0;
+    this.syncHistoryQuery();
     this.reload();
   }
   clearFilters() {
     this.status = this.serviceFilter = this.motherFilter = this.from = this.to = '';
+    this.selectedHistoryMother.set(null);
     this.applyFilters();
   }
   changePage(page: number) {
     this.page = page;
+    this.syncHistoryQuery();
     this.reload();
+  }
+  private syncHistoryQuery() {
+    void this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge', queryParams: {
+      pregnancyStatus: this.status || null, serviceType: this.serviceFilter || null,
+      motherId: this.motherFilter || null, from: this.from || null, to: this.to || null,
+      page: this.page || null,
+    } });
   }
   openBreeding() {
     if (this.permissions.canMutateHerd() && this.ready()) {
       this.resetEditor();
       this.flow.set('breeding');
+      this.eventMenuOpen.set(false);
     }
   }
   openStandaloneCalving() {
     if (this.permissions.canManageReproduction() && this.ready()) {
       this.resetEditor();
       this.flow.set('calving');
+      this.eventMenuOpen.set(false);
     }
   }
   chooseMother(animal: Animal) {
@@ -376,6 +516,8 @@ export class ReproductionPageComponent {
         this.resetEditor();
         this.toast.show('success', message);
         this.reload();
+        this.operational.loadAll();
+        if (this.tab() === 'pregnancies') this.loadPregnancies();
       },
       (failure) => {
         this.saving.set(false);
