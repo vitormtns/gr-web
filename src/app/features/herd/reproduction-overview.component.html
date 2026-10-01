@@ -31,9 +31,9 @@
             <article class="attention-hero"><span class="urgent-badge">URGENTE</span><h3>Parto após a data esperada</h3><p class="attention-animal">{{ urgent.identification }}{{ urgent.name ? ' · ' + urgent.name : '' }}</p><p>Previsto para <time [attr.datetime]="urgent.expectedOn">{{ date(urgent.expectedOn) }}</time></p><p>{{ urgent.daysOverdue }} {{ urgent.daysOverdue === 1 ? 'dia de atraso' : 'dias de atraso' }}</p><button type="button" (click)="store.openDetail('CALVING_OVERDUE')">Ver detalhes de {{ attention.overdue.totalElements }} {{ attention.overdue.totalElements === 1 ? 'parto' : 'partos' }}</button></article>
           }
           <div class="attention-secondary">
-            @if (attention.upcoming.totalElements) { <button type="button" class="attention-tile" (click)="store.openDetail('CALVING_UPCOMING')"><span>Partos próximos</span><strong>{{ attention.upcoming.totalElements }}</strong><small>Com previsão próxima</small></button> }
-            @if (attention.plannedChecks) { <div class="attention-tile"><span>Diagnósticos planejados</span><strong>{{ attention.plannedChecks }}</strong><small>Tarefas em aberto no planejamento</small></div> }
-            @if (store.overview().value?.summary?.openPossiblePregnancies; as possible) { <div class="attention-tile"><span>Possíveis gestações</span><strong>{{ possible }}</strong><small>Em acompanhamento no período</small></div> }
+            @if (attention.upcoming.totalElements) { <button type="button" class="attention-tile" data-tone="upcoming" (click)="store.openDetail('CALVING_UPCOMING')"><span>Partos próximos</span><strong>{{ attention.upcoming.totalElements }}</strong><small>Com previsão próxima</small></button> }
+            @if (attention.plannedChecks) { <div class="attention-tile" data-tone="check"><span>Diagnósticos planejados</span><strong>{{ attention.plannedChecks }}</strong><small>Tarefas em aberto no planejamento</small></div> }
+            @if (store.overview().value?.summary?.openPossiblePregnancies; as possible) { <div class="attention-tile" data-tone="possible"><span>Possíveis gestações</span><strong>{{ possible }}</strong><small>Em acompanhamento no período</small></div> }
           </div>
         </div>
       } @else { <p class="repro-empty">Nenhuma atenção reprodutiva identificada agora.</p> }
@@ -48,7 +48,7 @@
     @else { <div class="milestone-grid">
       @for (day of days; track day) { @if (dayItems(day).length) {
         <article class="milestone-day"><h3>{{ dayLabel(day) }}</h3><time [attr.datetime]="day">{{ date(day) }}</time><ul>
-          @for (item of dayItems(day).slice(0, 3); track item.stableId) { <li><span>{{ item.kind === 'PREGNANCY_CHECK' ? 'Diagnóstico planejado' : item.kind === 'BREEDING' ? 'Serviço' : 'Parto' }}</span><strong>{{ item.summary }}</strong>@if (item.identification) { <small>{{ item.identification }}{{ item.name ? ' · ' + item.name : '' }}</small> }</li> }
+          @for (item of dayItems(day).slice(0, 3); track item.stableId) { <li [attr.data-kind]="item.kind"><span>{{ item.kind === 'PREGNANCY_CHECK' ? 'Diagnóstico planejado' : item.kind === 'BREEDING' ? 'Serviço' : 'Parto' }}</span><strong>{{ item.summary }}</strong>@if (item.identification) { <small>{{ item.identification }}{{ item.name ? ' · ' + item.name : '' }}</small> }</li> }
         </ul>@if (dayItems(day).length > 3) { <p>+{{ dayItems(day).length - 3 }} marcos</p> }</article>
       } }
     </div> }
