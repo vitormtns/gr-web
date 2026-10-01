@@ -10,6 +10,7 @@
 .repro-tabs button.active { color: white; background: var(--repro-primary); box-shadow: 0 2px 8px #3b20652b; }
 .repro-tabs button:focus-visible, .event-menu button:focus-visible { outline: 3px solid #a78bd4; outline-offset: 2px; }
 .event-menu { position: relative; }
+.event-menu > button span { margin-left: .4rem; }
 .event-menu-list { position: absolute; right: 0; top: calc(100% + .3rem); z-index: 5; min-width: 12rem; padding: .3rem; border: 1px solid #e3dced; border-radius: .7rem; background: white; box-shadow: 0 10px 28px #30234724; }
 .event-menu-list button { display: block; width: 100%; padding: .7rem .8rem; border: 0; border-radius: .4rem; background: transparent; text-align: left; cursor: pointer; }
 .event-menu-list button:hover { background: #f4f0f9; }

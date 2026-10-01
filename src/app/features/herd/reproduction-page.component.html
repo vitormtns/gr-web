@@ -45,7 +45,7 @@
     }
   </section> }
   @if (tab() === 'history') {
-  <section class="section-frame operational-surface">
+  <section id="repro-panel-history" role="tabpanel" aria-labelledby="repro-tab-history" class="section-frame operational-surface">
     <div class="surface-tools">
       <div>
         <span class="section-kicker">LINHA OPERACIONAL</span>
@@ -136,26 +136,6 @@
                 @if (item.pregnancyId) {
                   <button type="button" (click)="openPregnancy(item.pregnancyId, 'view')">
                     Ver gestação
-                  </button>
-                }
-                @if (
-                  item.pregnancyId &&
-                  item.action === 'BREEDING_RECORDED' &&
-                  permissions.canMutateHerd()
-                ) {
-                  <button type="button" (click)="openPregnancy(item.pregnancyId, 'confirm')">
-                    Confirmar
-                  </button>
-                }
-                @if (
-                  item.pregnancyId &&
-                  (item.action === 'BREEDING_RECORDED' || item.action === 'PREGNANCY_CONFIRMED') &&
-                  permissions.canManageReproduction()
-                ) {
-                  <button type="button" (click)="openPregnancy(item.pregnancyId, 'terminate')">
-                    Encerrar</button
-                  ><button type="button" (click)="openPregnancy(item.pregnancyId, 'calving')">
-                    Registrar parto
                   </button>
                 }
               </div>

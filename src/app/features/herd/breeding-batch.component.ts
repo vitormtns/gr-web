@@ -60,7 +60,7 @@ import { validImportDate } from './herd-import';
         }
       </section> }
     }
-    <gr-dialog [open]="opened()" (closed)="close()"
+    <gr-dialog [open]="opened()" size="xl" (closed)="close()"
       ><span dialog-title>Preparar serviço em lote</span>
       @if (opened()) {
         <fieldset class="form-grid compact" [disabled]="saving() || preparing()">

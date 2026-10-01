@@ -66,6 +66,17 @@
 table { width: 100%; border-collapse: collapse; min-width: 42rem; text-align: left; }
 th, td { padding: .7rem .5rem; border-bottom: 1px solid #eee8f1; font-size: .77rem; }
 th { color: var(--color-text-secondary); font-size: .69rem; text-transform: uppercase; letter-spacing: .04em; }
+.repro-heading > button, td button, .attention-hero button, .detail-pagination button {
+  border: 1px solid #d9cbe9;
+  border-radius: .55rem;
+  background: #fff;
+  color: var(--repro-primary);
+  font: inherit;
+  font-weight: 700;
+  padding: .45rem .7rem;
+}
+.repro-heading > button:hover, td button:hover, .attention-hero button:hover, .detail-pagination button:hover { background: var(--repro-soft); }
+.detail-pagination button:disabled { opacity: .45; cursor: default; }
 .detail-pagination { display: flex; align-items: center; justify-content: flex-end; gap: .8rem; padding: .8rem 0; font-size: .75rem; }
 button { cursor: pointer; }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--repro-primary); outline-offset: 2px; }
