@@ -263,7 +263,7 @@
       <div>
         <span class="command-kicker">PRÓXIMOS 7 DIAS</span>
         <h2 id="command-agenda-title">Próximas ações sanitárias</h2>
-        <p>Eventos de vacinação e vermifugação da agenda.</p>
+        <p>Vacinação e vermifugação da agenda. Pendências vencidas permanecem em Hoje.</p>
       </div>
       <a routerLink="/rebanho/agenda">Abrir agenda →</a>
     </header>
@@ -596,6 +596,9 @@
       @if (item.lastPerformedOn) {
         <p>Último registro: {{ date(item.lastPerformedOn) }}</p>
       }
+      @if (permissions.canMutateHerd()) {
+        <button class="quiet-button" type="button" (click)="store.closeDetail(); registerCare.emit(item)">Registrar cuidado deste animal</button>
+      }
     </div>
   }
   @if (store.detailType() === 'BRUCELLOSIS_WINDOW_MISSED') {
@@ -625,6 +628,9 @@
           >
           @if (item.lastPerformedOn) {
             <small>Último registro: {{ date(item.lastPerformedOn) }}</small>
+          }
+          @if (permissions.canMutateHerd()) {
+            <button class="quiet-button" type="button" (click)="store.closeDetail(); registerCare.emit(item)">Registrar cuidado</button>
           }
         </div>
       }

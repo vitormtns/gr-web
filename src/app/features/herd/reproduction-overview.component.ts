@@ -31,7 +31,7 @@ export class ReproductionOverviewComponent {
   });
   maxCount() { return Math.max(0, ...this.journey().map((stage) => stage.count)); }
   width(count: number) { return this.maxCount() ? `${100 * count / this.maxCount()}%` : '0%'; }
-  dayItems(day: string) { return this.store.milestones().value?.filter((item) => item.operationalDate === day) || []; }
+  dayItems(day: string) { return this.store.milestones().value?.filter((item) => (item.displayOn ?? item.operationalDate) === day) || []; }
   dayLabel(day: string) { return day === this.store.today ? 'Hoje' : day === addDays(this.store.today, 1) ? 'Amanhã' : this.date(day); }
   eventLabel(action: string) {
     return ({ BREEDING_RECORDED: 'Serviço registrado', PREGNANCY_CONFIRMED: 'Gestação confirmada', PREGNANCY_TERMINATED: 'Acompanhamento encerrado', CALVED: 'Parto realizado', BORN: 'Cria nascida' } as Record<string, string>)[action] || 'Evento reprodutivo';

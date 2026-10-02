@@ -54,6 +54,35 @@ export function parseHerdCsv(source: string, today = localDateOnly()): ImportPre
       motherIdentification: mother || null,
     });
   });
+  // Relações internas são verificáveis sem consultar o rebanho; referências externas
+  // continuam sob validação da API, sem assumir que uma mãe ausente no CSV não existe.
+  const byIdentification = new Map<string, ImportRow>();
+  const key = (value: string) => value.toLocaleLowerCase('pt-BR');
+  rows.forEach((row) => byIdentification.set(key(row.identification), row));
+  rows.forEach((row, index) => {
+    if (!row.motherIdentification) return;
+    const mother = byIdentification.get(key(row.motherIdentification));
+    if (!mother) return;
+    const relationshipErrors: string[] = [];
+    if (mother.sex !== 'FEMALE') relationshipErrors.push('a mãe indicada no arquivo deve ser fêmea');
+    if (mother.birthDate && row.birthDate && mother.birthDate > row.birthDate)
+      relationshipErrors.push('a mãe não pode ter nascido depois da cria');
+    const visited = new Set<string>([key(row.identification)]);
+    let current: ImportRow | undefined = mother;
+    while (current) {
+      const currentKey = key(current.identification);
+      if (visited.has(currentKey)) {
+        relationshipErrors.push('a relação materna forma um ciclo no arquivo');
+        break;
+      }
+      visited.add(currentKey);
+      current = current.motherIdentification
+        ? byIdentification.get(key(current.motherIdentification))
+        : undefined;
+    }
+    if (relationshipErrors.length)
+      errors.push(`Linha ${index + 2}: ${relationshipErrors.join('; ')}.`);
+  });
   return { rows, errors };
 }
 export function validImportDate(value: string): boolean {

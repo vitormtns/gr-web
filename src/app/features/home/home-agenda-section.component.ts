@@ -5,13 +5,13 @@ import { DomainIconComponent } from '../../design-system/primitives/domain-icon'
 import { todayLocalIso } from './operational-urgency';
 import type { HomeDetailRequest } from './home-detail.models';
 
-export function agendaWindowDays<T extends { operationalDate: string; summary: string }>(
+export function agendaWindowDays<T extends { operationalDate: string; displayOn?: string; summary: string }>(
   from: string,
   items: readonly T[],
 ) {
   const counts = new Map<string, number>();
   for (const item of items)
-    counts.set(item.operationalDate, (counts.get(item.operationalDate) ?? 0) + 1);
+    counts.set(item.displayOn ?? item.operationalDate, (counts.get(item.displayOn ?? item.operationalDate) ?? 0) + 1);
   const start = new Date(`${from}T12:00:00`);
   return Array.from({ length: 7 }, (_, offset) => {
     const date = new Date(start);
@@ -29,7 +29,7 @@ export function agendaWindowDays<T extends { operationalDate: string; summary: s
         .format(date)
         .replace('.', ''),
       count: counts.get(iso) ?? 0,
-      items: items.filter((item) => item.operationalDate === iso),
+      items: items.filter((item) => (item.displayOn ?? item.operationalDate) === iso),
     };
   });
 }

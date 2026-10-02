@@ -703,7 +703,7 @@ export class HomeActionsComponent {
     const counts = new Map<string, number>();
     for (const item of this.store.agenda().value?.items ?? []) {
       if (!this.parseIsoDay(item.operationalDate)) continue;
-      counts.set(item.operationalDate, (counts.get(item.operationalDate) ?? 0) + 1);
+      counts.set(item.displayOn ?? item.operationalDate, (counts.get(item.displayOn ?? item.operationalDate) ?? 0) + 1);
     }
     const days: AgendaDayView[] = [];
     for (let offset = 0; offset < 7; offset++) {
@@ -732,7 +732,7 @@ export class HomeActionsComponent {
   readonly selectedAgendaItems = computed<QueueItem[]>(() => {
     const active = this.activeAgendaDate();
     return (this.store.agenda().value?.items ?? [])
-      .filter(item => item.operationalDate === active)
+      .filter(item => (item.displayOn ?? item.operationalDate) === active)
       .map(item => this.queue(item));
   });
   readonly hasMoreAgendaItems = computed<boolean>(() => {

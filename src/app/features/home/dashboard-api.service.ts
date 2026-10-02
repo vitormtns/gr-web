@@ -18,8 +18,9 @@ export class DashboardApiClient {
   agenda(today: string): Observable<AgendaPage> {
     return this.api.get<AgendaPage>(`/api/v1/herd/agenda?from=${today}&page=0&size=5`, true);
   }
-  agendaPage(from: string, to: string, page = 0, size = 100): Observable<AgendaPage> {
+  agendaPage(from: string, to: string, page = 0, size = 100, includeOverdue = false): Observable<AgendaPage> {
     const params = new URLSearchParams({ from, to, page: String(page), size: String(size) });
+    if (includeOverdue) params.set('includeOverdue', 'true');
     return this.api.get<AgendaPage>(`/api/v1/herd/agenda?${params.toString()}`, true);
   }
   paddocks(page = 0): Observable<PaddockPage> {

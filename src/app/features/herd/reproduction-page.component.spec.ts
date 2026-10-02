@@ -10,7 +10,7 @@ import { AnimalPickerComponent } from './animal-picker.component';
 import { BreedingBatchComponent } from './breeding-batch.component';
 import { HerdApi } from './herd-api.service';
 import { Animal } from './herd.models';
-import { Pregnancy, ReproductionReport } from './herd-operations.models';
+import { FarmPregnancyPage, Pregnancy, ReproductionReport } from './herd-operations.models';
 import { ReproductionPageComponent } from './reproduction-page.component';
 
 @Component({ selector: 'app-animal-picker', template: '' })
@@ -85,7 +85,7 @@ async function setup(role: MembershipRole = 'OWNER', query: Record<string, strin
     pendingWork: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
     planner: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
     agenda: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
-    allPregnancies: vi.fn(() => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
+    allPregnancies: vi.fn((): Observable<FarmPregnancyPage> => of({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
     animal: vi.fn((_id: string): Observable<Animal> => of(mother)),
     pregnancy: vi.fn((_id: string): Observable<Pregnancy> => of(pregnancy)),
     breed: vi.fn((_id: string, _body: object): Observable<unknown> => of(pregnancy)),
@@ -120,6 +120,35 @@ async function setup(role: MembershipRole = 'OWNER', query: Record<string, strin
   return { fixture, component: fixture.componentInstance, api, context, toast };
 }
 describe('Reprodução com revisão e versões atuais', () => {
+  it('seleção da mãe no parto preserva a gestação aberta sem nova busca manual', async () => {
+    const { component, api } = await setup();
+    api.allPregnancies.mockReturnValueOnce(of({ items: [{ ...pregnancy, mother: { id: mother.id, identification: mother.identification, name: null } }], page: 0, size: 20, totalElements: 1, totalPages: 1 }));
+    component.openStandaloneCalving();
+    component.chooseMother(mother);
+    expect(component.pregnancy()?.id).toBe(pregnancy.id);
+    expect(api.allPregnancies).toHaveBeenCalledWith({ motherId: mother.id, status: 'POSSIBLE' });
+    expect(api.allPregnancies).toHaveBeenCalledWith({ motherId: mother.id, status: 'CONFIRMED' });
+  });
+  it('deep link abre a gestação exata para confirmar sem executar o comando', async () => {
+    const { component, api } = await setup('OWNER', { pregnancyId: pregnancy.id, action: 'confirm' });
+    expect(component.flow()).toBe('confirm');
+    expect(api.pregnancy).toHaveBeenCalledWith(pregnancy.id);
+    expect(api.confirmPregnancy).not.toHaveBeenCalled();
+  });
+  it('falha ao consultar gestação impede revisar parto com contexto incompleto', async () => {
+    const { component, api } = await setup();
+    api.allPregnancies.mockReturnValueOnce(throwError(() => new Error('indisponível')));
+    component.openStandaloneCalving(); component.chooseMother(mother); component.prepare();
+    expect(component.reviewing()).toBe(false);
+    expect(api.calve).not.toHaveBeenCalled();
+    expect(component.formError()).toContain('Verifique a gestação');
+  });
+  it('visualizador não abre comando de confirmação recebido por deep link', async () => {
+    const { component, api } = await setup('VIEWER', { pregnancyId: pregnancy.id, action: 'confirm' });
+    expect(component.flow()).toBeNull();
+    expect(api.confirmPregnancy).not.toHaveBeenCalled();
+    expect(api.pregnancy).not.toHaveBeenCalled();
+  });
   it('abre deep link de gestações com consulta global paginada', async () => {
     const { component, api, fixture } = await setup('OWNER', { tab: 'pregnancies' });
     expect(component.tab()).toBe('pregnancies');

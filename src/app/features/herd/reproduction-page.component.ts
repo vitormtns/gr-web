@@ -100,6 +100,8 @@ export class ReproductionPageComponent {
   readonly filterError = signal('');
   readonly flow = signal<Flow | null>(null);
   readonly pregnancy = signal<Pregnancy | null>(null);
+  private readonly calvingContextReady = signal(true);
+  private consumedIntent = '';
   readonly mother = signal<Animal | null>(null);
   readonly editorLoading = signal(false);
   readonly saving = signal(false);
@@ -133,12 +135,14 @@ export class ReproductionPageComponent {
       this.tab.set(requested === 'history' || requested === 'pregnancies' ? requested : 'overview');
       if (!this.initialContext && this.tab() === 'pregnancies' && !this.pregnancies() && !this.pregnanciesLoading() && this.ready())
         this.loadPregnancies();
+      if (!this.initialContext) this.applyIntent();
     });
     effect(() => {
       this.context.contextVersion();
       const pending = this.context.transitionPending();
       const farm = this.context.selectedFarm();
       untracked(() => {
+        const initialIntent = this.initialContext;
         this.reportScope.reset();
         this.pregnanciesScope.reset();
         this.operational.closeDetail();
@@ -161,7 +165,7 @@ export class ReproductionPageComponent {
         this.status = this.serviceFilter = this.motherFilter = this.from = this.to = '';
         if (!this.initialContext) {
           void this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge', queryParams: {
-            pregnancyStatus: null, serviceType: null, motherId: null, from: null, to: null, page: null,
+            pregnancyStatus: null, serviceType: null, motherId: null, from: null, to: null, page: null, pregnancyId: null, action: null,
           } });
         }
         if (pending || !farm) return;
@@ -181,8 +185,20 @@ export class ReproductionPageComponent {
         }
         this.reload();
         if (this.tab() === 'pregnancies') this.loadPregnancies();
+        if (initialIntent) this.applyIntent();
       });
     });
+  }
+  private applyIntent() {
+    const params = this.route.snapshot.queryParamMap;
+    const id = params.get('pregnancyId') || '';
+    const action = params.get('action') || 'view';
+    const key = `${this.context.selectedFarm()?.farmId}:${id}:${action}`;
+    if (key === this.consumedIntent) return;
+    if (uuid.test(id) && ['view', 'confirm', 'terminate', 'calving'].includes(action) && this.ready()) {
+      this.consumedIntent = key;
+      this.openPregnancy(id, action as Exclude<Flow, 'breeding'>);
+    }
   }
   selectTab(tab: 'overview' | 'pregnancies' | 'history') {
     if (tab !== 'overview') this.operational.closeDetail();
@@ -342,6 +358,40 @@ export class ReproductionPageComponent {
       return;
     this.mother.set(animal);
     this.formError.set('');
+    if (this.flow() === 'calving') {
+      this.calvingContextReady.set(false);
+      this.pregnancy.set(null);
+      this.editorLoading.set(true);
+      this.editorScope.run(
+        forkJoin({
+          possible: this.api.allPregnancies({ motherId: animal.id, status: 'POSSIBLE' }),
+          confirmed: this.api.allPregnancies({ motherId: animal.id, status: 'CONFIRMED' }),
+        }),
+        (result) => {
+          const open = [...result.possible.items, ...result.confirmed.items];
+          this.editorLoading.set(false);
+          if (open.length > 1) {
+            this.formError.set('Há mais de uma gestação aberta. Revise os acompanhamentos antes de registrar o parto.');
+            return;
+          }
+          if (open.length === 1) {
+            this.editorLoading.set(true);
+            this.editorScope.run(this.api.pregnancy(open[0].id), (pregnancy) => {
+              this.pregnancy.set(pregnancy);
+              this.calvingContextReady.set(true);
+              this.editorLoading.set(false);
+            }, () => {
+              this.editorLoading.set(false);
+              this.formError.set('Não foi possível carregar a gestação. Selecione a mãe novamente.');
+            });
+          } else this.calvingContextReady.set(true);
+        },
+        () => {
+          this.editorLoading.set(false);
+          this.formError.set('Não foi possível verificar as gestações. Selecione a mãe novamente.');
+        },
+      );
+    }
   }
   openPregnancy(id: string, flow: Exclude<Flow, 'breeding'>) {
     if (!this.ready() || this.saving() || !this.allowed(flow)) return;
@@ -381,6 +431,10 @@ export class ReproductionPageComponent {
   }
   prepare() {
     const flow = this.flow();
+    if (flow === 'calving' && !this.calvingContextReady()) {
+      this.formError.set('Verifique a gestação selecionando a mãe novamente antes de revisar o parto.');
+      return;
+    }
     if (
       !flow ||
       flow === 'view' ||
@@ -598,6 +652,7 @@ export class ReproductionPageComponent {
     return !this.context.transitionPending() && !!this.context.selectedFarm();
   }
   private resetEditor() {
+    this.calvingContextReady.set(true);
     this.editorScope.reset();
     this.flow.set(null);
     this.pregnancy.set(null);

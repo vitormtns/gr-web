@@ -110,9 +110,9 @@ export class ReproductionOperationalStore {
     const from = this.today;
     const to = addDays(from, 6);
     this.milestoneScope.run(
-      this.api.agenda({ from, to, page: 0 }).pipe(
+      this.api.agenda({ from, to, includeOverdue: true, page: 0 }).pipe(
         expand((page) => page.page + 1 < page.totalPages
-          ? this.api.agenda({ from, to, page: page.page + 1 })
+          ? this.api.agenda({ from, to, includeOverdue: true, page: page.page + 1 })
           : EMPTY),
         map((page) => page.items.filter((item) => reproductiveKinds.has(item.kind))),
         reduce((items, pageItems) => [...items, ...pageItems], [] as AgendaItem[]),

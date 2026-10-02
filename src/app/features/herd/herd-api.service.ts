@@ -54,10 +54,10 @@ export class HerdApi {
   correctPlanner(id:string,body:object):Observable<PlannerItem>{return this.api.patch(`/api/v1/herd/planner-items/${encodeURIComponent(id)}`,body,true)}
   completePlanner(id:string,body:object):Observable<PlannerItem>{return this.api.post(`/api/v1/herd/planner-items/${encodeURIComponent(id)}/completion`,body,true)}
   cancelPlanner(id:string,body:object):Observable<PlannerItem>{return this.api.post(`/api/v1/herd/planner-items/${encodeURIComponent(id)}/cancellation`,body,true)}
-  agenda(filters:{source?:string;type?:string;animalId?:string;from?:string;to?:string;page?:number}={}):Observable<AgendaPage>{return this.api.get(`/api/v1/herd/agenda?${query(filters)}`,true)}
+  agenda(filters:{source?:string;type?:string;animalId?:string;from?:string;to?:string;includeOverdue?:boolean;page?:number}={}):Observable<AgendaPage>{return this.api.get(`/api/v1/herd/agenda?${query(filters)}`,true)}
 }
 
-function query(values:Record<string,string|number|undefined>):string{const p=new URLSearchParams({page:String(values['page']??0),size:'20'});for(const [key,value] of Object.entries(values))if(key!=='page'&&value)p.set(key,String(value));return p.toString()}
+function query(values:Record<string,string|number|boolean|undefined>):string{const p=new URLSearchParams({page:String(values['page']??0),size:'20'});for(const [key,value] of Object.entries(values))if(key!=='page'&&value)p.set(key,String(value));return p.toString()}
 
 export function animalListQuery(filters: AnimalFilters): string {
   const params = new URLSearchParams({ page: String(filters.page), size: String(filters.size) });

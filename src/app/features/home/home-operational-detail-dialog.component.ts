@@ -25,6 +25,8 @@ import { Animal, Page } from '../herd/herd.models';
 import { DashboardStore } from './dashboard.store';
 import type { HomeDetailRequest } from './home-detail.models';
 import { ActivityChartComponent } from './activity-chart.component';
+import { localDateOnly } from '../../core/date/date-only';
+import { pendingNavigation } from '../herd/pending-navigation';
 
 type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | null;
 
@@ -189,6 +191,7 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
                     <th>Identificação</th>
                     <th>Prazo</th>
                     <th>Situação</th>
+                    <th>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -206,6 +209,9 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
                           item.daysOverdue ? 'Atraso de ' + item.daysOverdue + ' dias' : 'Pendente'
                         }}
                       </td>
+                      <td><a [routerLink]="pendingNavigation(item.animalId, item.type, item.pregnancyId).path"
+                        [queryParams]="pendingNavigation(item.animalId, item.type, item.pregnancyId).query"
+                        (click)="closed.emit()">Abrir contexto →</a></td>
                     </tr>
                   }
                 </tbody>
@@ -260,7 +266,9 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
               }
             }
             @if (item.animalId) {
-              <a [routerLink]="['/rebanho/animais', item.animalId]">Ver perfil do animal →</a>
+              <a [routerLink]="pendingNavigation(item.animalId, item.pendingWorkType, item.pregnancyId).path"
+                [queryParams]="pendingNavigation(item.animalId, item.pendingWorkType, item.pregnancyId).query"
+                (click)="closed.emit()">Abrir contexto →</a>
             } @else {
               <a routerLink="/rebanho/agenda">Abrir agenda completa →</a>
             }
@@ -287,7 +295,7 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
           </ul>
           <a
             routerLink="/rebanho/agenda"
-            [queryParams]="{ from: selectedDate(), to: selectedDate() }"
+            [queryParams]="{ from: selectedDate(), to: selectedDate(), includeOverdue: selectedDate() === today ? 'true' : null }"
             >Abrir agenda completa →</a
           >
         }
@@ -558,6 +566,8 @@ type DetailData = PendingWorkPage | Page<Animal> | PlannerItem | Pregnancy | nul
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomeOperationalDetailDialogComponent {
+  readonly today = localDateOnly();
+  readonly pendingNavigation = pendingNavigation;
   readonly isHealthPendingType = isHealthPendingType;
   readonly request = input.required<HomeDetailRequest>();
   @Output() closed = new EventEmitter<void>();
@@ -685,7 +695,7 @@ export class HomeOperationalDetailDialogComponent {
       });
   }
   agendaItems(date: string) {
-    return (this.store.agenda().value?.items ?? []).filter((item) => item.operationalDate === date);
+    return (this.store.agenda().value?.items ?? []).filter((item) => (item.displayOn ?? item.operationalDate) === date);
   }
   icon(): DomainIconName {
     const req = this.request();

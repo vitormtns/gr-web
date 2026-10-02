@@ -59,7 +59,7 @@ describe('DashboardStore', () => {
   });
   it('busca a agenda em uma única janela de sete dias', () => {
     const [from,to,page,size]=api.agendaPage.mock.calls[0];
-    expect(page).toBe(0);expect(size).toBeUndefined();
+    expect(page).toBe(0);expect(size).toBe(100);
     const start=new Date(`${from}T12:00:00`);const end=new Date(`${to}T12:00:00`);
     expect(Math.round((end.getTime()-start.getTime())/86400000)).toBe(6);
   });

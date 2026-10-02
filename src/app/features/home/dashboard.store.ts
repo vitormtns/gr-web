@@ -127,7 +127,7 @@ export class DashboardStore {
     this.subscriptions.set(name, subscription);
     this.agenda.set({ status: 'loading', value: null, error: null });
     const nextPage = (page: number) => {
-      subscription.add(this.api.agendaPage(from, to, page).subscribe({
+      subscription.add(this.api.agendaPage(from, to, page, 100, true).subscribe({
         next: value => {
           if (!this.current(name, generation, key)) return;
           collected.push(...value.items);

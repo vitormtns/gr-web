@@ -27,7 +27,7 @@ export interface PendingWorkItem { type: PendingWorkType; animalId: string; iden
 export interface PendingWorkPage extends Page<PendingWorkItem> {}
 export interface PlannerItem { id: string; operationId: string | null; type: PlannerType; title: string; notes: string | null; scheduledFor: string; status: PlannerStatus; animalId: string | null; groupId: string | null; version: number; createdAt: string; updatedAt: string; completedAt: string | null; cancelledAt: string | null; replay: boolean }
 export interface PlannerPage extends Page<PlannerItem> {}
-export interface AgendaItem { source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: PlannerStatus | null }
+export interface AgendaItem { displayOn?: string; source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: PlannerStatus | null }
 export interface AgendaPage extends Page<AgendaItem> {}
 export interface CalvingResult { calfAnimalId: string; resultingMotherVersion: number; pregnancyId: string | null }
 

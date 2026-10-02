@@ -44,6 +44,8 @@
       [view]="tab() === 'pending' ? 'pending' : 'overview'"
       [historySummary]="report()?.summary || null"
       [initialPendingType]="pendingTypeFromRoute()"
+      [initialAnimalId]="pendingAnimalFromRoute()"
+      (registerCare)="openPendingCare($event)"
       (openPending)="selectTab('pending')"
     />
   }

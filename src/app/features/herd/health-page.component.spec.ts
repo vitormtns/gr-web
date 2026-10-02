@@ -99,6 +99,23 @@ describe('HealthPageComponent procedureCode', () => {
     return { fixture, component: fixture.componentInstance, api, context, queryParamMap, router };
   };
 
+  it('preserva animal e procedimento da pendência sem enviar tratamento automaticamente', async () => {
+    const { component, api } = await setup();
+    component.openPendingCare({ animalId: animal.id, type: 'BRUCELLOSIS_DUE' } as never);
+    expect(component.animalId).toBe(animal.id);
+    expect(component.procedureCode).toBe('BRUCELLOSIS');
+    expect(component.treatmentType).toBe('VACCINATION');
+    expect(component.creating()).toBe(true);
+    expect(api.recordHealth).not.toHaveBeenCalled();
+  });
+  it('limpa animal da intenção na troca de fazenda', async () => {
+    const { component, queryParamMap, context, fixture } = await setup();
+    queryParamMap.next(convertToParamMap({ tab: 'history', animalId: '11111111-1111-4111-8111-111111111111' }));
+    expect(component.pendingAnimalFromRoute()).not.toBe('');
+    context.contextVersion.update((v) => v + 1);
+    fixture.detectChanges();
+    expect(component.pendingAnimalFromRoute()).toBe('');
+  });
   it.each(['OWNER', 'ADMIN', 'MANAGER', 'OPERATOR'] as MembershipRole[])(
     '%s registra apenas após a revisão com a versão atual',
     async (role) => {

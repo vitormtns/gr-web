@@ -41,7 +41,7 @@
   </section>
 
   <section class="repro-section" aria-labelledby="milestone-title">
-    <div class="repro-heading"><div><span class="repro-kicker">PRÓXIMOS 7 DIAS</span><h2 id="milestone-title">Próximos marcos reprodutivos</h2></div></div>
+    <div class="repro-heading"><div><span class="repro-kicker">HOJE E PRÓXIMOS 7 DIAS</span><h2 id="milestone-title">Próximos marcos reprodutivos</h2><p>Pendências vencidas permanecem em Hoje, com a data original.</p></div></div>
     @if (store.milestones().status === 'loading' || store.milestones().status === 'idle') { <gr-skeleton /> }
     @else if (store.milestones().status === 'error') { <gr-error-state title="Não foi possível carregar os próximos marcos" [description]="store.milestones().error" (retry)="store.loadMilestones()" /> }
     @else if (!store.milestones().value?.length) { <p class="repro-empty">Nenhum marco reprodutivo previsto nos próximos 7 dias.</p> }

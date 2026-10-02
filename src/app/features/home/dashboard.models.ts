@@ -29,7 +29,7 @@ export interface AnimalReference { id: string; identification: string; name: str
 export type AgendaSource = 'MANUAL' | 'DERIVED';
 export interface AttentionDto { source: AgendaSource; kind: string; operationalDate: string; stableId: string; summary: string; animal: AnimalReference | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: string | null }
 export interface DashboardAttention { referenceDate: string; summary: AttentionSummary; preview: AttentionDto[] }
-export interface AgendaDto { source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: string | null }
+export interface AgendaDto { displayOn?: string; source: AgendaSource; kind: string; operationalDate: string; stableId: string; animalId: string | null; summary: string; identification: string | null; name: string | null; plannerItemId: string | null; pendingWorkType: PendingWorkType | null; pregnancyId: string | null; status: string | null }
 export interface AgendaPage { items: AgendaDto[]; page: number; size: number; totalElements: number; totalPages: number }
 export interface PaddockDto { id: string; name: string; code: string | null; status: 'ACTIVE' | 'INACTIVE'; version: number; occupancy: number }
 export interface PaddockPage { items: PaddockDto[]; page: number; size: number; totalElements: number; totalPages: number }

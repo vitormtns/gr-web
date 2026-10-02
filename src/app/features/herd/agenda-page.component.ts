@@ -39,6 +39,7 @@ import {
 } from './herd-operations.models';
 import { formatDate } from './herd.shared';
 import { validImportDate } from './herd-import';
+import { pendingNavigation } from './pending-navigation';
 
 type AgendaTab = 'agenda' | 'pending' | 'planner';
 type EditorMode = 'create' | 'edit' | 'view' | 'complete' | 'cancel';
@@ -139,6 +140,12 @@ type EditorMode = 'create' | 'edit' | 'view' | 'complete' | 'cancel';
           placeholder="UUID do animal (opcional)" /></label
       ><button class="secondary-action" type="submit">Aplicar filtros</button
       ><button class="quiet-button" type="button" (click)="clearFilters()">Limpar filtros</button>
+      @if (tab() === 'agenda') {
+        <button class="quiet-button" type="button" (click)="showToday()">Hoje e atrasadas</button>
+        @if (includeOverdue && from === today) {
+          <p>Inclui atividades em aberto e necessidades vencidas, mantendo a data original.</p>
+        }
+      }
       @if (tab() === 'planner') {
         <details class="group-filter picker-disclosure" [open]="!!filterGroupId">
           <summary>
@@ -244,8 +251,9 @@ type EditorMode = 'create' | 'edit' | 'view' | 'complete' | 'cancel';
                         </button>
                       }
                     } @else if (item.animalId) {
-                      <a class="quiet-button" [routerLink]="['/rebanho/animais', item.animalId]"
-                        >Registrar fato</a
+                      <a class="quiet-button" [routerLink]="pendingNavigation(item.animalId, item.pendingWorkType, item.pregnancyId).path"
+                        [queryParams]="pendingNavigation(item.animalId, item.pendingWorkType, item.pregnancyId).query"
+                        >Abrir contexto</a
                       >
                     }
                   </td>
@@ -281,8 +289,9 @@ type EditorMode = 'create' | 'edit' | 'view' | 'complete' | 'cancel';
                     }}
                   </td>
                   <td>
-                    <a [routerLink]="['/rebanho/animais', item.animalId]"
-                      >Ver animal e registrar manejo</a
+                    <a [routerLink]="pendingNavigation(item.animalId, item.type, item.pregnancyId).path"
+                      [queryParams]="pendingNavigation(item.animalId, item.type, item.pregnancyId).query"
+                      >Abrir contexto</a
                     >
                   </td>
                 </tr>
@@ -518,6 +527,8 @@ export class AgendaPageComponent {
   status = '';
   from = '';
   to = '';
+  readonly today = localDateOnly();
+  includeOverdue = false;
   filterAnimalId = '';
   filterGroupId = '';
   plannerType: PlannerType = 'GENERAL';
@@ -531,6 +542,7 @@ export class AgendaPageComponent {
   private command: object | null = null;
   private applied: Record<string, string> = {};
   date = formatDate;
+  pendingNavigation = pendingNavigation;
   timestamp = managementTimestamp;
   constructor() {
     let initial = true;
@@ -575,6 +587,7 @@ export class AgendaPageComponent {
     this.source = ['MANUAL', 'DERIVED'].includes(q.get('source') || '') ? q.get('source')! : '';
     this.from = validImportDate(q.get('from') || '') ? q.get('from')! : '';
     this.to = validImportDate(q.get('to') || '') ? q.get('to')! : '';
+    this.includeOverdue = q.get('includeOverdue') === 'true' && this.from === this.today;
   }
   private resetFilters() {
     this.source = '';
@@ -583,6 +596,7 @@ export class AgendaPageComponent {
     this.status = '';
     this.from = '';
     this.to = '';
+    this.includeOverdue = false;
     this.filterAnimalId = '';
     this.filterGroupId = '';
     this.applied = {};
@@ -602,6 +616,11 @@ export class AgendaPageComponent {
     this.resetFilters();
     this.applyFilters();
   }
+  showToday() {
+    this.from = this.to = this.today;
+    this.includeOverdue = true;
+    this.applyFilters();
+  }
   applyFilters() {
     if (
       (this.filterAnimalId && !validUuid(this.filterAnimalId.trim())) ||
@@ -619,6 +638,7 @@ export class AgendaPageComponent {
       status: this.status,
       from: this.from,
       to: this.to,
+      includeOverdue: this.includeOverdue && this.from === this.today && this.to >= this.today ? 'true' : '',
       animalId: this.filterAnimalId.trim(),
       groupId: this.filterGroupId,
     };
@@ -649,6 +669,7 @@ export class AgendaPageComponent {
     if (this.tab() === 'agenda')
       this.scope.run(
         this.api.agenda({
+          includeOverdue: f['includeOverdue'] === 'true' ? true : undefined,
           source: f['source'] || undefined,
           type: f['type'] || undefined,
           animalId: f['animalId'] || undefined,
