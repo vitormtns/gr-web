@@ -39,6 +39,7 @@ import {
   healthLabels,
   procedureLabels,
   OperationResult,
+  PendingWorkItem,
 } from './herd-operations.models';
 import { formatDate } from './herd.shared';
 import { HealthCommandCenterComponent } from './health-command-center.component';
@@ -99,6 +100,7 @@ export class HealthPageComponent {
   readonly selectedTreatment = signal<HealthTreatment | null>(null);
   readonly tab = signal<'overview' | 'pending' | 'history'>('overview');
   readonly pendingTypeFromRoute = signal<HealthPendingType | null>(null);
+  readonly pendingAnimalFromRoute = signal('');
   readonly appliedFilters = signal<AppliedHealthFilters | null>(null);
   readonly metricLabels = ['Tratamentos', 'Animais atendidos', 'Vacinações', 'Vermifugações'];
   readonly creating = signal(false);
@@ -124,18 +126,23 @@ export class HealthPageComponent {
   product = '';
   protocol = '';
   notes = '';
+  private initialContext = true;
   constructor() {
     this.route?.queryParamMap.pipe(takeUntilDestroyed(this.destroy)).subscribe((params) => {
       const tab = params.get('tab');
       this.tab.set(tab === 'pending' || tab === 'history' ? tab : 'overview');
       const type = params.get('pendingType');
       this.pendingTypeFromRoute.set(isHealthPendingType(type) ? type : null);
+      const animalId = params.get('animalId') || '';
+      this.pendingAnimalFromRoute.set(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(animalId) ? animalId : '');
     });
     effect(() => {
       this.context.contextVersion();
       const pending = this.context.transitionPending();
       const farm = this.context.selectedFarm();
       untracked(() => {
+        if (!this.initialContext) this.pendingAnimalFromRoute.set('');
+        if (!pending && farm) this.initialContext = false;
         this.reportScope.reset();
         this.resetEditor();
         this.report.set(null);
@@ -296,6 +303,24 @@ export class HealthPageComponent {
       this.resetEditor();
       this.creating.set(true);
     }
+  }
+  openPendingCare(item: PendingWorkItem) {
+    if (!this.permissions.canMutateHerd() || !this.ready() || this.saving()) return;
+    this.openCreate();
+    this.treatmentType = item.type === 'DEWORMING_DUE' ? 'DEWORMING' : 'VACCINATION';
+    this.procedureCode = item.type.startsWith('BRUCELLOSIS_') ? 'BRUCELLOSIS' : null;
+    this.preparing.set(true);
+    this.writeScope.run(this.api.animal(item.animalId), (animal) => {
+      this.preparing.set(false);
+      if (animal.status !== 'ACTIVE') {
+        this.formError.set('O animal não está ativo para este registro.');
+        return;
+      }
+      this.chooseAnimal(animal);
+    }, () => {
+      this.preparing.set(false);
+      this.formError.set('Não foi possível carregar o animal. Feche e tente novamente.');
+    });
   }
   closeCreate() {
     if (!this.saving() && !this.preparing()) this.resetEditor();

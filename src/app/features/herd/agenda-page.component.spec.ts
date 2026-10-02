@@ -100,6 +100,17 @@ async function setup(role: MembershipRole = 'OWNER', query: Record<string, strin
   return { fixture, component: fixture.componentInstance, api, context, toast };
 }
 describe('Agenda e planejamento completos', () => {
+  it('inclui atrasadas em hoje com autorização explícita da API e mantém filtros de origem', async () => {
+    const { component, api } = await setup('OWNER', { animalId: '11111111-1111-4111-8111-111111111111' });
+    component.showToday();
+    expect(api.agenda).toHaveBeenLastCalledWith(expect.objectContaining({
+      from: component.today, to: component.today, includeOverdue: true,
+      animalId: '11111111-1111-4111-8111-111111111111',
+    }));
+    component.from = '2020-01-01';
+    component.applyFilters();
+    expect(api.agenda).toHaveBeenLastCalledWith(expect.objectContaining({ includeOverdue: undefined }));
+  });
   it.each(['OWNER', 'ADMIN', 'MANAGER', 'OPERATOR'] as MembershipRole[])(
     '%s revisa a criação e registra o comando com UUID estável',
     async (role) => {

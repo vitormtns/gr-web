@@ -239,10 +239,11 @@
             <label
               ><span>Data do serviço</span><input type="date" [(ngModel)]="serviceOn" [max]="today"
             /></label>
-            <label
-              ><span>Parto esperado</span
-              ><input type="date" [(ngModel)]="expectedCalvingOn" [min]="serviceOn"
-            /></label>
+            <div class="wide semantic-note" aria-live="polite">
+              <strong>Parto previsto</strong>
+              <p>{{ expectedCalvingPreview(serviceOn) ? date(expectedCalvingPreview(serviceOn)) : 'Informe uma data válida.' }}</p>
+              <small>Previsão automática baseada na data do serviço.</small>
+            </div>
             <label class="wide"
               ><span>Referência do reprodutor</span
               ><input [(ngModel)]="sireReference" maxlength="160" placeholder="Opcional"
@@ -301,8 +302,7 @@
               <strong>{{ serviceLabel(serviceType) }}</strong> em {{ date(serviceOn) }}
             </p>
             <p>
-              Parto esperado:
-              {{ expectedCalvingOn ? date(expectedCalvingOn) : 'Calculado pelo serviço' }}
+              Parto previsto automaticamente: {{ date(expectedCalvingPreview(serviceOn)) }}
             </p>
             <p>Reprodutor: {{ sireReference || 'Não informado' }}</p>
             <p>{{ notes || 'Sem observações' }}</p>

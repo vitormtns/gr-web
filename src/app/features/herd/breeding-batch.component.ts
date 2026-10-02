@@ -24,6 +24,7 @@ import { BreedingBatchCommand, BreedingBatchResult } from './parity.models';
 import { ReproductionServiceType, serviceLabels } from './herd-operations.models';
 import { errorReference, formatDate } from './herd.shared';
 import { validImportDate } from './herd-import';
+import { expectedCalvingPreview } from './reproduction-preview';
 
 @Component({
   selector: 'app-breeding-batch',
@@ -101,12 +102,12 @@ import { validImportDate } from './herd-import';
                 [(ngModel)]="sireReference"
                 maxlength="160"
                 placeholder="Opcional" /></label
-            ><label
-              >Parto esperado<input
-                type="date"
-                [(ngModel)]="expectedCalvingOn"
-                [min]="serviceOn" /></label
-            ><label class="wide"
+            ><div class="wide semantic-note" aria-live="polite">
+              <strong>Parto previsto</strong>
+              <p>{{ expectedCalvingPreview(serviceOn) ? date(expectedCalvingPreview(serviceOn)) : 'Informe uma data válida.' }}</p>
+              <small>Previsão automática baseada na data do serviço para todas as matrizes.</small>
+            </div>
+            <label class="wide"
               >Observações<textarea
                 [(ngModel)]="notes"
                 maxlength="1000"
@@ -129,13 +130,12 @@ import { validImportDate } from './herd-import';
               </ul>
               <p>Referência do reprodutor: {{ sireReference || 'Não informada' }}</p>
               <p>
-                Parto esperado:
-                {{ expectedCalvingOn ? date(expectedCalvingOn) : 'Calculado pelo serviço' }}
+                Parto previsto automaticamente: {{ date(expectedCalvingPreview(serviceOn)) }}
               </p>
               <p>Observações: {{ notes || 'Sem observações' }}</p>
               <p class="semantic-note">
                 Qualquer mãe inválida, conflito de versão ou gestação incompatível reverte o lote
-                inteiro. A previsão será calculada pelo serviço se não for informada.
+                inteiro. A previsão será calculada pelo serviço para todas as matrizes.
               </p>
             </div>
           }
@@ -199,9 +199,9 @@ export class BreedingBatchComponent {
   serviceOn = this.today;
   serviceType: ReproductionServiceType = 'INSEMINATION';
   sireReference = '';
-  expectedCalvingOn = '';
   notes = '';
   date = formatDate;
+  expectedCalvingPreview = expectedCalvingPreview;
   constructor() {
     effect(() => {
       this.context.contextVersion();
@@ -218,7 +218,6 @@ export class BreedingBatchComponent {
       this.today = localDateOnly();
       this.serviceOn = this.today;
       this.serviceType = 'INSEMINATION';
-      this.expectedCalvingOn = '';
       this.sireReference = '';
       this.notes = '';
     });
@@ -241,7 +240,6 @@ export class BreedingBatchComponent {
     this.today = localDateOnly();
     this.serviceOn = this.today;
     this.serviceType = 'INSEMINATION';
-    this.expectedCalvingOn = '';
     this.sireReference = '';
     this.notes = '';
   }
@@ -279,9 +277,7 @@ export class BreedingBatchComponent {
       this.selected().length > 0 &&
       this.selected().length <= 100 &&
       validImportDate(this.serviceOn) &&
-      this.serviceOn <= this.today &&
-      (!this.expectedCalvingOn ||
-        (validImportDate(this.expectedCalvingOn) && this.expectedCalvingOn > this.serviceOn))
+      this.serviceOn <= this.today
     );
   }
   review() {
@@ -313,7 +309,6 @@ export class BreedingBatchComponent {
           serviceType: this.serviceType,
           serviceOn: this.serviceOn,
           sireReference: this.sireReference.trim() || null,
-          expectedCalvingOn: this.expectedCalvingOn || null,
           notes: this.notes.trim() || null,
           mothers: animals.map((a) => ({ id: a.id, expectedVersion: a.version })),
         };
@@ -370,7 +365,6 @@ export class BreedingBatchComponent {
       this.selected.set([]);
       this.notes = '';
       this.sireReference = '';
-      this.expectedCalvingOn = '';
       this.error.set('');
     }
   }

@@ -328,6 +328,13 @@ type ManagementAction = 'mother' | 'note' | 'milk' | 'sale' | 'death';
                 } @else if (pendingWork(); as pendingItems) {
                   <strong class="side-value">{{ pendingItems.totalElements }}</strong>
                   <p>{{ pendingSummary() }}</p>
+                  @if (item.status === 'ACTIVE') {
+                    @for (work of pendingItems.items; track work.type + work.animalId) {
+                      @if (work.type === 'WEIGHING_DUE' && permissions.canMutateHerd()) {
+                        <button class="event-detail" type="button" (click)="openWeight()">Registrar pesagem</button>
+                      }
+                    }
+                  }
                 } @else {
                   <p>Consultando necessidades…</p>
                 }
@@ -379,6 +386,16 @@ type ManagementAction = 'mother' | 'note' | 'milk' | 'sale' | 'death';
                   </p>
                   @if (activePregnancy(); as pregnancy) {
                     <p>{{ pregnancyLabel(pregnancy.status) }}</p>
+                    <div class="profile-next-actions">
+                    <a routerLink="/rebanho/reproducao" [queryParams]="{ tab: 'pregnancies', pregnancyId: pregnancy.id, action: 'view' }">Abrir gestação</a>
+                    @if (item.status === 'ACTIVE' && pregnancy.status === 'POSSIBLE' && permissions.canMutateHerd()) {
+                      <a routerLink="/rebanho/reproducao" [queryParams]="{ tab: 'pregnancies', pregnancyId: pregnancy.id, action: 'confirm' }">Confirmar gestação</a>
+                    }
+                    @if (item.status === 'ACTIVE' && permissions.canManageReproduction()) {
+                      <a routerLink="/rebanho/reproducao" [queryParams]="{ tab: 'pregnancies', pregnancyId: pregnancy.id, action: 'calving' }">Registrar parto</a>
+                      <a routerLink="/rebanho/reproducao" [queryParams]="{ tab: 'pregnancies', pregnancyId: pregnancy.id, action: 'terminate' }">Encerrar acompanhamento</a>
+                    }
+                    </div>
                   }
                 }
               </section>

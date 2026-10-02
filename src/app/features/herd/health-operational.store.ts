@@ -167,7 +167,7 @@ export class HealthOperationalStore {
     this.agendaScope.reset();
     this.agenda.set(loading());
     this.agendaScope.run(
-      this.dashboard.agendaPage(this.today, datePlusDays(this.today, 6)),
+      this.dashboard.agendaPage(this.today, datePlusDays(this.today, 6), 0, 100, true),
       (value) => this.agenda.set(ready(value)),
       (error) =>
         this.agenda.set(

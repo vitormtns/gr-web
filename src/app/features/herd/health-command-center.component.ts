@@ -12,6 +12,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ContextStore } from '../../core/context/context.store';
+import { PermissionService } from '../../core/permissions/permission.service';
 import type { AgendaDto } from '../home/dashboard.models';
 import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
 import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
@@ -48,11 +49,14 @@ import { HealthOperationalStore } from './health-operational.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HealthCommandCenterComponent {
+  readonly permissions = inject(PermissionService);
   readonly store = inject(HealthOperationalStore);
   private readonly context = inject(ContextStore);
   readonly view = input<'overview' | 'pending'>('overview');
   readonly openPending = output<void>();
   readonly initialPendingType = input<HealthPendingType | null>(null);
+  readonly initialAnimalId = input('');
+  readonly registerCare = output<PendingWorkItem>();
   readonly historySummary = input<HealthReport['summary'] | null>(null);
   readonly pickerOpen = signal(false);
   readonly types = HEALTH_PENDING_TYPES;
@@ -99,13 +103,14 @@ export class HealthCommandCenterComponent {
       this.context.contextVersion();
       const transitioning = this.context.transitionPending();
       const type = this.initialPendingType();
+      const animalId = this.initialAnimalId();
       const view = this.view();
       untracked(() => {
         this.pickerOpen.set(false);
         if (view !== 'pending' || transitioning) return;
         if (type) {
           this.pendingType = type;
-          this.store.applyPending(type, '', '');
+          this.store.applyPending(type, animalId, animalId ? 'Animal da ação de origem' : '');
         } else this.store.loadPending(0);
       });
     });
@@ -138,7 +143,7 @@ export class HealthCommandCenterComponent {
     return new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(date).replace('.', '');
   }
   onDay(day: string): AgendaDto[] {
-    return this.agendaItems().filter((item) => item.operationalDate === day);
+    return this.agendaItems().filter((item) => (item.displayOn ?? item.operationalDate) === day);
   }
   typeName(item: PendingWorkItem) {
     return HEALTH_PENDING_LABELS[item.type as HealthPendingType] || 'Pendência sanitária';

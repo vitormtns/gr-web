@@ -3,6 +3,22 @@ import { parseHerdCsv } from './herd-import';
 
 const header = 'identificação;nome;sexo;nascimento;mãe\n';
 describe('Importação de rebanho', () => {
+  it('valida relações internas independentemente da ordem das linhas', () => {
+    const result = parseHerdCsv(header + 'C;;Macho;2026-01-01;M\nM;;Fêmea;2020-01-01;');
+    expect(result.errors).toEqual([]);
+  });
+  it('aponta mãe macho e nascimento posterior à cria antes de enviar', () => {
+    const result = parseHerdCsv(header + 'C;;Macho;2020-01-01;M\nM;;Macho;2021-01-01;');
+    expect(result.errors.join(' ')).toContain('deve ser fêmea');
+    expect(result.errors.join(' ')).toContain('nascido depois');
+  });
+  it('aponta ciclos, inclusive autorreferência, sem depender da ordem', () => {
+    expect(parseHerdCsv(header + 'A;;Fêmea;;B\nB;;Fêmea;;A').errors.join(' ')).toContain('ciclo');
+    expect(parseHerdCsv(header + 'A;;Fêmea;;A').errors.join(' ')).toContain('ciclo');
+  });
+  it('preserva referência externa para validação autoritativa sem inventar inexistência', () => {
+    expect(parseHerdCsv(header + 'C;;Macho;;Externa').errors).toEqual([]);
+  });
   it('normaliza CSV brasileiro, preserva mãe e gera IDs antecipados', () => {
     const result = parseHerdCsv(
       '\uFEFF' + header + 'A1; Aurora ;Fêmea;2020-01-02;M1\nA2;;Macho;;',
