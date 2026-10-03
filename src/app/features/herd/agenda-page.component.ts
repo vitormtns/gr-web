@@ -1,3 +1,4 @@
+import { AgendaDailySummaryComponent } from './agenda-daily-summary.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -45,7 +46,7 @@ type AgendaTab = 'agenda' | 'pending' | 'planner';
 type EditorMode = 'create' | 'edit' | 'view' | 'complete' | 'cancel';
 @Component({
   selector: 'app-agenda-page',
-  imports: [
+  imports: [AgendaDailySummaryComponent,
     FormsModule,
     RouterLink,
     AnimalPickerComponent,
@@ -275,7 +276,10 @@ type EditorMode = 'create' | 'edit' | 'view' | 'complete' | 'cancel';
             <tbody>
               @for (item of pending()?.items || []; track item.type + '-' + item.animalId) {
                 <tr>
-                  <td>{{ pendingLabels[item.type] }}</td>
+                  <td>{{ pendingLabels[item.type] }}
+                    @if (item.reason) { <details><summary>Por que esta necessidade?</summary><p>{{ item.reason.explanation }}</p><p>Referência: {{ date(item.reason.referenceDate) }} · janela configurada: {{ item.reason.windowDays }} dias.</p></details> }
+                    @if (item.calvingAttention) { <p>{{ item.calvingAttention.guidance }}</p> }
+                  </td>
                   <td>
                     <strong>{{ item.identification }}</strong
                     ><small>{{ item.name || 'Sem nome informado' }}</small>
@@ -367,6 +371,7 @@ type EditorMode = 'create' | 'edit' | 'view' | 'complete' | 'cancel';
         }
       </section>
     }
+    <app-agenda-daily-summary />
     <gr-dialog [open]="editorOpen()" (closed)="closeEditor()"
       ><span dialog-title>{{ editorTitle() }}</span>
       @if (editorLoading()) {

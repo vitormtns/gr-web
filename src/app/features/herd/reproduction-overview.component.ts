@@ -1,3 +1,5 @@
+import { AgendaDailySummaryComponent } from './agenda-daily-summary.component';
+import { calvingLevelLabels } from './reproductive-intelligence.component';
 import { ChangeDetectionStrategy, Component, computed, inject, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ErrorStateComponent, SkeletonComponent } from '../../design-system/feedback/feedback';
@@ -9,12 +11,13 @@ import { serviceLabels } from './herd-operations.models';
 
 @Component({
   selector: 'app-reproduction-overview',
-  imports: [RouterLink, ErrorStateComponent, SkeletonComponent, DialogComponent, DomainIconComponent],
+  imports: [AgendaDailySummaryComponent,RouterLink, ErrorStateComponent, SkeletonComponent, DialogComponent, DomainIconComponent],
   templateUrl: './reproduction-overview.component.html',
   styleUrl: './reproduction-overview.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReproductionOverviewComponent {
+  readonly calvingLabels = calvingLevelLabels;
   readonly store = inject(ReproductionOperationalStore);
   readonly openPregnancy = output<string>();
   readonly openHistory = output<void>();

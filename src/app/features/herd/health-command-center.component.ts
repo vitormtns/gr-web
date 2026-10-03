@@ -1,3 +1,4 @@
+import { AgendaDailySummaryComponent, SummaryDay } from './agenda-daily-summary.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -33,7 +34,7 @@ import { HealthOperationalStore } from './health-operational.store';
 
 @Component({
   selector: 'app-health-command-center',
-  imports: [
+  imports: [AgendaDailySummaryComponent,
     FormsModule,
     RouterLink,
     DomainIconComponent,
@@ -49,6 +50,8 @@ import { HealthOperationalStore } from './health-operational.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HealthCommandCenterComponent {
+  readonly dailySummary = signal<SummaryDay[] | null>(null);
+  dayCount(day: string): number | string { const days = this.dailySummary(); return days ? days.find(item => item.displayOn === day)?.count ?? 0 : "—"; }
   readonly permissions = inject(PermissionService);
   readonly store = inject(HealthOperationalStore);
   private readonly context = inject(ContextStore);

@@ -4,6 +4,8 @@ import {
   DestroyRef,
   effect,
   inject,
+  input,
+  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -80,6 +82,8 @@ type FilterKey = keyof AppliedHealthFilters;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HealthPageComponent {
+  readonly embedded = input(false);
+  readonly changed = output<void>();
   private readonly api = inject(HerdApi);
   readonly context = inject(ContextStore);
   private readonly destroy = inject(DestroyRef);
@@ -134,7 +138,11 @@ export class HealthPageComponent {
       const type = params.get('pendingType');
       this.pendingTypeFromRoute.set(isHealthPendingType(type) ? type : null);
       const animalId = params.get('animalId') || '';
-      this.pendingAnimalFromRoute.set(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(animalId) ? animalId : '');
+      this.pendingAnimalFromRoute.set(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(animalId)
+          ? animalId
+          : '',
+      );
     });
     effect(() => {
       this.context.contextVersion();
@@ -156,7 +164,7 @@ export class HealthPageComponent {
         this.type = this.animalFilter = this.from = this.to = '';
         this.filterProcedure = '';
         this.page = 0;
-        if (!pending && farm) this.reload();
+        if (!pending && farm && !this.embedded()) this.reload();
       });
     });
   }
@@ -171,7 +179,7 @@ export class HealthPageComponent {
     }
   }
   reload() {
-    if (!this.ready()) return;
+    if (!this.ready() || this.embedded()) return;
     this.reportScope.reset();
     this.report.set(null);
     this.selectedTreatment.set(null);
@@ -304,23 +312,62 @@ export class HealthPageComponent {
       this.creating.set(true);
     }
   }
+  openSelected(snapshot: readonly Animal[]) {
+    if (!this.permissions.canMutateHerd() || !this.ready() || this.saving() || this.preparing())
+      return;
+    this.openCreate();
+    this.batch = true;
+    const ids = snapshot.map((animal) => animal.id);
+    if (!ids.length || ids.length > 100 || new Set(ids).size !== ids.length) {
+      this.formError.set('Selecione de 1 a 100 animais diferentes para preparar o tratamento.');
+      return;
+    }
+    this.preparing.set(true);
+    this.writeScope.run(
+      forkJoin(ids.map((id) => this.api.animal(id))),
+      (animals) => {
+        this.preparing.set(false);
+        if (animals.some((animal) => animal.status !== 'ACTIVE')) {
+          this.formError.set(
+            'Um dos animais não está ativo. Revise a seleção no rebanho; nenhum animal foi incluído automaticamente.',
+          );
+          return;
+        }
+        this.animals.set(animals);
+        this.animalIds = [...ids];
+      },
+      (failure) => {
+        this.preparing.set(false);
+        this.formError.set(
+          managementError(
+            failure,
+            'Não foi possível consultar a seleção atual. Feche e tente novamente.',
+          ),
+        );
+      },
+    );
+  }
   openPendingCare(item: PendingWorkItem) {
     if (!this.permissions.canMutateHerd() || !this.ready() || this.saving()) return;
     this.openCreate();
     this.treatmentType = item.type === 'DEWORMING_DUE' ? 'DEWORMING' : 'VACCINATION';
     this.procedureCode = item.type.startsWith('BRUCELLOSIS_') ? 'BRUCELLOSIS' : null;
     this.preparing.set(true);
-    this.writeScope.run(this.api.animal(item.animalId), (animal) => {
-      this.preparing.set(false);
-      if (animal.status !== 'ACTIVE') {
-        this.formError.set('O animal não está ativo para este registro.');
-        return;
-      }
-      this.chooseAnimal(animal);
-    }, () => {
-      this.preparing.set(false);
-      this.formError.set('Não foi possível carregar o animal. Feche e tente novamente.');
-    });
+    this.writeScope.run(
+      this.api.animal(item.animalId),
+      (animal) => {
+        this.preparing.set(false);
+        if (animal.status !== 'ACTIVE') {
+          this.formError.set('O animal não está ativo para este registro.');
+          return;
+        }
+        this.chooseAnimal(animal);
+      },
+      () => {
+        this.preparing.set(false);
+        this.formError.set('Não foi possível carregar o animal. Feche e tente novamente.');
+      },
+    );
   }
   closeCreate() {
     if (!this.saving() && !this.preparing()) this.resetEditor();
@@ -464,6 +511,7 @@ export class HealthPageComponent {
       request,
       (result) => {
         this.resetEditor();
+        this.changed.emit();
         this.toast.show(
           'success',
           result.replayed
