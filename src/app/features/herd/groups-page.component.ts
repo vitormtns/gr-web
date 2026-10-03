@@ -35,6 +35,7 @@ import {
   emptyGroupRules,
 } from './parity.models';
 import { errorReference } from './herd.shared';
+import { HerdSelectionActionsComponent } from './herd-selection-actions.component';
 
 @Component({
   selector: 'app-groups-page',
@@ -46,6 +47,7 @@ import { errorReference } from './herd.shared';
     SkeletonComponent,
     DialogComponent,
     AnimalPickerComponent,
+    HerdSelectionActionsComponent,
   ],
   template: ` <div class="herd-page operations-page page-enter">
     <a class="back-link" routerLink="/rebanho/animais">← Voltar ao rebanho</a>
@@ -138,6 +140,25 @@ import { errorReference } from './herd.shared';
             {{ members()?.totalElements || 0 }}
             {{ members()?.totalElements === 1 ? 'animal neste grupo' : 'animais neste grupo' }}.
           </p>
+          @if (permissions.canMutateHerd()) {
+            <button
+              class="secondary-action"
+              type="button"
+              [disabled]="snapshotLoading() || !members()?.totalElements"
+              (click)="selectGroupSnapshot()"
+            >
+              {{
+                snapshotLoading() ? 'Consultando seleção…' : 'Selecionar animais ativos do grupo'
+              }}
+            </button>
+            <p role="status">{{ snapshotMessage() }}</p>
+            @if (selectedMembers().length) {
+              <app-herd-selection-actions
+                [animals]="selectedMembers()"
+                (changed)="groupOperationCompleted()"
+              />
+            }
+          }
           <div class="responsive-table">
             <table>
               <thead>
@@ -361,6 +382,9 @@ export class GroupsPageComponent {
   readonly groups = signal<CountedPage<HerdGroup> | null>(null);
   readonly selected = signal<HerdGroup | null>(null);
   readonly members = signal<GroupAnimals | null>(null);
+  readonly selectedMembers = signal<Animal[]>([]);
+  readonly snapshotLoading = signal(false);
+  readonly snapshotMessage = signal('');
   readonly loading = signal(true);
   readonly error = signal<AppError | null>(null);
   readonly membersLoading = signal(false);
@@ -380,6 +404,7 @@ export class GroupsPageComponent {
   private createId = '';
   private readonly listScope = new ContextRequestScope(this.destroy);
   private readonly memberScope = new ContextRequestScope(this.destroy);
+  private readonly snapshotScope = new ContextRequestScope(this.destroy);
   private readonly writeScope = new ContextRequestScope(this.destroy);
   readonly preparing = signal(false);
   readonly reviewing = signal(false);
@@ -394,6 +419,10 @@ export class GroupsPageComponent {
       const farm = this.context.selectedFarm();
       this.listScope.reset();
       this.memberScope.reset();
+      this.snapshotScope.reset();
+      this.selectedMembers.set([]);
+      this.snapshotLoading.set(false);
+      this.snapshotMessage.set('');
       this.writeScope.reset();
       this.preparing.set(false);
       this.reviewing.set(false);
@@ -455,6 +484,10 @@ export class GroupsPageComponent {
     );
   }
   select(group: HerdGroup) {
+    this.snapshotScope.reset();
+    this.selectedMembers.set([]);
+    this.snapshotLoading.set(false);
+    this.snapshotMessage.set('');
     this.selected.set(group);
     this.formError.set('');
     this.loadMembers(0);
@@ -462,6 +495,10 @@ export class GroupsPageComponent {
   loadMembers(page: number) {
     const group = this.selected();
     this.memberScope.reset();
+    this.snapshotScope.reset();
+    this.selectedMembers.set([]);
+    this.snapshotLoading.set(false);
+    this.snapshotMessage.set('');
     if (!group || this.context.transitionPending()) return;
     if (!validImportDate(this.referenceDate) || this.referenceDate > this.today) {
       this.members.set(null);
@@ -503,6 +540,57 @@ export class GroupsPageComponent {
     this.rules = emptyGroupRules();
     this.formError.set('');
     this.editorOpen.set(true);
+  }
+  selectGroupSnapshot() {
+    const group = this.selected();
+    const total = this.members()?.totalElements ?? 0;
+    if (
+      !group ||
+      !this.permissions.canMutateHerd() ||
+      this.context.transitionPending() ||
+      this.membersLoading() ||
+      this.membersError() ||
+      this.snapshotLoading() ||
+      !total
+    )
+      return;
+    this.selectedMembers.set([]);
+    if (total > 100) {
+      this.snapshotMessage.set(
+        'O grupo tem mais de 100 animais. Refine as regras do grupo ou selecione um subconjunto no rebanho.',
+      );
+      return;
+    }
+    this.snapshotScope.reset();
+    this.snapshotLoading.set(true);
+    this.snapshotMessage.set('Consultando todos os membros do grupo…');
+    this.snapshotScope.run(
+      this.api.groupAnimals(group.id, 0, this.referenceDate, 100),
+      (result) => {
+        this.snapshotLoading.set(false);
+        const items = result.items;
+        const unique = new Map(items.map((animal) => [animal.id, animal]));
+        if (result.totalElements !== total || items.length > 100 || unique.size !== total) {
+          this.snapshotMessage.set(
+            'Os membros mudaram durante a consulta. Recarregue o grupo antes de selecionar.',
+          );
+          return;
+        }
+        const active = [...unique.values()].filter((animal) => animal.status === 'ACTIVE');
+        this.selectedMembers.set(active);
+        this.snapshotMessage.set(
+          `${active.length} animais ativos selecionados. ${total - active.length} animais inativos ficaram fora da seleção. A revisão consultará o estado atual novamente.`,
+        );
+      },
+      () => {
+        this.snapshotLoading.set(false);
+        this.snapshotMessage.set('Não foi possível consultar a seleção. Tente novamente.');
+      },
+    );
+  }
+  groupOperationCompleted() {
+    this.selectedMembers.set([]);
+    this.loadMembers(0);
   }
   edit(group: HerdGroup) {
     if (
@@ -678,6 +766,10 @@ export class GroupsPageComponent {
   closeGroup() {
     if (this.saving()) return;
     this.memberScope.reset();
+    this.snapshotScope.reset();
+    this.selectedMembers.set([]);
+    this.snapshotLoading.set(false);
+    this.snapshotMessage.set('');
     this.selected.set(null);
     this.members.set(null);
     this.membersError.set(false);

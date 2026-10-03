@@ -178,10 +178,9 @@ describe('Reprodução com revisão e versões atuais', () => {
       const { component, api, fixture } = await setup(role);
       component.openBreeding();
       component.chooseMother({ ...mother, version: 1 });
-      expect(component.expectedCalvingPreview('2026-01-15')).toBe('2026-10-25');
       component.serviceOn = '2026-01-31';
       fixture.detectChanges();
-      expect(fixture.nativeElement.textContent).toContain('10/11/2026');
+      expect(fixture.nativeElement.querySelector('app-calving-preview')).not.toBeNull();
       component.prepare();
       expect(component.reviewing()).toBe(true);
       expect(api.breed).not.toHaveBeenCalled();

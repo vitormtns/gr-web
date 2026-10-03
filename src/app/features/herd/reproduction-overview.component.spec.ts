@@ -51,7 +51,8 @@ describe('visão geral da reprodução', () => {
       upcoming: { ...emptyPage, totalElements: 3 }, plannedChecks: 0,
     }, error: '' });
     fixture.detectChanges();
-    expect(text()).toContain('URGENTE');
+    expect(text()).toContain('Revisar acompanhamento');
+    expect(text()).not.toContain('URGENTE');
     expect(text()).toContain('Parto após a data esperada');
     expect(text()).toContain('Partos próximos');
     expect(fixture.nativeElement.querySelector('.attention-hero')).not.toBeNull();

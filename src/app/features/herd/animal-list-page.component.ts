@@ -1,3 +1,6 @@
+import { AgeTransitionsComponent } from './age-transitions.component';
+import { ageLabel } from './age-intelligence.models';
+import { ageBandLabels } from './parity.models';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -27,6 +30,7 @@ import {
   ToastService,
 } from '../../design-system/feedback/feedback';
 import { AnimalBatchOperationsComponent } from './animal-batch-operations.component';
+import { HerdSelectionActionsComponent } from './herd-selection-actions.component';
 import { DashboardApiClient } from '../home/dashboard-api.service';
 import { DashboardOverview } from '../home/dashboard.models';
 import { DomainIconComponent } from '../../design-system/primitives/domain-icon';
@@ -45,6 +49,7 @@ import {
   selector: 'app-animal-list-page',
   providers: [HerdApi],
   imports: [
+    AgeTransitionsComponent,
     FormsModule,
     RouterLink,
     FilterBarComponent,
@@ -53,6 +58,7 @@ import {
     EmptyStateComponent,
     ErrorStateComponent,
     AnimalBatchOperationsComponent,
+    HerdSelectionActionsComponent,
     AnimalIdentityComponent,
     AnimalStateComponent,
     DomainIconComponent,
@@ -119,6 +125,7 @@ import {
           <p>Busque e refine sem perder o contexto da fazenda.</p>
         </div>
       </header>
+      <app-age-transitions />
       <gr-filter-bar
         ><label class="search-field"
           ><span>Buscar animal</span
@@ -249,6 +256,16 @@ import {
             >
           </div>
           <div class="list-controls">
+            @if (permissions.canMutateHerd()) {
+              <button
+                class="secondary-action"
+                type="button"
+                [disabled]="state() !== 'ready' || selectingFiltered()"
+                (click)="selectFiltered()"
+              >
+                {{ selectingFiltered() ? 'Consultando seleção…' : 'Selecionar resultado filtrado' }}
+              </button>
+            }
             <label
               >Por página<select [ngModel]="filters().size" (ngModelChange)="setPageSize($event)">
                 <option [ngValue]="20">20</option>
@@ -285,6 +302,10 @@ import {
               /><button class="quiet-button" type="button" (click)="clearSelection()">
                 Limpar seleção
               </button>
+              <app-herd-selection-actions
+                [animals]="selectedAnimals()"
+                (changed)="selectionCompleted()"
+              />
             </div>
           }
         </div>
@@ -324,7 +345,13 @@ import {
                     </td>
                   }
                   <td>
-                    <app-animal-identity [animal]="animal" [queryParams]="listQueryParams()" />
+                    <app-animal-identity
+                      [animal]="animal"
+                      [queryParams]="listQueryParams()"
+                    /><small class="animal-age"
+                      >{{ ageText(animal.age)
+                      }}{{ animal.age ? ' · ' + ageLabels[animal.age.currentBand] : '' }}</small
+                    >
                   </td>
                   <td><app-animal-state [status]="animal.status" /></td>
                   <td>
@@ -365,7 +392,11 @@ import {
                   >{{ animal.identification }}</a
                 ><span class="animal-card-subtitle">{{ animal.name || 'Sem nome informado' }}</span>
                 <div class="animal-card-facts">
-                  <span>{{ sex(animal.sex) }}</span
+                  <span>{{ ageText(animal.age) }}</span
+                  ><span>{{
+                    animal.age ? ageLabels[animal.age.currentBand] : 'Faixa não informada'
+                  }}</span
+                  ><span>{{ sex(animal.sex) }}</span
                   ><span>{{ animal.paddock?.name || 'Sem piquete definido' }}</span>
                 </div>
                 @if (permissions.canMutateHerd() && animal.status === 'ACTIVE') {
@@ -446,6 +477,8 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AnimalListPageComponent {
+  readonly ageText = ageLabel;
+  readonly ageLabels = ageBandLabels;
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(HerdApi);
   private readonly dashboard = inject(DashboardApiClient);
@@ -506,7 +539,12 @@ export class AnimalListPageComponent {
       this.viewMode.set(params.get('view') === 'cards' ? 'cards' : 'table');
       this.searchDraft.set(this.filters().search);
       this.searchPending.set(false);
-      if (this.routeReady && filtersChanged) this.load();
+      if (this.routeReady && filtersChanged) {
+        this.selectionScope.reset();
+        this.selectingFiltered.set(false);
+        this.selected.set(new Map());
+        this.load();
+      }
       this.routeReady = true;
     });
     effect(() => {
@@ -516,6 +554,8 @@ export class AnimalListPageComponent {
       untracked(() => {
         this.scope.reset();
         this.summaryScope.reset();
+        this.selectionScope.reset();
+        this.selectingFiltered.set(false);
         this.generation++;
         this.contextEpoch++;
         if (!this.initialContext) {
@@ -683,6 +723,58 @@ export class AnimalListPageComponent {
   }
   clearSelection() {
     this.selected.set(new Map());
+  }
+  readonly selectingFiltered = signal(false);
+  private readonly selectionScope = new ContextRequestScope(inject(DestroyRef));
+  selectFiltered() {
+    if (
+      !this.permissions.canMutateHerd() ||
+      this.context.transitionPending() ||
+      this.state() !== 'ready' ||
+      this.selectingFiltered()
+    )
+      return;
+    if ((this.page()?.totalElements ?? 0) > 100) {
+      this.toast.show(
+        'warning',
+        'Refine os filtros',
+        'O resultado tem mais de 100 animais. Refine os filtros ou selecione animais individualmente.',
+      );
+      return;
+    }
+    const epoch = this.contextEpoch;
+    this.selectionScope.reset();
+    this.selectingFiltered.set(true);
+    this.selectionScope.run(
+      this.api.animals({ ...this.filters(), page: 0, size: 100 }),
+      (result) => {
+        this.selectingFiltered.set(false);
+        if (epoch !== this.contextEpoch || this.context.transitionPending()) return;
+        if (result.totalElements > 100 || result.totalElements !== result.items.length) {
+          this.toast.show(
+            'warning',
+            'Resultado alterado',
+            'O resultado mudou ou excede 100 animais. Atualize e refine os filtros antes de selecionar.',
+          );
+          return;
+        }
+        const active = result.items.filter((animal) => animal.status === 'ACTIVE');
+        this.selected.set(new Map(active.map((animal) => [animal.id, animal])));
+        this.toast.show(
+          'success',
+          'Seleção consultada',
+          `${active.length} animais ativos selecionados. ${result.items.length - active.length} animais inativos ficaram fora da seleção.`,
+        );
+      },
+      () => {
+        this.selectingFiltered.set(false);
+        this.toast.show(
+          'error',
+          'Não foi possível consultar a seleção',
+          'Tente selecionar novamente.',
+        );
+      },
+    );
   }
   selectionCompleted() {
     this.clearSelection();

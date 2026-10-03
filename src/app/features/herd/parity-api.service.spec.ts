@@ -82,6 +82,14 @@ describe('Contratos públicos de paridade', () => {
     api.archiveGroup('g', 2).subscribe();
     request('groups/g/archive', 'POST', { expectedVersion: 2 });
   });
+  it('cria grupo com membros ou associa seleção com recibo em contratos distintos', () => {
+    const create = { operationId: 'op-new', id: 'g', name: 'Lote', animalIds: ['a', 'b'] };
+    api.createGroupWithAnimals(create).subscribe();
+    request('groups/with-animals', 'POST', create);
+    const batch = { operationId: 'op-add', expectedVersion: 3, animalIds: ['a', 'b'] };
+    api.membershipBatch('g/1', batch).subscribe();
+    request('groups/g%2F1/animals/batch', 'POST', batch);
+  });
   it('usa paginação real de grupos e leite e referência de membros', () => {
     api.groups(3).subscribe();
     request('groups?page=3&size=20', 'GET');

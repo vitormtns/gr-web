@@ -1,9 +1,10 @@
+import { AnimalAge } from './age-intelligence.models';
 import { AppError, FarmOption } from '../../core/api/api.models';
 
 export type AnimalSex = 'FEMALE' | 'MALE';
 export type AnimalStatus = 'ACTIVE' | 'SOLD' | 'DECEASED' | 'TRANSFERRED' | 'ARCHIVED';
 export interface PaddockRef { id: string; name: string; code: string | null; status: 'ACTIVE' | 'INACTIVE'; version: number; occupancy?: number }
-export interface Animal { id: string; identification: string; name: string | null; sex: AnimalSex; birthDate: string | null; status: AnimalStatus; version: number; paddock: PaddockRef | null }
+export interface Animal { id: string; identification: string; name: string | null; sex: AnimalSex; birthDate: string | null; status: AnimalStatus; version: number; paddock: PaddockRef | null; age?: AnimalAge | null }
 export interface Page<T> { items: T[]; page: number; size: number; totalElements: number; totalPages: number }
 export interface AnimalFilters { search: string; sex: AnimalSex | ''; status: AnimalStatus | ''; page: number; size: number; unlocated?: boolean }
 export interface FieldChange { before: unknown; after: unknown }

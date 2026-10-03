@@ -267,6 +267,7 @@
       </div>
       <a routerLink="/rebanho/agenda">Abrir agenda →</a>
     </header>
+    <app-agenda-daily-summary [kinds]="['VACCINATION', 'DEWORMING']" (summaryLoaded)="dailySummary.set($event)" />
     @if (store.agenda().status === 'loading' || store.agenda().status === 'idle') {
       <div class="agenda-loading"><gr-skeleton /><gr-skeleton /><gr-skeleton /></div>
     } @else if (store.agenda().status === 'error') {
@@ -288,16 +289,16 @@
                 <strong>{{ dayTitle(day, index) }}</strong
                 ><small>{{ date(day) }}</small>
               </div>
-              <span>{{ onDay(day).length }}</span>
+              <span>{{ dayCount(day) }}</span>
             </header>
             @for (item of onDay(day).slice(0, 3); track item.stableId) {
               <p><i [class.blue]="item.kind === 'DEWORMING'"></i>{{ item.summary }}</p>
             }
             @if (onDay(day).length > 3) {
-              <small>+{{ onDay(day).length - 3 }} ações</small>
+              <small>+{{ onDay(day).length - 3 }} itens na amostra</small>
             }
             @if (!onDay(day).length) {
-              <small>Sem ações nesta consulta</small>
+              <small>Sem itens nesta amostra</small>
             }
           </div>
         }

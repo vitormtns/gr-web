@@ -1,3 +1,4 @@
+import { CalvingPreviewComponent } from './calving-preview.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -26,7 +27,6 @@ import { AnimalPickerComponent } from './animal-picker.component';
 import { BreedingBatchComponent } from './breeding-batch.component';
 import { HerdApi } from './herd-api.service';
 import { validImportDate } from './herd-import';
-import { expectedCalvingPreview } from './reproduction-preview';
 import { Animal, AnimalSex, newUuid } from './herd.models';
 import {
   Pregnancy,
@@ -51,7 +51,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 
 @Component({
   selector: 'app-reproduction-page',
-  imports: [
+  imports: [CalvingPreviewComponent,
     FormsModule,
     RouterLink,
     AnimalPickerComponent,
@@ -647,7 +647,6 @@ export class ReproductionPageComponent {
     }
     return true;
   }
-  expectedCalvingPreview = expectedCalvingPreview;
   private ready() {
     return !this.context.transitionPending() && !!this.context.selectedFarm();
   }

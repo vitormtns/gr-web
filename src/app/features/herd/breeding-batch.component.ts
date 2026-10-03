@@ -1,3 +1,4 @@
+import { CalvingPreviewComponent } from './calving-preview.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -24,11 +25,10 @@ import { BreedingBatchCommand, BreedingBatchResult } from './parity.models';
 import { ReproductionServiceType, serviceLabels } from './herd-operations.models';
 import { errorReference, formatDate } from './herd.shared';
 import { validImportDate } from './herd-import';
-import { expectedCalvingPreview } from './reproduction-preview';
 
 @Component({
   selector: 'app-breeding-batch',
-  imports: [FormsModule, DialogComponent, AnimalPickerComponent],
+  imports: [CalvingPreviewComponent,FormsModule, DialogComponent, AnimalPickerComponent],
   template: `
     @if (permissions.canMutateHerd()) {
       @if (!embedded()) { <section class="section-frame parity-section">
@@ -104,7 +104,7 @@ import { expectedCalvingPreview } from './reproduction-preview';
                 placeholder="Opcional" /></label
             ><div class="wide semantic-note" aria-live="polite">
               <strong>Parto previsto</strong>
-              <p>{{ expectedCalvingPreview(serviceOn) ? date(expectedCalvingPreview(serviceOn)) : 'Informe uma data válida.' }}</p>
+              <app-calving-preview [serviceOn]="serviceOn" />
               <small>Previsão automática baseada na data do serviço para todas as matrizes.</small>
             </div>
             <label class="wide"
@@ -130,7 +130,7 @@ import { expectedCalvingPreview } from './reproduction-preview';
               </ul>
               <p>Referência do reprodutor: {{ sireReference || 'Não informada' }}</p>
               <p>
-                Parto previsto automaticamente: {{ date(expectedCalvingPreview(serviceOn)) }}
+                A previsão de parto será calculada após o registro.
               </p>
               <p>Observações: {{ notes || 'Sem observações' }}</p>
               <p class="semantic-note">
@@ -201,7 +201,6 @@ export class BreedingBatchComponent {
   sireReference = '';
   notes = '';
   date = formatDate;
-  expectedCalvingPreview = expectedCalvingPreview;
   constructor() {
     effect(() => {
       this.context.contextVersion();
@@ -242,6 +241,29 @@ export class BreedingBatchComponent {
     this.serviceType = 'INSEMINATION';
     this.sireReference = '';
     this.notes = '';
+  }
+  startWithSelection(snapshot: readonly Animal[]) {
+    if (!this.permissions.canMutateHerd() || this.context.transitionPending() ||
+        this.saving() || this.preparing()) return;
+    this.start();
+    const ids = snapshot.map((animal) => animal.id);
+    if (!ids.length || ids.length > 100 || new Set(ids).size !== ids.length) {
+      this.error.set('Selecione de 1 a 100 animais diferentes para preparar o lote.');
+      return;
+    }
+    this.preparing.set(true);
+    this.requests.run(forkJoin(ids.map((id) => this.herd.animal(id))), (animals) => {
+      this.preparing.set(false);
+      if (animals.some((a) => a.status !== 'ACTIVE' || a.sex !== 'FEMALE')) {
+        this.error.set('A seleção contém animais inativos ou machos. Revise a seleção no rebanho; nenhum animal foi incluído automaticamente.');
+        return;
+      }
+      this.selected.set(animals);
+    }, (failure) => {
+      this.preparing.set(false);
+      this.error.set(failure instanceof AppError ? failure.message :
+        'Não foi possível consultar a seleção atual. Feche e tente novamente.');
+    });
   }
   selectedIds() {
     return this.selected().map((a) => a.id);

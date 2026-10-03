@@ -241,7 +241,7 @@
             /></label>
             <div class="wide semantic-note" aria-live="polite">
               <strong>Parto previsto</strong>
-              <p>{{ expectedCalvingPreview(serviceOn) ? date(expectedCalvingPreview(serviceOn)) : 'Informe uma data válida.' }}</p>
+              <app-calving-preview [serviceOn]="serviceOn" />
               <small>Previsão automática baseada na data do serviço.</small>
             </div>
             <label class="wide"
@@ -302,7 +302,7 @@
               <strong>{{ serviceLabel(serviceType) }}</strong> em {{ date(serviceOn) }}
             </p>
             <p>
-              Parto previsto automaticamente: {{ date(expectedCalvingPreview(serviceOn)) }}
+              A previsão de parto será calculada após o registro.
             </p>
             <p>Reprodutor: {{ sireReference || 'Não informado' }}</p>
             <p>{{ notes || 'Sem observações' }}</p>
