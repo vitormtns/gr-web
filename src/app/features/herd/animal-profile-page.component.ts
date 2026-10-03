@@ -1,3 +1,7 @@
+import { AnimalLineageComponent } from './animal-lineage.component';
+import { ReproductiveIntelligenceComponent } from './reproductive-intelligence.component';
+import { AgeDetailComponent } from './age-detail.component';
+import { ageLabel } from './age-intelligence.models';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -67,6 +71,9 @@ type ManagementAction = 'mother' | 'note' | 'milk' | 'sale' | 'death';
   selector: 'app-animal-profile-page',
   providers: [HerdApi],
   imports: [
+    ReproductiveIntelligenceComponent,
+    AnimalLineageComponent,
+    AgeDetailComponent,
     ExactDecimalPipe,
     AnimalOperationalHistoryComponent,
     PaginationComponent,
@@ -116,7 +123,7 @@ type ManagementAction = 'mother' | 'note' | 'milk' | 'sale' | 'death';
               ><span>{{ item.paddock?.name || 'Sem piquete definido' }}</span>
             </div>
             <div class="hero-birth">
-              <strong>{{ age(item.birthDate) }}</strong>
+              <strong>{{ age(item.age) }}</strong>
               <span>{{
                 item.birthDate ? 'Nascimento ' + date(item.birthDate) : 'Nascimento não informado'
               }}</span>
@@ -309,7 +316,7 @@ type ManagementAction = 'mother' | 'note' | 'milk' | 'sale' | 'death';
                 <dl>
                   <div>
                     <dt>Animal</dt>
-                    <dd>{{ sex(item.sex) }} · {{ age(item.birthDate) }}</dd>
+                    <dd>{{ sex(item.sex) }} · {{ age(item.age) }}</dd>
                   </div>
                   <div>
                     <dt>Território</dt>
@@ -317,6 +324,9 @@ type ManagementAction = 'mother' | 'note' | 'milk' | 'sale' | 'death';
                   </div>
                 </dl>
               </section>
+              <app-age-detail [age]="item.age" />
+              <app-animal-lineage [animalId]="item.id" />
+              @if (item.sex === "FEMALE") { <app-reproductive-intelligence [animalId]="item.id" /> }
               <section class="side-card side-health section-frame">
                 <span class="section-kicker">SAÚDE E ATENÇÃO</span>
                 <h2>Necessidades atuais</h2>
@@ -330,6 +340,7 @@ type ManagementAction = 'mother' | 'note' | 'milk' | 'sale' | 'death';
                   <p>{{ pendingSummary() }}</p>
                   @if (item.status === 'ACTIVE') {
                     @for (work of pendingItems.items; track work.type + work.animalId) {
+                      @if (work.reason) { <details><summary>Por que acompanhar a pesagem?</summary><p>{{ work.reason.explanation }}</p><p>Referência {{ date(work.reason.referenceDate) }} · janela configurada de {{ work.reason.windowDays }} dias.</p></details> }
                       @if (work.type === 'WEIGHING_DUE' && permissions.canMutateHerd()) {
                         <button class="event-detail" type="button" (click)="openWeight()">Registrar pesagem</button>
                       }
@@ -901,15 +912,7 @@ export class AnimalProfilePageComponent {
     }
     return result;
   }
-  age(birthDate: string | null): string {
-    if (!birthDate) return 'Idade não informada';
-    const [year, month, day] = birthDate.split('-').map(Number);
-    const [nowYear, nowMonth, nowDay] = this.today.split('-').map(Number);
-    let years = nowYear - year;
-    if (nowMonth < month || (nowMonth === month && nowDay < day)) years--;
-    if (years < 0) return 'Idade não informada';
-    return years === 1 ? '1 ano' : `${years} anos`;
-  }
+  readonly age = ageLabel;
   eventDomain(type: string): DomainIconName {
     if (type === 'BORN' || type === 'CALVED') return 'calving';
     if (type === 'SOLD' || type === 'DECEASED') return 'attention';

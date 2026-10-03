@@ -1,3 +1,4 @@
+import { AgeTransitionsComponent } from '../herd/age-transitions.component';
 import { ChangeDetectionStrategy, Component, computed, effect, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ContextStore } from '../../core/context/context.store';
@@ -25,6 +26,7 @@ import { DomainIconComponent } from '../../design-system/primitives/domain-icon'
   selector: 'app-home-page',
   providers: [DashboardStore],
   imports: [
+    AgeTransitionsComponent,
     RouterLink,
     EmptyStateComponent,
     ErrorStateComponent,
@@ -142,6 +144,7 @@ import { DomainIconComponent } from '../../design-system/primitives/domain-icon'
               (retry)="store.retry('paddocks')"
             />
           }
+          <app-age-transitions [preview]="true" />
           <app-urgency-board (inspect)="openDetail($event)" />
           <app-home-agenda-section (inspect)="openDetail($event)" />
           <app-home-health-section (inspect)="openDetail($event)" />

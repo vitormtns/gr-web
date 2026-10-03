@@ -1,3 +1,4 @@
+import { CalvingAttention } from './reproductive-intelligence.component';
 import { Animal, Page } from './herd.models';
 import { CountedPage } from './parity.models';
 
@@ -23,7 +24,7 @@ export interface FarmPregnancy extends Omit<Pregnancy, 'motherId'> { mother: Ani
 export interface FarmPregnancyPage extends Page<FarmPregnancy> {}
 export interface ReproductionEvent { id: string; mother: AnimalReference; action: 'BREEDING_RECORDED'|'PREGNANCY_CONFIRMED'|'PREGNANCY_TERMINATED'|'CALVED'|'BORN'; occurredOn: string; recordedAt: string; pregnancyId: string | null; serviceType: ReproductionServiceType | null; expectedCalvingOn: string | null; calfId: string | null; terminationReason: PregnancyTerminationReason | null }
 export interface ReproductionReport extends Page<ReproductionEvent> { summary: { servicesRecorded: number; pregnanciesConfirmed: number; pregnanciesTerminated: number; calvings: number; calvesBorn: number; openPossiblePregnancies: number; openConfirmedPregnancies: number } }
-export interface PendingWorkItem { type: PendingWorkType; animalId: string; identification: string; name: string | null; farmId: string; dueOn: string | null; expectedOn: string | null; daysOverdue: number | null; daysUntil: number | null; pregnancyId: string | null; treatmentType: HealthTreatmentType | null; lastPerformedOn: string | null; lastWeightOn: string | null }
+export interface PendingWorkItem { type: PendingWorkType; animalId: string; identification: string; name: string | null; farmId: string; dueOn: string | null; expectedOn: string | null; daysOverdue: number | null; daysUntil: number | null; pregnancyId: string | null; treatmentType: HealthTreatmentType | null; lastPerformedOn: string | null; lastWeightOn: string | null; calvingAttention?: CalvingAttention | null; reason?: { policy: string; referenceDate: string; windowDays: number; sourceDate: string | null; cutoffOn: string; explanation: string } | null }
 export interface PendingWorkPage extends Page<PendingWorkItem> {}
 export interface PlannerItem { id: string; operationId: string | null; type: PlannerType; title: string; notes: string | null; scheduledFor: string; status: PlannerStatus; animalId: string | null; groupId: string | null; version: number; createdAt: string; updatedAt: string; completedAt: string | null; cancelledAt: string | null; replay: boolean }
 export interface PlannerPage extends Page<PlannerItem> {}
