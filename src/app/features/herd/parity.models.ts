@@ -98,6 +98,21 @@ export interface CreateGroup {
   kind: GroupKind;
   rules: GroupRules;
 }
+export interface CreateGroupWithAnimalsCommand {
+  operationId: string;
+  id: string;
+  name: string;
+  animalIds: string[];
+}
+export interface GroupMembershipBatchCommand extends VersionedCommand {
+  animalIds: string[];
+}
+export interface GroupMembershipBatchResult {
+  group: HerdGroup;
+  addedCount: number;
+  alreadyMemberCount: number;
+  replayed: boolean;
+}
 export interface UpdateGroup {
   expectedVersion: number;
   name: string;
@@ -204,4 +219,17 @@ export interface ProcedureCoverage {
     withRecordedTreatment: number;
     withoutRecordedTreatment: number;
   }[];
+}
+
+export interface AgeSexPeriodCell {
+  ageBand: AgeBand | null; sex: AnimalSex;
+  openingAnimals: number; registeredAnimals: number; births: number; transfersIn: number;
+  sales: number; deaths: number; transfersOut: number; closingAnimals: number; ageBandChange: number;
+}
+export interface AgeSexPeriod {
+  from: string; to: string; positionSemantics: string;
+  cells: AgeSexPeriodCell[]; totals: Omit<AgeSexPeriodCell, 'ageBand' | 'sex'>;
+}
+export interface AgeSexAnimals extends Page<{ animal: { id: string; identification: string | null; name: string | null }; sex: AnimalSex; birthDate: string | null; availableInCurrentFarm: boolean }> {
+  referenceDate: string; positionSemantics: string;
 }

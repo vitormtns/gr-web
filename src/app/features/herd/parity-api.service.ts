@@ -1,3 +1,4 @@
+import { AgeBand, AgeSexPeriod, AgeSexAnimals } from './parity.models';
 import { map } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { ApiClient } from '../../core/api/api-client.service';
@@ -9,7 +10,10 @@ import {
   BreedingBatchResult,
   CountedPage,
   CreateGroup,
+  CreateGroupWithAnimalsCommand,
   GroupAnimals,
+  GroupMembershipBatchCommand,
+  GroupMembershipBatchResult,
   HerdGroup,
   ImportCommand,
   ImportResult,
@@ -77,9 +81,17 @@ export class ParityApi {
       ? this.api.put<HerdGroup>(path, { expectedVersion }, true)
       : this.api.delete<HerdGroup>(path, true, { expectedVersion });
   }
-  groupAnimals(groupId: string, page = 0, referenceDate = '') {
+  membershipBatch(groupId: string, body: GroupMembershipBatchCommand) {
+    return this.api.post<GroupMembershipBatchResult>(
+      `${root}/groups/${id(groupId)}/animals/batch`, body, true,
+    );
+  }
+  createGroupWithAnimals(body: CreateGroupWithAnimalsCommand) {
+    return this.api.post<GroupMembershipBatchResult>(`${root}/groups/with-animals`, body, true);
+  }
+  groupAnimals(groupId: string, page = 0, referenceDate = '', size = 20) {
     return this.api.get<GroupAnimals>(
-      `${root}/groups/${id(groupId)}/animals?page=${page}&size=20${referenceDate ? `&referenceDate=${id(referenceDate)}` : ''}`,
+      `${root}/groups/${id(groupId)}/animals?page=${page}&size=${size}${referenceDate ? `&referenceDate=${id(referenceDate)}` : ''}`,
       true,
     );
   }
@@ -112,6 +124,14 @@ export class ParityApi {
       `${root}/reports/period-reconciliation?from=${id(from)}&to=${id(to)}`,
       true,
     );
+  }
+  ageSexPeriod(from: string, to: string) {
+    return this.api.get<AgeSexPeriod>(`${root}/reports/age-sex-period?from=${id(from)}&to=${id(to)}`, true);
+  }
+  ageSexAnimals(referenceDate: string, historical: boolean, ageBand: AgeBand | null, sex: string, page = 0) {
+    const params = new URLSearchParams({ [historical ? 'asOf' : 'referenceDate']: referenceDate, sex, page: String(page), size: '20' });
+    if (ageBand) params.set('ageBand', ageBand); else params.set('unknownBirthDate', 'true');
+    return this.api.get<AgeSexAnimals>(`${root}/reports/${historical ? 'historical' : 'current'}-age-sex-animals?${params}`, true);
   }
   coverage(procedureCode: HealthProcedureCode, referenceDate: string) {
     return this.api.get<ProcedureCoverage>(

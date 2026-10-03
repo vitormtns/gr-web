@@ -67,6 +67,41 @@ async function setup(role: MembershipRole = 'OWNER') {
   return { fixture, component: fixture.componentInstance, api, context, navigate };
 }
 describe('Seleção do rebanho', () => {
+  it('seleciona o resultado completo consultado, sem limitar à página visível', async () => {
+    const { component, api } = await setup();
+    component.page.set({ ...page, totalElements: 2 });
+    const second = { ...animal, id: 'b' };
+    api.animals.mockReturnValue(
+      of({ ...page, items: [animal, second], size: 100, totalElements: 2 }),
+    );
+    component.selectFiltered();
+    expect(api.animals).toHaveBeenLastCalledWith(expect.objectContaining({ page: 0, size: 100 }));
+    expect([...component.selected().keys()]).toEqual(['a', 'b']);
+  });
+  it('bloqueia resultado acima do limite e resposta incompleta sem selecionar primeira página', async () => {
+    const { component, api } = await setup();
+    api.animals.mockClear();
+    component.page.set({ ...page, totalElements: 101 });
+    component.selectFiltered();
+    expect(api.animals).not.toHaveBeenCalled();
+    expect(component.selected().size).toBe(0);
+    component.page.set({ ...page, totalElements: 2 });
+    api.animals.mockReturnValue(of({ ...page, totalElements: 2 }));
+    component.selectFiltered();
+    expect(component.selected().size).toBe(0);
+  });
+  it('cancela seleção filtrada atrasada quando a fazenda muda', async () => {
+    const { component, api, fixture, context } = await setup();
+    const pending = new Subject<Page<Animal>>();
+    api.animals.mockReturnValue(pending);
+    component.selectFiltered();
+    expect(component.selectingFiltered()).toBe(true);
+    context.transitionPending.set(true);
+    fixture.detectChanges();
+    expect(pending.observed).toBe(false);
+    expect(component.selectingFiltered()).toBe(false);
+    expect(component.selected().size).toBe(0);
+  });
   it('restaura e envia os filtros com e sem piquete, incluindo false', async () => {
     const { component, api, navigate } = await setup();
     const params = TestBed.inject(ActivatedRoute).queryParamMap as BehaviorSubject<
